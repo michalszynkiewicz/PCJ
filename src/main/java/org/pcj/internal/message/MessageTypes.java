@@ -176,7 +176,7 @@ public enum MessageTypes {
         }
     },
     /**
-     * message to all nodes (implicity broadcast) to continue calculations
+     * message to all nodes (implicitly broadcast) to continue calculations
      *
      * @param obj[0] groupId (<tt>int</tt>)
      *
@@ -417,6 +417,16 @@ public enum MessageTypes {
         @Override
         MessageValueBroadcast createMessage() {
             return new MessageValueBroadcast();
+        }
+    }, PING(53) {
+        @Override
+        MessagePing createMessage() {
+            return new MessagePing();
+        }
+    }, PONG(54) {
+        @Override
+        Message createMessage() {
+            return new MessagePong();
         }
     };
     /* **************************************************** */

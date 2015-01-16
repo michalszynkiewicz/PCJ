@@ -46,6 +46,7 @@ final class WorkerData {
     /* groups */
     final InternalGroup internalGlobalGroup;
     final ConcurrentMap<Integer, InternalGroup> internalGroupsById; // key - groupId, value - group
+    final ConcurrentMap<Integer, NodesActivityMonitor> activityMonitorsForGroupsById;
     final ConcurrentMap<String, InternalGroup> internalGroupsByName; // key - groupName, value - group
     /* virtualNodes sync */
     final ConcurrentMap<NodesSyncData, NodesSyncData> nodesSyncData;
@@ -88,8 +89,7 @@ final class WorkerData {
 
         internalGlobalGroup = globalGroup;
         internalGroupsById = new ConcurrentHashMap<>();
-        internalGroupsByName = new ConcurrentHashMap<>();
-        addGroup(internalGlobalGroup);
+        activityMonitorsForGroupsById = new ConcurrentHashMap<>();
 
         //pendingMessages = new LinkedBlockingQueue<>();
 
@@ -103,12 +103,16 @@ final class WorkerData {
         attachmentMap = new ConcurrentHashMap<>();
 
         finishObject = new Object();
+        internalGroupsByName = new ConcurrentHashMap<>();
+        addGroup(internalGlobalGroup);
     }
 
     void addGroup(InternalGroup group) {
         synchronized (internalGroupsById) {
             internalGroupsById.put(group.getGroupId(), group);
             internalGroupsByName.put(group.getGroupName(), group);
+            // mstodo: add only group nodes to the group! - now all are added
+            activityMonitorsForGroupsById.put(group.getGroupId(), new NodesActivityMonitor(group.getGroupId(), virtualNodes));
         }
     }
 

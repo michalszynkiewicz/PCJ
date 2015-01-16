@@ -3,6 +3,9 @@
  */
 package org.pcj.internal.utils;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Class to manipulate large set of bits. This class is not <i>Thread-safe</i>.
  * External synchronization is required.

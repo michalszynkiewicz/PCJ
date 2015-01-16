@@ -60,8 +60,21 @@ final public class Configuration {
      */
     final public static String NODES_FILENAME;
 
+    /**
+     * number of seconds after which
+     */
+    final public static int NODE_PING_TIMEOUT;
+
+    /**
+     * number of milliseconds to sleep between pinging other nodes
+     */
+    final public static int NODE_PING_INTERVAL;
+
     static {
-        DEBUG = getPropertyInt("pcj.debug", 0/*7*/);
+        DEBUG = getPropertyInt("pcj.debug", 0/*7*/); // mstodo bring back
+//        DEBUG = getPropertyInt("pcj.debug", 7);
+        NODE_PING_TIMEOUT = getPropertyInt("pcj.ping.timeout", 5);
+        NODE_PING_INTERVAL = getPropertyInt("pcj.ping.interval", 1000);
         RETRY_COUNT = getPropertyInt("pcj.retry", 3);
         RETRY_DELAY = getPropertyInt("pcj.retrydelay", 10);
         WAIT_TIME = getPropertyInt("pcj.waittime", 60);

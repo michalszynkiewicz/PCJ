@@ -3,24 +3,15 @@
  */
 package org.pcj.internal;
 
+import org.pcj.NodeFailureException;
+import org.pcj.internal.message.*;
 import org.pcj.internal.utils.PcjThreadPair;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.pcj.internal.message.Message;
-import org.pcj.internal.message.MessageLog;
-import org.pcj.internal.message.MessageNodeSync;
-import org.pcj.internal.message.MessageSyncWait;
-import org.pcj.internal.message.MessageValueAsyncGetRequest;
-import org.pcj.internal.message.MessageValueAsyncGetRequestIndexes;
-import org.pcj.internal.message.MessageValueBroadcast;
-import org.pcj.internal.message.MessageValuePut;
-import org.pcj.internal.message.MessageValuePutIndexes;
+
 import org.pcj.internal.utils.BitMask;
 import org.pcj.internal.utils.CloneObject;
 import org.pcj.internal.utils.CommunicationTree;
@@ -286,11 +277,11 @@ public class InternalGroup {
     }
 
     protected int myId() {
-        throw new UnsupportedOperationException("This method have to be overriden!");
+        throw new UnsupportedOperationException("This method has to be overriden!");
     }
 
     protected void barrier() {
-        throw new UnsupportedOperationException("This method have to be overriden!");
+        throw new UnsupportedOperationException("This method has to be overriden!");
     }
 
     protected String getGroupName() {
@@ -302,18 +293,48 @@ public class InternalGroup {
     }
 
     protected void barrier(int myNodeId) {
+        System.out.println("in barrier");
         syncObject.lock();
         try {
             localSync.set(myNodeId);
             if (localSync.isSet(localSyncMask)) {
+                System.out.println("localSync set");
                 InternalPCJ.getNetworker().send(getPhysicalMaster(), syncMessage);
                 localSync.clear();
+
+                int myPhysicalId = InternalPCJ.getWorkerData().virtualNodes.get(myNodeId);
+                NodeFailureCallback failureCallback = new NodeFailureCallback(); // mstodo see the results
+                if (myPhysicalId == getPhysicalMaster()) { // it doesn't work for other groups!
+                    System.out.println("starting monitor");
+                    InternalPCJ.getWorkerData().activityMonitorsForGroupsById.get(groupId).start(failureCallback);
+                    // mstodo look at synchronization
+                } else {
+                    System.out.println("not being physical master");
+                }
+                // mstodo 2: propagating failures
+                // mstodo 3
             }
-            syncObject.await();
+            syncObject.await();       // mstodo: react on finish
+
         } catch (InterruptedException | IOException ex) {
             throw new RuntimeException(ex);
         }
+        InternalPCJ.getWorkerData().activityMonitorsForGroupsById.get(0).reset();
         syncObject.unlock();
+    }
+
+    public class NodeFailureCallback implements NodesActivityMonitor.NodeFailureCallback {
+        @Override
+        public void error(int nodeId, Exception exception) {
+            synchronized (physicalSync) {
+                physicalSync.set(nodeId);
+            }
+        }
+
+        @Override
+        public void finishedWithErrors() {
+            System.out.println("FINISHED WITH ERRORS");
+            syncObject.signalAll(); } // mstodo
     }
 
     /**
@@ -322,7 +343,7 @@ public class InternalGroup {
      *
      * @param nodeId group node id
      */
-    protected void barrier(int myNodeId, int nodeId) {
+    protected void barrier(int myNodeId, int nodeId) {    // mstodo: add sth to handle node failures
         // FIXME: trzeba sprawdzić jak to będzie działać w pętli.
 //        if (true) {
 //            sync(myNodeId, new int[]{nodeId});
@@ -339,12 +360,12 @@ public class InternalGroup {
 
             InternalPCJ.getNetworker().send(nodeId, msg);
         } catch (IOException ex) {
-            throw new RuntimeException(ex);
+            throw new NodeFailureException(ex, nodeId);
         }
 
         final Map<PcjThreadPair, PcjThreadPair> syncNode = InternalPCJ.getWorkerData().syncNodePair;
         PcjThreadPair pair = new PcjThreadPair(myNodeId, nodeId);
-        synchronized (syncNode) {
+        synchronized (syncNode) {                                 // mstodo add ping
             while (syncNode.containsKey(pair) == false) {
                 try {
                     syncNode.wait();
@@ -382,7 +403,7 @@ public class InternalGroup {
             InternalPCJ.getNetworker().send(nodeId, msg);
             return futureObject;
         } catch (IOException ex) {
-            throw new RuntimeException(ex);
+            throw new NodeFailureException(ex, nodeId);  // mstodo
         }
     }
 
@@ -406,7 +427,7 @@ public class InternalGroup {
         try {
             InternalPCJ.getNetworker().send(nodeId, msg);
         } catch (IOException ex) {
-            throw new RuntimeException(ex);
+            throw new NodeFailureException(ex, nodeId);
         }
     }
 
@@ -419,7 +440,7 @@ public class InternalGroup {
         try {
             InternalPCJ.getNetworker().send(this, msg);
         } catch (IOException ex) {
-            throw new RuntimeException(ex);
+            throw new NodeFailureException(ex, this.getPhysicalMaster());
         }
     }
 
@@ -432,8 +453,12 @@ public class InternalGroup {
         try {
             InternalPCJ.getNetworker().send(InternalPCJ.getNode0Socket(), msg);
         } catch (final IOException ex) {
-            throw new RuntimeException(ex);
+            throw new NodeFailureException(ex, 0);  // mstodo this is a total failure!
         }
 
+    }
+
+    public Map<Integer, Integer> getNodes() {
+        return nodes;
     }
 }

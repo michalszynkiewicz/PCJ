@@ -3,53 +3,27 @@
  */
 package org.pcj.internal;
 
+import org.pcj.PCJ;
+import org.pcj.internal.message.*;
 import org.pcj.internal.utils.PcjThreadPair;
+
+import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.pcj.internal.message.Message;
-import org.pcj.internal.message.MessageFinishCompleted;
-import org.pcj.internal.message.MessageFinished;
-import org.pcj.internal.message.MessageGroupJoinAnswer;
-import org.pcj.internal.message.MessageGroupJoinBonjour;
-import org.pcj.internal.message.MessageGroupJoinInform;
-import org.pcj.internal.message.MessageGroupJoinQuery;
-import org.pcj.internal.message.MessageGroupJoinRequest;
-import org.pcj.internal.message.MessageGroupJoinResponse;
-import org.pcj.internal.message.MessageHello;
-import org.pcj.internal.message.MessageHelloBonjour;
-import org.pcj.internal.message.MessageHelloCompleted;
-import org.pcj.internal.message.MessageHelloGo;
-import org.pcj.internal.message.MessageHelloInform;
-import org.pcj.internal.message.MessageHelloResponse;
-import org.pcj.internal.message.MessageLog;
-import org.pcj.internal.message.MessageNodeSync;
-import org.pcj.internal.message.MessageNodesSyncGo;
-import org.pcj.internal.message.MessageNodesSyncWait;
-import org.pcj.internal.message.MessageSyncGo;
-import org.pcj.internal.message.MessageSyncWait;
+
 import org.pcj.internal.network.SocketData;
-import org.pcj.internal.message.MessageTypes;
-import org.pcj.internal.message.MessageValueAsyncGetRequest;
-import org.pcj.internal.message.MessageValueAsyncGetRequestIndexes;
-import org.pcj.internal.message.MessageValueAsyncGetResponse;
-import org.pcj.internal.message.MessageValueBroadcast;
-import org.pcj.internal.message.MessageValuePut;
-import org.pcj.internal.message.MessageValuePutIndexes;
 import org.pcj.internal.network.LoopbackSocketChannel;
 import org.pcj.internal.utils.BitMask;
 import org.pcj.internal.utils.CloneObject;
@@ -246,9 +220,32 @@ public class Worker implements Runnable {
             case VALUE_BROADCAST:
                 valueBroadcast((MessageValueBroadcast) message);
                 break;
+            case PING:
+                ping((MessagePing) message);
+                break;
+            case PONG:
+                pong((MessagePong) message);
+                break;
             default:
                 throw new AssertionError(message.getType().name());
         }
+    }
+
+    private void pong(MessagePong message) {
+        System.out.println("GOT PONG");
+        NodesActivityMonitor monitor = data.activityMonitorsForGroupsById.get(message.getGroupId());
+        int physicalNodeId = data.getPhysicalId(message.getSocket());
+        monitor.setResponseTime(physicalNodeId);
+    }
+
+    private void ping(MessagePing message) throws IOException {
+        FileWriter fis = new FileWriter("/home/michal/pingLog", true);
+        fis.append("got ping at " + new Date());
+        fis.close();
+
+        MessagePong reply = new MessagePong();
+        reply.setGroupId(message.getGroupId());
+        networker.send(message.getSocket(), reply);
     }
 
     /**
@@ -525,15 +522,18 @@ public class Worker implements Runnable {
      * @see MessageTypes#SYNC_WAIT
      */
     private void syncWait(MessageSyncWait message) throws IOException {
-        InternalGroup group = data.internalGroupsById.get(message.getGroupId());
+        int groupId = message.getGroupId();
+        InternalGroup group = data.internalGroupsById.get(groupId);
         int physicalId = data.getPhysicalId(message.getSocket());
         final BitMask physicalSync = group.getPhysicalSync();
+
+        data.activityMonitorsForGroupsById.get(groupId).markFinished(physicalId);
         synchronized (physicalSync) {
-            if (group.physicalSync(physicalId)) {
+            if (group.physicalSync(physicalId)) {    // mstodo: don't wait on localSync but on this physical sync!!
                 physicalSync.clear();
 
                 MessageSyncGo msg = new MessageSyncGo();
-                msg.setGroupId(message.getGroupId());
+                msg.setGroupId(groupId);
                 networker.send(group, msg);
             }
         }

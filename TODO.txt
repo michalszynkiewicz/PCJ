@@ -1,0 +1,21 @@
+PPAM: do ~15.03.2015 papiery
+
+konferencja: September 6-9, 2015
+
+-> ignoruj błąd
+
+-> przypisz pracę padniętego innemu już działającemu węzłowi
+
+-> na nowym odtwórz pracę od snapshota
+
+
+
+
+-----------------------------------------------
+resilient storage - synchroniczne/asynchroniczne zapisywanie snapshota
+
+
+chociaz proste testy na PPAM
+
+pingowanie zawsze
+

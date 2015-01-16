@@ -216,7 +216,7 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
     }
 
     /**
-     * Pauses current Thread and wait for modification of
+     * Pauses current Thread and waits for modification of
      * variable.
      * <p>
      * The same as calling waitFor method using

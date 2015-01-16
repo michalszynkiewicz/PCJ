@@ -245,7 +245,12 @@ class Networker {
     }
 
     void send(int nodeId, Message msg) throws IOException {
-        SocketChannel socket = workerData.physicalNodes.get(workerData.virtualNodes.get(nodeId));
+        Integer physicalId = workerData.virtualNodes.get(nodeId);
+        sendToPhysicalNode(physicalId, msg);
+    }
+
+    void sendToPhysicalNode(int physicalId, Message msg) throws IOException {
+        SocketChannel socket = workerData.physicalNodes.get(physicalId);
         send(socket, msg);
     }
 

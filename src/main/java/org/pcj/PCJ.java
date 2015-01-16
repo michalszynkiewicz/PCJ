@@ -197,7 +197,7 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @param variable name of variable
      */
     public static void waitFor(String variable) {
-        PcjThread.threadStorage().waitFor(variable);
+        PcjThread.threadStorage().waitFor(variable);     // mstodo: ping?
     }
 
     /**
