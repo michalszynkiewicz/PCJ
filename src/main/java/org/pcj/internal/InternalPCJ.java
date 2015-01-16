@@ -3,6 +3,7 @@
  */
 package org.pcj.internal;
 
+import org.pcj.internal.failover.FailoverPolicy;
 import org.pcj.internal.utils.BlackholePrintStream;
 import org.pcj.internal.utils.Version;
 import java.io.IOException;
@@ -46,11 +47,16 @@ public abstract class InternalPCJ {
     private static SocketChannel node0Socket;
     private static Networker networker;
     private static WorkerData workerData;
+    private static FailoverPolicy failoverPolicy;
 
     // Suppress default constructor for noninstantiability
     // have to be protected to allow to inheritance
     protected InternalPCJ() {
         throw new AssertionError();
+    }
+
+    protected static FailoverPolicy getFailoverPolicy() {
+        return failoverPolicy;
     }
 
     protected static void deploy(Class<? extends InternalStartPoint> startPoint,

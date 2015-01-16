@@ -418,6 +418,18 @@ public enum MessageTypes {
         MessageValueBroadcast createMessage() {
             return new MessageValueBroadcast();
         }
+    },
+    PING(61) {
+        @Override
+        MessagePing createMessage() {
+            return new MessagePing();
+        }
+    },
+    PONG(62) {
+        @Override
+        MessagePong createMessage() {
+            return new MessagePong();
+        }
     };
     /* **************************************************** */
     private static final Map<Byte, MessageTypes> map;

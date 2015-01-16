@@ -15,6 +15,7 @@ import java.nio.channels.SocketChannel;
 import java.util.Deque;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import org.pcj.internal.message.Message;
+import org.pcj.internal.message.MessagePing;
 import org.pcj.internal.network.LoopbackSocketChannel;
 import org.pcj.internal.network.MessageOutputStream;
 import org.pcj.internal.network.SelectorProc;
@@ -245,8 +246,13 @@ class Networker {
     }
 
     void send(int nodeId, Message msg) throws IOException {
-        SocketChannel socket = workerData.physicalNodes.get(workerData.virtualNodes.get(nodeId));
-        send(socket, msg);
+        Integer physicalNodeId = workerData.virtualNodes.get(nodeId);
+        sendToPhysicalNode(physicalNodeId, msg);
+    }
+
+    public void sendToPhysicalNode(int physicalNodeId, Message message) throws IOException {
+        SocketChannel socket = workerData.physicalNodes.get(physicalNodeId);
+        send(socket, message);
     }
 
     <X> X sendWait(int nodeId, Message msg) throws IOException {

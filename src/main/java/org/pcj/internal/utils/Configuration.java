@@ -60,6 +60,16 @@ final public class Configuration {
      */
     final public static String NODES_FILENAME;
 
+    /**
+     * number of <b>seconds</b> after which node is assumed dead and is replaced or removed
+     */
+    public static final int NODE_TIMEOUT;
+
+    /**
+     * number of <b>milliseconds</b> to sleep between pinging nodes
+     */
+    public static final int NODE_PING_INTERVAL;
+
     static {
         DEBUG = getPropertyInt("pcj.debug", 0/*7*/);
         RETRY_COUNT = getPropertyInt("pcj.retry", 3);
@@ -70,6 +80,8 @@ final public class Configuration {
         REDIRECT_OUT = getPropertyInt("pcj.redirect.out", 1) == 1;
         REDIRECT_ERR = getPropertyInt("pcj.redirect.err", 1) == 1;
         REDIRECT_NODE0 = getPropertyInt("pcj.redirect.node0", 0) == 1;
+        NODE_TIMEOUT = getPropertyInt("pcj.node.timeout", 10);
+        NODE_PING_INTERVAL = getPropertyInt("pcj.node.ping", 500);
         NODES_FILENAME = getNodesFilename();
     }
 

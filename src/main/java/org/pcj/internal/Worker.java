@@ -3,6 +3,7 @@
  */
 package org.pcj.internal;
 
+import org.pcj.internal.message.*;
 import org.pcj.internal.utils.PcjThreadPair;
 import java.io.IOException;
 import java.net.InetAddress;
@@ -21,35 +22,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.pcj.internal.message.Message;
-import org.pcj.internal.message.MessageFinishCompleted;
-import org.pcj.internal.message.MessageFinished;
-import org.pcj.internal.message.MessageGroupJoinAnswer;
-import org.pcj.internal.message.MessageGroupJoinBonjour;
-import org.pcj.internal.message.MessageGroupJoinInform;
-import org.pcj.internal.message.MessageGroupJoinQuery;
-import org.pcj.internal.message.MessageGroupJoinRequest;
-import org.pcj.internal.message.MessageGroupJoinResponse;
-import org.pcj.internal.message.MessageHello;
-import org.pcj.internal.message.MessageHelloBonjour;
-import org.pcj.internal.message.MessageHelloCompleted;
-import org.pcj.internal.message.MessageHelloGo;
-import org.pcj.internal.message.MessageHelloInform;
-import org.pcj.internal.message.MessageHelloResponse;
-import org.pcj.internal.message.MessageLog;
-import org.pcj.internal.message.MessageNodeSync;
-import org.pcj.internal.message.MessageNodesSyncGo;
-import org.pcj.internal.message.MessageNodesSyncWait;
-import org.pcj.internal.message.MessageSyncGo;
-import org.pcj.internal.message.MessageSyncWait;
+
 import org.pcj.internal.network.SocketData;
-import org.pcj.internal.message.MessageTypes;
-import org.pcj.internal.message.MessageValueAsyncGetRequest;
-import org.pcj.internal.message.MessageValueAsyncGetRequestIndexes;
-import org.pcj.internal.message.MessageValueAsyncGetResponse;
-import org.pcj.internal.message.MessageValueBroadcast;
-import org.pcj.internal.message.MessageValuePut;
-import org.pcj.internal.message.MessageValuePutIndexes;
 import org.pcj.internal.network.LoopbackSocketChannel;
 import org.pcj.internal.utils.BitMask;
 import org.pcj.internal.utils.CloneObject;
@@ -66,10 +40,14 @@ import org.pcj.internal.utils.WaitObject;
  */
 public class Worker implements Runnable {
 
+    private final MessagePong pong = new MessagePong();
+
     private final WorkerData data;
     private final BlockingQueue<Message> requestQueue;
     private final Map<SelectableChannel, SocketData> socketsOutputStream;
+
     private Networker networker;
+    private ActivityMonitor activityMonitor;
 
     Worker(WorkerData data) {
         this.data = data;
@@ -246,8 +224,27 @@ public class Worker implements Runnable {
             case VALUE_BROADCAST:
                 valueBroadcast((MessageValueBroadcast) message);
                 break;
+            case PING:
+                ping((MessagePing) message);
+                break;
+            case PONG:
+                pong((MessagePong) message);
+                break;
             default:
                 throw new AssertionError(message.getType().name());
+        }
+    }
+
+    private void pong(MessagePong message) {
+        int physicalId = InternalPCJ.getWorkerData().getPhysicalId(message.getSocket());
+        activityMonitor.pong(physicalId);
+    }
+
+    private void ping(MessagePing message) {
+        try {
+            networker.send(message.getSocket(), pong);
+        } catch (IOException e) {
+            e.printStackTrace(); // mstodo: can we do sth with it?
         }
     }
 
