@@ -31,7 +31,7 @@ import org.pcj.internal.utils.Utilities;
  *
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
-class Networker {
+public class Networker {        // mstodo: access rights!
 
     private final SelectorProc selectorProc;
     private final Thread selectorProcThread;
