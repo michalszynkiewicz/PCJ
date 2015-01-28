@@ -3,6 +3,7 @@
  */
 package org.pcj.internal;
 
+import org.pcj.internal.faulttolerance.ActivityMonitor;
 import org.pcj.internal.message.*;
 import org.pcj.internal.utils.PcjThreadPair;
 import java.io.IOException;

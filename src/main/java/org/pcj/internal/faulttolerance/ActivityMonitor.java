@@ -1,4 +1,4 @@
-package org.pcj.internal;
+package org.pcj.internal.faulttolerance;
 
 import org.pcj.internal.message.MessagePing;
 import org.pcj.internal.utils.Configuration;
@@ -21,10 +21,15 @@ public class ActivityMonitor implements Runnable {
     private final Thread monitoringThread = new Thread(this);
 
     private final MessagePing messagePing = new MessagePing();
+    private final FaultTolerancePolicy faultTolerancePolicy;
 
     private Map<Integer, Long> responseTimes = new ConcurrentHashMap<>();
 
     private long startTime;
+
+    public ActivityMonitor(FaultTolerancePolicy faultTolerancePolicy) {
+        this.faultTolerancePolicy = faultTolerancePolicy;
+    }
 
     public void start() {
         monitoringThread.setDaemon(true);
@@ -39,7 +44,7 @@ public class ActivityMonitor implements Runnable {
     @Override
     public void run() {
         while (true) {
-            Set<Integer> physicalNodes = getWorkerData().physicalNodes.keySet();
+            Set<Integer> physicalNodes = getWorkerData().getPhysicalNodes().keySet();
             for (Integer nodeId : physicalNodes) {
                 if (isTimedOut(nodeId)
                         || !sendPing(nodeId)) {
@@ -84,6 +89,6 @@ public class ActivityMonitor implements Runnable {
     }
 
     private void handleNodeFailure(int nodeId) {
-        InternalPCJ.getFailoverPolicy().handleNodeFailure(nodeId);
+        faultTolerancePolicy.handleNodeFailure(nodeId);
     }
 }
