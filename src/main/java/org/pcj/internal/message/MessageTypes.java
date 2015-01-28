@@ -430,6 +430,11 @@ public enum MessageTypes {
         MessagePong createMessage() {
             return new MessagePong();
         }
+    },
+    NODE_FAILED(63) {
+        MessageNodeFailed createMessage() {
+            return new MessageNodeFailed();
+        }
     };
     /* **************************************************** */
     private static final Map<Byte, MessageTypes> map;

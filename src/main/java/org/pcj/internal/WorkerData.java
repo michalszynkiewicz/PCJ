@@ -5,15 +5,16 @@ package org.pcj.internal;
 
 import org.pcj.internal.faulttolerance.ActivityMonitor;
 import org.pcj.internal.faulttolerance.IgnoreFaultTolerancePolicy;
+import org.pcj.internal.message.MessageHello;
+import org.pcj.internal.network.LoopbackSocketChannel;
 import org.pcj.internal.utils.PcjThreadPair;
+
 import java.nio.channels.SocketChannel;
 import java.util.Collections;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import org.pcj.internal.message.MessageHello;
-import org.pcj.internal.network.LoopbackSocketChannel;
 
 /**
  * This class is used by Worker class for storing data.
@@ -58,6 +59,7 @@ public final class WorkerData {
 
     final ActivityMonitor activityMonitor;
 
+    // mstodo reconfigure global group on node failure
     public WorkerData(int[] localIds, ConcurrentMap<Integer, PcjThreadLocalData> localData, InternalGroup globalGroup) {
         this(localIds, localData, globalGroup, null);
     }

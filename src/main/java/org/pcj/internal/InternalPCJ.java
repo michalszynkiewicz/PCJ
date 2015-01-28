@@ -3,9 +3,15 @@
  */
 package org.pcj.internal;
 
-import org.pcj.internal.faulttolerance.FaultTolerancePolicy;
-import org.pcj.internal.utils.BlackholePrintStream;
-import org.pcj.internal.utils.Version;
+import org.pcj.Group;
+import org.pcj.internal.message.MessageFinished;
+import org.pcj.internal.message.MessageGroupJoinQuery;
+import org.pcj.internal.message.MessageGroupJoinRequest;
+import org.pcj.internal.message.MessageHello;
+import org.pcj.internal.network.LoopbackSocketChannel;
+import org.pcj.internal.storage.InternalStorage;
+import org.pcj.internal.utils.*;
+
 import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.Constructor;
@@ -18,21 +24,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import org.pcj.Group;
-import org.pcj.internal.message.MessageFinished;
-import org.pcj.internal.message.MessageGroupJoinQuery;
-import org.pcj.internal.message.MessageGroupJoinRequest;
-import org.pcj.internal.message.MessageHello;
-import org.pcj.internal.network.LoopbackSocketChannel;
-import org.pcj.internal.storage.InternalStorage;
-import org.pcj.internal.utils.BitMask;
-import org.pcj.internal.utils.Configuration;
-import org.pcj.internal.utils.ExitTimer;
-import org.pcj.internal.utils.NetworkUtils;
-import org.pcj.internal.utils.NodeInfo;
-import org.pcj.internal.utils.NodesFile;
-import org.pcj.internal.utils.Utilities;
-import org.pcj.internal.utils.WaitObject;
 
 /**
  * Internal (with common ClassLoader) class for external PCJ
@@ -106,12 +97,7 @@ public abstract class InternalPCJ {
             NodeInfo node0, // node0 - work also as manager
             NodeInfo localNode,
             Integer clientsCount) throws IOException {
-        if (localNode == null) {
-            throw new NullPointerException("localNode is null");
-        }
-        if (node0 == null) {
-            throw new NullPointerException("node0 is null");
-        }
+        validateParameters(node0, localNode);
 
         ConcurrentMap<Integer, PcjThreadLocalData> localData;
         boolean isNode0 = NetworkUtils.isLocalAddress(node0.getHostname())
@@ -141,9 +127,9 @@ public abstract class InternalPCJ {
                 /* create storage */
                 @SuppressWarnings("unchecked")
                 Class<? extends InternalStorage> classStorage = (Class<? extends InternalStorage>) classLoader.loadClass(storage.getName());
-                Constructor<? extends InternalStorage> constructorStorage = classStorage.getDeclaredConstructor();
-                constructorStorage.setAccessible(true);
-                InternalStorage lStorage = constructorStorage.newInstance();
+                Constructor<? extends InternalStorage> storageConstructor = classStorage.getDeclaredConstructor();
+                storageConstructor.setAccessible(true);
+                InternalStorage lStorage = storageConstructor.newInstance();
 
                 /* create startpoint */
                 if (theSame) {
@@ -160,26 +146,20 @@ public abstract class InternalPCJ {
                 Map<Integer, InternalGroup> groups = new HashMap<>();
                 Map<String, InternalGroup> groupsByName = new HashMap<>();
 
-                /* create globalGroup */
-                Class<?> groupClass = classLoader.loadClass(Group.class.getName());
-                Constructor<?> constructor = groupClass.getDeclaredConstructor(int.class, InternalGroup.class);
-                constructor.setAccessible(true);
-                InternalGroup lGroup = (InternalGroup) constructor.newInstance(localId, globalGroup);
-
-                /* put globalGroup to placeholders for groups */
-                groups.put(0, lGroup);
-                groupsByName.put("", lGroup);
+                createGlobalGroup(globalGroup, localId, classLoader, groups, groupsByName);
 
                 /* create PcjThreadLocalData and PcjThread*/
-                PcjThreadLocalData data = new PcjThreadLocalData(classLoader, lStorage, groups, groupsByName);
-                localData.put(localId, data);
-                nodeThreads[i] = new PcjThread(localId, lStartPoint, data);
-                nodeThreads[i].setContextClassLoader(classLoader);
+                createPcjThreadAndThreadData(localData, nodeThreads, i, localId, classLoader, lStartPoint, lStorage, groups, groupsByName);
             }
         } catch (final ClassNotFoundException | InstantiationException | IllegalAccessException |
                 NoSuchMethodException | IllegalArgumentException | InvocationTargetException ex) {
             throw new RuntimeException(ex);
         }
+
+        /* WorkerData contains physicalId, localData map and globalGroup reference */
+        workerData = new WorkerData(localIds, localData, globalGroup, isNode0 ? clientsCount : null);
+
+        Worker worker = new Worker(workerData);
 
         final ExitTimer timer = new ExitTimer();
         try {
@@ -194,55 +174,16 @@ public abstract class InternalPCJ {
                 timer.schedule(Configuration.WAIT_TIME * 1000, localHostname + Arrays.toString(localIds) + ": Waiting too log for connection. Exiting!");
             }
 
-            /* WorkerData contain physicalId, localData map and globalGroup reference */
-            workerData = new WorkerData(localIds, localData, globalGroup, isNode0 ? clientsCount : null);
-
-            Worker worker = new Worker(workerData);
             networker = new Networker(worker);
             networker.startup();
 
             worker.setNetworker(networker);
 
-            /* binding... */
-            for (int attempt = 0; attempt <= Configuration.RETRY_COUNT; ++attempt) {
-                try {
-                    networker.bind(null, localNode.getPort());
-                    break;
-                } catch (IOException ex) {
-                    Utilities.sleep(Configuration.RETRY_DELAY * 100);
-                    if (attempt + 1 >= Configuration.RETRY_COUNT) {
-                        throw new RuntimeException("Binding on port " + localNode.getPort() + " failed!", ex);
-                    }
-                }
-            }
+            bindToSocket(localNode);
 
-            /* try to connect to node0 */
-            if (isNode0 == false) {
-                /* node0 - manager */
-                Utilities.sleep(250);
-                node0Socket = networker.connectTo(InetAddress.getByName(node0.getHostname()), node0.getPort(), Configuration.RETRY_COUNT, Configuration.RETRY_DELAY);
-            } else {
-                node0Socket = LoopbackSocketChannel.getInstance();
-            }
+            connectToNode0(node0, isNode0);
 
-            /* send HELLO message */
-            MessageHello msg = new MessageHello();
-            msg.setPort(localNode.getPort());
-            msg.setNodeIds(localIds);
-            WaitObject sync = globalGroup.getSyncObject();
-            sync.lock();
-            try {
-                networker.send(node0Socket, msg);
-
-                /* wait for STARTUP */
-                try {
-                    sync.await();
-                } catch (InterruptedException ex) {
-                    throw new RuntimeException(ex);
-                }
-            } finally {
-                sync.unlock();
-            }
+            sendHelloMessageAndWaitForStartup(localNode, localIds, globalGroup);
         } finally {
             /* startup finished destroying timer */
             if (Configuration.WAIT_TIME > 0) {
@@ -256,28 +197,10 @@ public abstract class InternalPCJ {
         }
 
         try {
-            if (isNode0 == false || Configuration.REDIRECT_NODE0 == true) {
-                if (Configuration.REDIRECT_OUT) {
-                    System.setOut(new BlackholePrintStream());
-                }
-                if (Configuration.REDIRECT_ERR) {
-                    System.setErr(new BlackholePrintStream());
-                }
-            }
+            disableStandardOutput(isNode0);
+            startNodeThreads(localIds, nodeThreads);
 
-            /* run InternalPCJ Threads */
-            for (int i = 0; i < localIds.length; ++i) {
-                nodeThreads[i].start();
-            }
-
-            /* wait for end of threads */
-            try {
-                for (int i = 0; i < localIds.length; ++i) {
-                    nodeThreads[i].join();
-                }
-            } catch (InterruptedException ex) {
-                throw new RuntimeException(ex);
-            }
+            waitForNodeThreads(localIds, nodeThreads);
 
             MessageFinished msg = new MessageFinished();
             synchronized (workerData.finishObject) {
@@ -288,13 +211,111 @@ public abstract class InternalPCJ {
                     ex.printStackTrace(System.err);
                 }
             }
-//        } catch (Throwable t) {
-//            System.setOut(stdout);
-//            System.setErr(stderr);
         } finally {
             System.setOut(stdout);
             System.setErr(stderr);
             networker.shutdown();
+        }
+    }
+
+    private static void createPcjThreadAndThreadData(ConcurrentMap<Integer, PcjThreadLocalData> localData, Thread[] nodeThreads, int i, int localId, ClassLoader classLoader, InternalStartPoint lStartPoint, InternalStorage lStorage, Map<Integer, InternalGroup> groups, Map<String, InternalGroup> groupsByName) {
+        PcjThreadLocalData data = new PcjThreadLocalData(classLoader, lStorage, groups, groupsByName);
+        localData.put(localId, data);
+        nodeThreads[i] = new PcjThread(localId, lStartPoint, data);
+        nodeThreads[i].setContextClassLoader(classLoader);
+    }
+
+    private static void createGlobalGroup(InternalGroup globalGroup, int localId, ClassLoader classLoader, Map<Integer, InternalGroup> groups, Map<String, InternalGroup> groupsByName) throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
+    /* create globalGroup */
+        Class<?> groupClass = classLoader.loadClass(Group.class.getName());
+        Constructor<?> constructor = groupClass.getDeclaredConstructor(int.class, InternalGroup.class);
+        constructor.setAccessible(true);
+        InternalGroup lGroup = (InternalGroup) constructor.newInstance(localId, globalGroup);
+
+                /* put globalGroup to placeholders for groups */
+        groups.put(0, lGroup);
+        groupsByName.put("", lGroup);
+    }
+
+    private static void sendHelloMessageAndWaitForStartup(NodeInfo localNode, int[] localIds, InternalGroup globalGroup) throws IOException {
+        MessageHello msg = new MessageHello();
+        msg.setPort(localNode.getPort());
+        msg.setNodeIds(localIds);
+        WaitObject sync = globalGroup.getSyncObject();
+        sync.lock();
+        try {
+            networker.send(node0Socket, msg);
+
+            /* wait for STARTUP */
+            try {
+                sync.await();
+            } catch (InterruptedException ex) {
+                throw new RuntimeException(ex);
+            }
+        } finally {
+            sync.unlock();
+        }
+    }
+
+    private static void connectToNode0(NodeInfo node0, boolean isNode0) throws IOException {
+        if (isNode0 == false) {
+            /* node0 - manager */
+            Utilities.sleep(250);
+            node0Socket = networker.connectTo(InetAddress.getByName(node0.getHostname()), node0.getPort(), Configuration.RETRY_COUNT, Configuration.RETRY_DELAY);
+        } else {
+            node0Socket = LoopbackSocketChannel.getInstance();
+        }
+    }
+
+    private static void bindToSocket(NodeInfo localNode) {
+        for (int attempt = 0; attempt <= Configuration.RETRY_COUNT; ++attempt) {
+            try {
+                networker.bind(null, localNode.getPort());
+                break;
+            } catch (IOException ex) {
+                Utilities.sleep(Configuration.RETRY_DELAY * 100);
+                if (attempt + 1 >= Configuration.RETRY_COUNT) {
+                    throw new RuntimeException("Binding on port " + localNode.getPort() + " failed!", ex);
+                }
+            }
+        }
+    }
+
+    private static void validateParameters(NodeInfo node0, NodeInfo localNode) {
+        if (localNode == null) {
+            throw new NullPointerException("localNode is null");
+        }
+        if (node0 == null) {
+            throw new NullPointerException("node0 is null");
+        }
+    }
+
+    private static void startNodeThreads(int[] localIds, Thread[] nodeThreads) {
+    /* run InternalPCJ Threads */
+        for (int i = 0; i < localIds.length; ++i) {
+            nodeThreads[i].start();
+        }
+    }
+
+    private static void disableStandardOutput(boolean isNode0) {
+        if (isNode0 == false || Configuration.REDIRECT_NODE0 == true) {
+            if (Configuration.REDIRECT_OUT) {
+                System.setOut(new BlackholePrintStream());
+            }
+            if (Configuration.REDIRECT_ERR) {
+                System.setErr(new BlackholePrintStream());
+            }
+        }
+    }
+
+    private static void waitForNodeThreads(int[] localIds, Thread[] nodeThreads) {
+    /* wait for end of threads */
+        try {
+            for (int i = 0; i < localIds.length; ++i) {
+                nodeThreads[i].join();
+            }
+        } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
         }
     }
 
