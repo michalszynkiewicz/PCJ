@@ -10,9 +10,7 @@ import org.pcj.internal.network.LoopbackSocketChannel;
 import org.pcj.internal.utils.PcjThreadPair;
 
 import java.nio.channels.SocketChannel;
-import java.util.Collections;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -45,7 +43,7 @@ public final class WorkerData {
     //final BlockingQueue<Message> pendingMessages;
     final Map<Integer, Integer> virtualNodes; // key = nodeId, value physicalId
     /* messages */
-    final Map<Integer, Attachment> attachmentMap; // key = messageId, all messages has different id, even from different local virtualNodes
+    final Map<Integer, Attachment> attachmentMap; // key = messageId, all messages have different id, even from different local virtualNodes
     /* groups */
     final InternalGroup internalGlobalGroup;
     final ConcurrentMap<Integer, InternalGroup> internalGroupsById; // key - groupId, value - group
@@ -125,7 +123,49 @@ public final class WorkerData {
                 : physicalNodesIds.get(socket);
     }
 
+    public void removePhysicalNode(int physicalNodeId) {
+        megaLock();
+        physicalNodesCount --;
+        SocketChannel socketChannel = physicalNodes.get(physicalNodeId);
+        physicalNodes.remove(physicalNodeId);
+        physicalNodesIds.remove(socketChannel);
+
+        Set<Integer> virtualNodesToRemove = new HashSet<>();
+        for (Map.Entry<Integer, Integer> virtualToPhysicalNodeId : virtualNodes.entrySet()) {
+            if (virtualToPhysicalNodeId.getValue().equals(physicalNodeId)){
+                virtualNodesToRemove.add(virtualToPhysicalNodeId.getKey());
+            }
+        }
+
+        for (Integer virtualNodeId : virtualNodesToRemove) {
+            virtualNodes.remove(virtualNodeId);
+        }
+
+        internalGlobalGroup.removePhysicalNode(physicalNodeId, virtualNodesToRemove);
+        for (InternalGroup group : internalGroupsById.values()) {
+            group.removePhysicalNode(physicalNodeId, virtualNodesToRemove);
+        }
+
+        megaUnlock();
+    }
+
+    private void megaUnlock() {
+        // mstodo
+    }
+
+    private void megaLock() {
+        // mstodo
+    }
+
     public Map<Integer, SocketChannel> getPhysicalNodes() {
         return physicalNodes;
+    }
+
+    public int getPhysicalNodesCount() {
+        return physicalNodesCount;
+    }
+
+    public InternalGroup getInternalGlobalGroup() {
+        return internalGlobalGroup;
     }
 }

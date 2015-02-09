@@ -435,6 +435,10 @@ public enum MessageTypes {
         MessageNodeFailed createMessage() {
             return new MessageNodeFailed();
         }
+    }, NODE_REMOVED(64) {
+        MessageNodeRemoved createMessage() {
+            return new MessageNodeRemoved();
+        }
     };
     /* **************************************************** */
     private static final Map<Byte, MessageTypes> map;

@@ -126,10 +126,7 @@ public abstract class InternalPCJ {
 
                 /* create storage */
                 @SuppressWarnings("unchecked")
-                Class<? extends InternalStorage> classStorage = (Class<? extends InternalStorage>) classLoader.loadClass(storage.getName());
-                Constructor<? extends InternalStorage> storageConstructor = classStorage.getDeclaredConstructor();
-                storageConstructor.setAccessible(true);
-                InternalStorage lStorage = storageConstructor.newInstance();
+                InternalStorage lStorage = createStorageConstructor(classLoader, storage.getName()).newInstance();
 
                 /* create startpoint */
                 if (theSame) {
@@ -200,7 +197,7 @@ public abstract class InternalPCJ {
             disableStandardOutput(isNode0);
             startNodeThreads(localIds, nodeThreads);
 
-            waitForNodeThreads(localIds, nodeThreads);
+            waitForLocalThreads(localIds, nodeThreads);
 
             MessageFinished msg = new MessageFinished();
             synchronized (workerData.finishObject) {
@@ -218,6 +215,14 @@ public abstract class InternalPCJ {
         }
     }
 
+    private static Constructor<? extends InternalStorage> createStorageConstructor(ClassLoader classLoader, String storageName)
+            throws NoSuchMethodException, ClassNotFoundException {
+        Class<? extends InternalStorage> classStorage = (Class<? extends InternalStorage>) classLoader.loadClass(storageName);
+        Constructor<? extends InternalStorage> storageConstructor = classStorage.getDeclaredConstructor();
+        storageConstructor.setAccessible(true);
+        return storageConstructor;
+    }
+
     private static void createPcjThreadAndThreadData(ConcurrentMap<Integer, PcjThreadLocalData> localData, Thread[] nodeThreads, int i, int localId, ClassLoader classLoader, InternalStartPoint lStartPoint, InternalStorage lStorage, Map<Integer, InternalGroup> groups, Map<String, InternalGroup> groupsByName) {
         PcjThreadLocalData data = new PcjThreadLocalData(classLoader, lStorage, groups, groupsByName);
         localData.put(localId, data);
@@ -225,7 +230,9 @@ public abstract class InternalPCJ {
         nodeThreads[i].setContextClassLoader(classLoader);
     }
 
-    private static void createGlobalGroup(InternalGroup globalGroup, int localId, ClassLoader classLoader, Map<Integer, InternalGroup> groups, Map<String, InternalGroup> groupsByName) throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
+    private static void createGlobalGroup(InternalGroup globalGroup, int localId, ClassLoader classLoader,
+                                          Map<Integer, InternalGroup> groups, Map<String, InternalGroup> groupsByName)
+            throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
     /* create globalGroup */
         Class<?> groupClass = classLoader.loadClass(Group.class.getName());
         Constructor<?> constructor = groupClass.getDeclaredConstructor(int.class, InternalGroup.class);
@@ -308,7 +315,7 @@ public abstract class InternalPCJ {
         }
     }
 
-    private static void waitForNodeThreads(int[] localIds, Thread[] nodeThreads) {
+    private static void waitForLocalThreads(int[] localIds, Thread[] nodeThreads) {
     /* wait for end of threads */
         try {
             for (int i = 0; i < localIds.length; ++i) {

@@ -3,6 +3,14 @@
  */
 package org.pcj.internal;
 
+import org.pcj.internal.faulttolerance.NodeFailedException;
+import org.pcj.internal.message.Message;
+import org.pcj.internal.network.LoopbackSocketChannel;
+import org.pcj.internal.network.MessageOutputStream;
+import org.pcj.internal.network.SelectorProc;
+import org.pcj.internal.utils.Configuration;
+import org.pcj.internal.utils.Utilities;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -14,13 +22,6 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Deque;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import org.pcj.internal.message.Message;
-import org.pcj.internal.message.MessagePing;
-import org.pcj.internal.network.LoopbackSocketChannel;
-import org.pcj.internal.network.MessageOutputStream;
-import org.pcj.internal.network.SelectorProc;
-import org.pcj.internal.utils.Configuration;
-import org.pcj.internal.utils.Utilities;
 
 /**
  * This is intermediate file (between classes that want to
@@ -234,7 +235,7 @@ public class Networker {        // mstodo: access rights!
 //        System.exit(0);
     }
 
-    void send(InternalGroup group, Message msg) throws IOException {
+    public void send(InternalGroup group, Message msg) throws IOException {
 //        Integer physicalRoot = group.getPhysicalMaster();
 //
 //        SocketChannel socket = null;
@@ -247,11 +248,17 @@ public class Networker {        // mstodo: access rights!
 
     void send(int nodeId, Message msg) throws IOException {
         Integer physicalNodeId = workerData.virtualNodes.get(nodeId);
+        if (physicalNodeId == null) {
+            throw new NodeFailedException();
+        }
         sendToPhysicalNode(physicalNodeId, msg);
     }
 
     public void sendToPhysicalNode(int physicalNodeId, Message message) throws IOException {
         SocketChannel socket = workerData.physicalNodes.get(physicalNodeId);
+        if (socket == null) {
+            throw new NodeFailedException();
+        }
         send(socket, message);
     }
 

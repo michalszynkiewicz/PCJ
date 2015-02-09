@@ -5,22 +5,20 @@ import org.pcj.internal.network.MessageOutputStream;
 
 /**
  * Author: Michal Szynkiewicz, michal.l.szynkiewicz@gmail.com
- * Date: 1/26/15
- * Time: 10:28 PM
+ * Date: 08 Feb 2015
  */
-public class MessageNodeFailed extends Message {
+
+
+public class MessageNodeRemoved extends Message {
     int failedNodePhysicalId;
-    public MessageNodeFailed() {
-        super(MessageTypes.NODE_FAILED);
+
+    public MessageNodeRemoved() {
+        super(MessageTypes.NODE_REMOVED);
     }
 
-    public MessageNodeFailed(int failedNodePhysicalId) {
+    public MessageNodeRemoved(int failedNodePhysicalId) {
         this();
         this.failedNodePhysicalId = failedNodePhysicalId;
-    }
-
-    public int getFailedNodePhysicalId() {
-        return failedNodePhysicalId;
     }
 
     @Override
@@ -37,4 +35,9 @@ public class MessageNodeFailed extends Message {
     public String paramsToString() {
         return null;
     }
+
+    public int getFailedNodePhysicalId() {
+        return failedNodePhysicalId;
+    }
 }
+

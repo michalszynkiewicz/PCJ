@@ -91,4 +91,8 @@ public class ActivityMonitor implements Runnable {
     private void handleNodeFailure(int nodeId) {
         faultTolerancePolicy.handleNodeFailure(nodeId);
     }
+
+    public FaultTolerancePolicy getFaultTolerancePolicy() {
+        return faultTolerancePolicy;
+    }
 }

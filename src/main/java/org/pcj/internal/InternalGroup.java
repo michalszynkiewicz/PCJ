@@ -3,28 +3,14 @@
  */
 package org.pcj.internal;
 
-import org.pcj.internal.utils.PcjThreadPair;
+import org.pcj.internal.message.*;
+import org.pcj.internal.utils.*;
+
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.pcj.internal.message.Message;
-import org.pcj.internal.message.MessageLog;
-import org.pcj.internal.message.MessageNodeSync;
-import org.pcj.internal.message.MessageSyncWait;
-import org.pcj.internal.message.MessageValueAsyncGetRequest;
-import org.pcj.internal.message.MessageValueAsyncGetRequestIndexes;
-import org.pcj.internal.message.MessageValueBroadcast;
-import org.pcj.internal.message.MessageValuePut;
-import org.pcj.internal.message.MessageValuePutIndexes;
-import org.pcj.internal.utils.BitMask;
-import org.pcj.internal.utils.CloneObject;
-import org.pcj.internal.utils.CommunicationTree;
-import org.pcj.internal.utils.WaitObject;
 
 /**
  * Internal (with common ClassLoader) representation of Group.
@@ -435,5 +421,20 @@ public class InternalGroup {
             throw new RuntimeException(ex);
         }
 
+    }
+
+    public void removePhysicalNode(int physicalNodeId, Set<Integer> virtualNodes) {
+        physicalIds.remove(physicalNodeId);
+
+        List<Integer> groupIdsToRemove = new ArrayList<>();
+        for (Map.Entry<Integer, Integer> nodeEntry : nodes.entrySet()) {
+            if (virtualNodes.contains(nodeEntry.getValue())) {
+                groupIdsToRemove.add(nodeEntry.getKey());
+            }
+        }
+
+        for (Integer groupId : groupIdsToRemove) {
+            nodes.remove(groupId);
+        }
     }
 }

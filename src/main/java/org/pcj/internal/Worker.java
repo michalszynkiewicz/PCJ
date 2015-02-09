@@ -4,33 +4,25 @@
 package org.pcj.internal;
 
 import org.pcj.internal.faulttolerance.ActivityMonitor;
+import org.pcj.internal.faulttolerance.FaultTolerancePolicy;
 import org.pcj.internal.message.*;
-import org.pcj.internal.utils.PcjThreadPair;
+import org.pcj.internal.network.LoopbackSocketChannel;
+import org.pcj.internal.network.SocketData;
+import org.pcj.internal.utils.*;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import org.pcj.internal.network.SocketData;
-import org.pcj.internal.network.LoopbackSocketChannel;
-import org.pcj.internal.utils.BitMask;
-import org.pcj.internal.utils.CloneObject;
-import org.pcj.internal.utils.Configuration;
-import org.pcj.internal.utils.Utilities;
-import org.pcj.internal.utils.WaitObject;
 
 /**
  * This class processes incoming messages.
@@ -231,9 +223,24 @@ public class Worker implements Runnable {
             case PONG:
                 pong((MessagePong) message);
                 break;
+            case NODE_FAILED:
+                nodeFailed((MessageNodeFailed) message);
+                break;
+            case NODE_REMOVED:
+                nodeRemoved((MessageNodeRemoved) message);
+                break;
             default:
                 throw new AssertionError(message.getType().name());
         }
+    }
+
+    private void nodeRemoved(MessageNodeRemoved message) {
+        data.removePhysicalNode(message.getFailedNodePhysicalId());
+    }
+
+    private void nodeFailed(MessageNodeFailed message) {
+        FaultTolerancePolicy policy = data.activityMonitor.getFaultTolerancePolicy();
+        policy.handleNodeFailure(message.getFailedNodePhysicalId());
     }
 
     private void pong(MessagePong message) {
@@ -501,7 +508,8 @@ public class Worker implements Runnable {
      * @see MessageTypes#FINISHED
      */
     private void finished(MessageFinished message) throws IOException {
-        if (--data.physicalNodesCount == 0) {
+        data.physicalNodesCount--;
+        if (data.physicalNodesCount == 0) {   // mstodo recheck after node failure
             InternalGroup globalGroup = data.internalGlobalGroup;
 
             MessageFinishCompleted reply = new MessageFinishCompleted();
