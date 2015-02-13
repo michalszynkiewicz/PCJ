@@ -71,7 +71,7 @@ public class ActivityMonitor implements Runnable {
         if (lastResponseTime == null) {
             lastResponseTime = startTime;
         }
-        boolean timedOut = lastResponseTime - currentTimeMillis() < Configuration.NODE_TIMEOUT * 1000l;
+        boolean timedOut = lastResponseTime - currentTimeMillis() > Configuration.NODE_TIMEOUT * 1000l;
         if (timedOut) {
             System.err.println("Node timed out: " + nodeId);
         }

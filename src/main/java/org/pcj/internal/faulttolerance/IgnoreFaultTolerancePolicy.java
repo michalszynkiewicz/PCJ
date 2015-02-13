@@ -1,10 +1,9 @@
 package org.pcj.internal.faulttolerance;
 
 import org.pcj.PCJ;
-import org.pcj.internal.InternalGroup;
 import org.pcj.internal.InternalPCJ;
 import org.pcj.internal.WorkerData;
-import org.pcj.internal.message.MessageFinishCompleted;
+import org.pcj.internal.message.MessageFinished;
 import org.pcj.internal.message.MessageNodeRemoved;
 
 import java.io.IOException;
@@ -27,30 +26,24 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
         PCJ.getWorkerData().removePhysicalNode(failedNodeId);
 
         WorkerData data = InternalPCJ.getWorkerData();
-        if (!finishIfLastNodeFailed(data)) {
-            Set<Integer> physicalNodes = data.getPhysicalNodes().keySet();   // todo: is synchronization needed?
-            for (Integer node : physicalNodes) {
-                if (!node.equals(failedNodeId)) {
-                    propagateFailure(failedNodeId, node, failedNodes);
-                    // todo for now we don't do anything with failed nodes, we could already notify others about failure
-                }
+        sendMessageFinished(data);
+        Set<Integer> physicalNodes = data.getPhysicalNodes().keySet();   // todo: is synchronization needed?
+        int root = InternalPCJ.getWorkerData().getInternalGlobalGroup().getPhysicalMaster();
+        for (Integer node : physicalNodes) {
+//            sending to the failed node will fail && there's no point in sending to current node == master
+            if (!node.equals(failedNodeId) && node != root) {
+                propagateFailure(failedNodeId, node, failedNodes);  // mstodo handle things gathered in failedNodes
             }
         }
     }
 
-    private boolean finishIfLastNodeFailed(WorkerData data) {
-        if (data.getPhysicalNodesCount() == 0) {
-            InternalGroup globalGroup = data.getInternalGlobalGroup();
-
-            MessageFinishCompleted reply = new MessageFinishCompleted();
-            try {
-                InternalPCJ.getNetworker().send(globalGroup, reply);
-            } catch (IOException e) {
-                e.printStackTrace(); // mstodo
-            }
-            return true;
+    private void sendMessageFinished(WorkerData data) { // mstodo replace with invoking local method!!!
+        try {
+            System.out.println("WILL SEND MESSAGE FINISHED BECAUSE OF NODE FAILURE");
+            InternalPCJ.getNetworker().send(data.getInternalGlobalGroup(), new MessageFinished());
+        } catch (IOException e) {
+            e.printStackTrace(); // mstodo
         }
-        return false;
     }
 
     private void propagateFailure(int failedNodeId, Integer node, List<Integer> failedNodes) {

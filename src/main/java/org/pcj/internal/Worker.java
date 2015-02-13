@@ -3,7 +3,6 @@
  */
 package org.pcj.internal;
 
-import org.pcj.internal.faulttolerance.ActivityMonitor;
 import org.pcj.internal.faulttolerance.FaultTolerancePolicy;
 import org.pcj.internal.message.*;
 import org.pcj.internal.network.LoopbackSocketChannel;
@@ -40,7 +39,6 @@ public class Worker implements Runnable {
     private final Map<SelectableChannel, SocketData> socketsOutputStream;
 
     private Networker networker;
-    private ActivityMonitor activityMonitor;
 
     Worker(WorkerData data) {
         this.data = data;
@@ -245,7 +243,7 @@ public class Worker implements Runnable {
 
     private void pong(MessagePong message) {
         int physicalId = InternalPCJ.getWorkerData().getPhysicalId(message.getSocket());
-        activityMonitor.pong(physicalId);
+        data.activityMonitor.pong(physicalId);
     }
 
     private void ping(MessagePing message) {
@@ -509,7 +507,9 @@ public class Worker implements Runnable {
      */
     private void finished(MessageFinished message) throws IOException {
         data.physicalNodesCount--;
-        if (data.physicalNodesCount == 0) {   // mstodo recheck after node failure
+        System.out.println("GOT MESSAGE FINISHED for node: " + data.getPhysicalId(message.getSocket()) + " . NODES LEFT: " + data.physicalNodesCount);
+        if (data.physicalNodesCount == 0) {
+            System.out.println("NO PHYSICAL NODES LEFT, WILL STOP");
             InternalGroup globalGroup = data.internalGlobalGroup;
 
             MessageFinishCompleted reply = new MessageFinishCompleted();

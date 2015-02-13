@@ -124,9 +124,11 @@ public final class WorkerData {
     }
 
     public void removePhysicalNode(int physicalNodeId) {
+        // total physical nodes count is decreased elsewhere - via MessageFinished
+        System.out.println(" REMOVING PHYSICAL NODE: " + physicalNodeId);
         megaLock();
-        physicalNodesCount --;
         SocketChannel socketChannel = physicalNodes.get(physicalNodeId);
+
         physicalNodes.remove(physicalNodeId);
         physicalNodesIds.remove(socketChannel);
 
@@ -145,7 +147,6 @@ public final class WorkerData {
         for (InternalGroup group : internalGroupsById.values()) {
             group.removePhysicalNode(physicalNodeId, virtualNodesToRemove);
         }
-
         megaUnlock();
     }
 

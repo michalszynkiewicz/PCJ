@@ -176,7 +176,7 @@ public class InternalGroup {
         return physicalSync.isSet();
     }
 
-    Integer getPhysicalMaster() {
+    public Integer getPhysicalMaster() {
 //        if (physicalIds.isEmpty() == false) {
 //            return physicalIds.getFutureObject(0);
 //        }
@@ -424,7 +424,7 @@ public class InternalGroup {
     }
 
     public void removePhysicalNode(int physicalNodeId, Set<Integer> virtualNodes) {
-        physicalIds.remove(physicalNodeId);
+        physicalIds.remove((Integer)physicalNodeId);
 
         List<Integer> groupIdsToRemove = new ArrayList<>();
         for (Map.Entry<Integer, Integer> nodeEntry : nodes.entrySet()) {
