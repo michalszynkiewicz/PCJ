@@ -289,6 +289,7 @@ public class InternalGroup {
 
     protected void barrier(int myNodeId) {
         syncObject.lock();
+        InternalPCJ.getBarrierHandler().setGroupUnderBarrier(groupId);
         try {
             localSync.set(myNodeId);
             if (localSync.isSet(localSyncMask)) {
@@ -299,6 +300,7 @@ public class InternalGroup {
         } catch (InterruptedException | IOException ex) {
             throw new RuntimeException(ex);
         }
+        InternalPCJ.getBarrierHandler().resetBarrier();
         syncObject.unlock();
     }
 
@@ -308,7 +310,7 @@ public class InternalGroup {
      *
      * @param nodeId group node id
      */
-    protected void barrier(int myNodeId, int nodeId) {
+    protected void barrier(int myNodeId, int nodeId) {   // mstodo fault tolerance!!!
         // FIXME: trzeba sprawdzić jak to będzie działać w pętli.
 //        if (true) {
 //            sync(myNodeId, new int[]{nodeId});

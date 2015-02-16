@@ -38,6 +38,8 @@ public class Worker implements Runnable {
     private final BlockingQueue<Message> requestQueue;
     private final Map<SelectableChannel, SocketData> socketsOutputStream;
 
+    private BarrierHandler barrierHandler;
+
     private Networker networker;
 
     Worker(WorkerData data) {
@@ -233,7 +235,13 @@ public class Worker implements Runnable {
     }
 
     private void nodeRemoved(MessageNodeRemoved message) {
-        data.removePhysicalNode(message.getFailedNodePhysicalId());
+        int failedNodeId = message.getFailedNodePhysicalId();
+        data.removePhysicalNode(failedNodeId);
+        try {
+            barrierHandler.markCompleteOnPhysicalNode(failedNodeId);
+        } catch (IOException e) {
+            e.printStackTrace(); // mstodo can we do sth with it?
+        }
     }
 
     private void nodeFailed(MessageNodeFailed message) {
@@ -531,18 +539,8 @@ public class Worker implements Runnable {
      * @see MessageTypes#SYNC_WAIT
      */
     private void syncWait(MessageSyncWait message) throws IOException {
-        InternalGroup group = data.internalGroupsById.get(message.getGroupId());
         int physicalId = data.getPhysicalId(message.getSocket());
-        final BitMask physicalSync = group.getPhysicalSync();
-        synchronized (physicalSync) {
-            if (group.physicalSync(physicalId)) {
-                physicalSync.clear();
-
-                MessageSyncGo msg = new MessageSyncGo();
-                msg.setGroupId(message.getGroupId());
-                networker.send(group, msg);
-            }
-        }
+        barrierHandler.markCompleteOnPhysicalNode(message.getGroupId(), physicalId);
     }
 
     /**
@@ -900,5 +898,9 @@ public class Worker implements Runnable {
             data.localData.get(nodeId).getDeserializer()
                     .deserialize(message.getVariableValue(), message.getVariableName());
         }
+    }
+
+    public void setBarrierHandler(BarrierHandler barrierHandler) {
+        this.barrierHandler = barrierHandler;
     }
 }

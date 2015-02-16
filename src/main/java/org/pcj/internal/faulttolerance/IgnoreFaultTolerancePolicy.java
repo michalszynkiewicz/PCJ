@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import static org.pcj.internal.InternalPCJ.getBarrierHandler;
+
 /**
  * Author: Michal Szynkiewicz, michal.l.szynkiewicz@gmail.com
  * Date: 1/25/15
@@ -26,7 +28,7 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
         PCJ.getWorkerData().removePhysicalNode(failedNodeId);
 
         WorkerData data = InternalPCJ.getWorkerData();
-        sendMessageFinished(data);
+        mockNodeFinish(data, failedNodeId);
         Set<Integer> physicalNodes = data.getPhysicalNodes().keySet();   // todo: is synchronization needed?
         int root = InternalPCJ.getWorkerData().getInternalGlobalGroup().getPhysicalMaster();
         for (Integer node : physicalNodes) {
@@ -37,10 +39,11 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
         }
     }
 
-    private void sendMessageFinished(WorkerData data) { // mstodo replace with invoking local method!!!
+    private void mockNodeFinish(WorkerData data, int failedNodeId) { // mstodo replace with invoking local method!!!
         try {
             System.out.println("WILL SEND MESSAGE FINISHED BECAUSE OF NODE FAILURE");
             InternalPCJ.getNetworker().send(data.getInternalGlobalGroup(), new MessageFinished());
+            getBarrierHandler().markCompleteOnPhysicalNode(failedNodeId); // mstodo for non-root nodes as well!
         } catch (IOException e) {
             e.printStackTrace(); // mstodo
         }

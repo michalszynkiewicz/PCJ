@@ -1,7 +1,7 @@
 #!/bin/bash
 
 LIB_BINARY='PCJ-4.0.0.SNAPSHOT-bin.jar'
-HOSTS=("192.168.0.100" "192.168.0.103")
+HOSTS=("192.168.0.108" "192.168.0.107")
 #HOST=192.168.42.229
 
 if (( $# > 0 )); then

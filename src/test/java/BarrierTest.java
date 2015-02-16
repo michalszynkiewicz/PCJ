@@ -19,7 +19,7 @@ public class BarrierTest extends Storage implements StartPoint {
         } else {
             PCJ.log("won't sleep");
         }
-//        PCJ.barrier();
+        PCJ.barrier();
         PCJ.log(ManagementFactory.getRuntimeMXBean().getName());
         PCJ.log("my thread number: " + PCJ.myId());
     }
@@ -32,9 +32,9 @@ public class BarrierTest extends Storage implements StartPoint {
 //                "192.168.0.104",
 //                "192.168.42.240",
 //                "192.168.42.229"
-                "192.168.0.104",
-                "192.168.0.100",
-                "192.168.0.103"
+                "192.168.0.106",
+                "192.168.0.107",
+                "192.168.0.108"
         });
     }
 }

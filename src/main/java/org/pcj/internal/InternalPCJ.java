@@ -38,6 +38,7 @@ public abstract class InternalPCJ {
     private static SocketChannel node0Socket;
     private static Networker networker;
     private static WorkerData workerData;
+    private static BarrierHandler barrierHandler;
 
     // Suppress default constructor for noninstantiability
     // have to be protected to allow to inheritance
@@ -174,6 +175,9 @@ public abstract class InternalPCJ {
             networker = new Networker(worker);
             networker.startup();
 
+            barrierHandler = new BarrierHandler();
+
+            worker.setBarrierHandler(barrierHandler);
             worker.setNetworker(networker);
 
             bindToSocket(localNode);
@@ -324,6 +328,10 @@ public abstract class InternalPCJ {
         } catch (InterruptedException ex) {
             throw new RuntimeException(ex);
         }
+    }
+
+    public static BarrierHandler getBarrierHandler() {
+        return barrierHandler;
     }
 
     public static Networker getNetworker() {
