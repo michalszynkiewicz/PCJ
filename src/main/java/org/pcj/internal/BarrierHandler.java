@@ -26,21 +26,39 @@ public class BarrierHandler {
     }
 
     public void markCompleteOnPhysicalNode(int physicalId) throws IOException {
+        System.out.print("MARKING COMPLETE... ");
         if (groupId != null) {
-            markCompleteOnPhysicalNode(groupId, physicalId);
+            System.out.print("in progress for groupId: " + groupId);
+            InternalGroup group = getWorkerData().internalGroupsById.get(groupId);
+            final BitMask physicalSync = group.getPhysicalSync();
+            synchronized (physicalSync) {
+                if (physicalSync.isSet()) {
+                    physicalSync.clear();
+
+                    MessageSyncGo msg = new MessageSyncGo();
+                    msg.setGroupId(groupId);
+                    getNetworker().send(group, msg);
+                }
+            }
+            System.out.println("DONE");
+        } else {
+            System.out.println("UNNECESSARY");
         }
     }
 
-    public void markCompleteOnPhysicalNode(int groupId, int physicalId) throws IOException {
+    public void markCompleteOnPhysicalNode(int groupId, int physicalId) throws IOException {     // mstodo move back to internal group!!
         InternalGroup group = getWorkerData().internalGroupsById.get(groupId);
         final BitMask physicalSync = group.getPhysicalSync();
         synchronized (physicalSync) {
             if (group.physicalSync(physicalId)) {
+                System.out.println("BARRIER FINISHED");
                 physicalSync.clear();
 
                 MessageSyncGo msg = new MessageSyncGo();
                 msg.setGroupId(groupId);
                 getNetworker().send(group, msg);
+            } else {
+                System.out.println("BARRIER NOT FINISHED - bitmask: " +  physicalSync);
             }
         }
     }

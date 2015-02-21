@@ -27,8 +27,10 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
 
         PCJ.getWorkerData().removePhysicalNode(failedNodeId);
 
+        finishBarrierIfInProgress(failedNodeId);
+
         WorkerData data = InternalPCJ.getWorkerData();
-        mockNodeFinish(data, failedNodeId);
+        mockNodeFinish(data);
         Set<Integer> physicalNodes = data.getPhysicalNodes().keySet();   // todo: is synchronization needed?
         int root = InternalPCJ.getWorkerData().getInternalGlobalGroup().getPhysicalMaster();
         for (Integer node : physicalNodes) {
@@ -39,11 +41,18 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
         }
     }
 
-    private void mockNodeFinish(WorkerData data, int failedNodeId) { // mstodo replace with invoking local method!!!
+    private void finishBarrierIfInProgress(int failedNodeId) {
+        try {
+            getBarrierHandler().markCompleteOnPhysicalNode(failedNodeId); // mstodo for non-root nodes as well!
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void mockNodeFinish(WorkerData data) { // mstodo replace with invoking local method!!!
         try {
             System.out.println("WILL SEND MESSAGE FINISHED BECAUSE OF NODE FAILURE");
             InternalPCJ.getNetworker().send(data.getInternalGlobalGroup(), new MessageFinished());
-            getBarrierHandler().markCompleteOnPhysicalNode(failedNodeId); // mstodo for non-root nodes as well!
         } catch (IOException e) {
             e.printStackTrace(); // mstodo
         }

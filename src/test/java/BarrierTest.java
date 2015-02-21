@@ -14,7 +14,7 @@ public class BarrierTest extends Storage implements StartPoint {
     public void main() throws Throwable {
         if (PCJ.myId() != 0) {
             PCJ.log("will sleep");
-            Thread.sleep(20000l);
+            Thread.sleep(8000l);
             PCJ.log("woken up");
         } else {
             PCJ.log("won't sleep");
@@ -26,15 +26,17 @@ public class BarrierTest extends Storage implements StartPoint {
 
     public static void main(String[] args) {
         System.out.println(ManagementFactory.getRuntimeMXBean().getName());
-        PCJ.deploy(BarrierTest.class, BarrierTest.class, new String[]{
+
+        PCJ.deploy(BarrierTest.class, BarrierTest.class, System.getProperty("nodes").split(","));
+//        new String[]{
 //                "localhost",
 //                "localhost"
 //                "192.168.0.104",
 //                "192.168.42.240",
 //                "192.168.42.229"
-                "192.168.0.106",
-                "192.168.0.107",
-                "192.168.0.108"
-        });
+//                "192.168.0.106",
+//                "192.168.0.107",
+//                "192.168.0.108"
+//        });
     }
 }

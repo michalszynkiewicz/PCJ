@@ -143,7 +143,6 @@ public final class WorkerData {
             virtualNodes.remove(virtualNodeId);
         }
 
-        internalGlobalGroup.removePhysicalNode(physicalNodeId, virtualNodesToRemove);
         for (InternalGroup group : internalGroupsById.values()) {
             group.removePhysicalNode(physicalNodeId, virtualNodesToRemove);
         }

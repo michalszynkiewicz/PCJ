@@ -38,9 +38,9 @@ public class InternalGroup {
     /**
      * sync
      */
-    final private BitMask localSync;
-    final private BitMask localSyncMask;
-    final private BitMask physicalSync;
+    private BitMask localSync;
+    private BitMask localSyncMask;
+    private BitMask physicalSync;
     final private WaitObject syncObject;
     /**
      * Physical Parent, Left, Right
@@ -426,7 +426,8 @@ public class InternalGroup {
     }
 
     public void removePhysicalNode(int physicalNodeId, Set<Integer> virtualNodes) {
-        physicalIds.remove((Integer)physicalNodeId);
+        int removedNodeIdx = physicalIds.indexOf(physicalNodeId);
+        physicalIds.remove(removedNodeIdx);
 
         List<Integer> groupIdsToRemove = new ArrayList<>();
         for (Map.Entry<Integer, Integer> nodeEntry : nodes.entrySet()) {
@@ -438,5 +439,23 @@ public class InternalGroup {
         for (Integer groupId : groupIdsToRemove) {
             nodes.remove(groupId);
         }
+
+        localSync = rewriteBitMaskRemoving(localSync, removedNodeIdx);
+        localSyncMask = rewriteBitMaskRemoving(localSyncMask, removedNodeIdx);
+        physicalSync = rewriteBitMaskRemoving(physicalSync, removedNodeIdx);
+    }
+
+    private BitMask rewriteBitMaskRemoving(BitMask bitMask, int removedIdx) {
+        BitMask result = new BitMask(bitMask.getSize() - 1);
+        for (int i = 0; i < bitMask.getSize(); i++) {
+            if (bitMask.isSet(i)) {
+                if (i < removedIdx){
+                    result.set(i);
+                }else if (i > removedIdx) {
+                    result.set(i - 1);
+                }
+            }
+        }
+        return result;
     }
 }
