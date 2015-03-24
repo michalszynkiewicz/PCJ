@@ -12,6 +12,7 @@ import org.pcj.internal.network.LoopbackSocketChannel;
 import org.pcj.internal.storage.InternalStorage;
 import org.pcj.internal.utils.*;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.Constructor;
@@ -310,11 +311,18 @@ public abstract class InternalPCJ {
 
     private static void disableStandardOutput(boolean isNode0) {
         if (isNode0 == false || Configuration.REDIRECT_NODE0 == true) {
-            if (Configuration.REDIRECT_OUT) {
-                System.setOut(new BlackholePrintStream());
-            }
-            if (Configuration.REDIRECT_ERR) {
-                System.setErr(new BlackholePrintStream());
+            try {
+                FileOutputStream stdOutStream = new FileOutputStream("/tmp/pcj-out");
+                FileOutputStream stdErrStream = new FileOutputStream("/tmp/pcj-err");
+                if (Configuration.REDIRECT_OUT) {
+                    System.setOut(new PrintStream(stdOutStream));
+                }
+                if (Configuration.REDIRECT_ERR) {
+                    System.setErr(new PrintStream(stdErrStream));
+                }
+            } catch (Exception any) {
+                any.printStackTrace();
+                System.exit(14);
             }
         }
     }

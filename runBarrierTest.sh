@@ -2,7 +2,7 @@
 
 LIB_BINARY='PCJ-4.0.0.SNAPSHOT-bin.jar'
 #HOSTS=("192.168.0.108" "192.168.0.107")
-HOSTS=("192.168.0.102" "192.168.0.108")
+HOSTS=("192.168.0.104" "192.168.0.103")
 #HOST=192.168.42.229
 
 if (( $# > 0 )); then
@@ -25,4 +25,4 @@ done
 echo "command: java -Dnodes=$HOSTS_PROPERTY -cp .:${LIB_BINARY} BarrierTest"
 
 java -Dnodes=$HOSTS_PROPERTY -cp .:${LIB_BINARY} BarrierTest; popd
-#java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5016 -cp .:PCJ_4.jar BarrierTest; popd
+#java -Dnodes=$HOSTS_PROPERTY -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5016 -cp .:${LIB_BINARY} BarrierTest; popd

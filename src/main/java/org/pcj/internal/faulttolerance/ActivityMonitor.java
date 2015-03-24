@@ -46,9 +46,11 @@ public class ActivityMonitor implements Runnable {
         while (true) {
             Set<Integer> physicalNodes = getWorkerData().getPhysicalNodes().keySet();
             for (Integer nodeId : physicalNodes) {
-                if (isTimedOut(nodeId)
-                        || !sendPing(nodeId)) {
-                    handleNodeFailure(nodeId);
+                if (nodeId != 0) {
+                    if (isTimedOut(nodeId)
+                            || !sendPing(nodeId)) {
+                        handleNodeFailure(nodeId);
+                    }
                 }
             }
             if (!sleep()) break;

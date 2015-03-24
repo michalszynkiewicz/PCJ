@@ -9,6 +9,8 @@ import org.pcj.internal.network.LoopbackSocketChannel;
 import org.pcj.internal.network.SocketData;
 import org.pcj.internal.utils.*;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -238,7 +240,7 @@ public class Worker implements Runnable {
         int failedNodeId = message.getFailedNodePhysicalId();
         data.removePhysicalNode(failedNodeId);
         try {
-            barrierHandler.markCompleteOnPhysicalNode(failedNodeId);
+            barrierHandler.finishBarrierIfInFinished();
         } catch (IOException e) {
             e.printStackTrace(); // mstodo can we do sth with it?
         }
@@ -516,7 +518,7 @@ public class Worker implements Runnable {
     private void finished(MessageFinished message) throws IOException {
         data.physicalNodesCount--;
         System.out.println("GOT MESSAGE FINISHED for node: " + data.getPhysicalId(message.getSocket()) + " . NODES LEFT: " + data.physicalNodesCount);
-        if (data.physicalNodesCount == 0) {
+        if (data.physicalNodesCount == 0) {        // mstodo is not enough! the other node doesn't react on this msg.
             System.out.println("NO PHYSICAL NODES LEFT, WILL STOP");
             InternalGroup globalGroup = data.internalGlobalGroup;
 
@@ -527,11 +529,25 @@ public class Worker implements Runnable {
     }
 
     private void finishCompleted(MessageFinishCompleted message) {
+        File f = new File("/tmp/pcj-log.txt");
+        try {
+            f.createNewFile();
+            FileWriter writer = new FileWriter(f);
+            writer.append("got message finished\n");
+
+            writer.flush();
         InternalGroup globalGroup = data.internalGlobalGroup;
         broadcast(globalGroup, message);
 
+            writer.append("after broadcast\n"); writer.flush();
         synchronized (data.finishObject) {
+            writer.append("in synchronized\n"); writer.flush();
             data.finishObject.notifyAll();
+        }
+            writer.append("after synchronized\n"); writer.flush();
+            writer.close();
+        } catch (Exception ignored) {
+
         }
     }
 

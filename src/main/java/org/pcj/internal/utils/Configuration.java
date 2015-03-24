@@ -71,7 +71,7 @@ final public class Configuration {
     public static final int NODE_PING_INTERVAL;
 
     static {
-        DEBUG = getPropertyInt("pcj.debug", 0/*7*/);
+        DEBUG = getPropertyInt("pcj.debug", 7);
         RETRY_COUNT = getPropertyInt("pcj.retry", 3);
         RETRY_DELAY = getPropertyInt("pcj.retrydelay", 10);
         WAIT_TIME = getPropertyInt("pcj.waittime", 60);

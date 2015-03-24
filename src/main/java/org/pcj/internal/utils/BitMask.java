@@ -170,4 +170,18 @@ final public class BitMask {
             }
         }
     }
+
+    public BitMask without(int removedIdx) {
+        BitMask result = new BitMask(length - 1);
+        for (int i = 0; i < length; i++) {
+            if (isSet(i)) {
+                if (i < removedIdx){
+                    result.set(i);
+                }else if (i > removedIdx) {
+                    result.set(i - 1);
+                }
+            }
+        }
+        return result;
+    }
 }

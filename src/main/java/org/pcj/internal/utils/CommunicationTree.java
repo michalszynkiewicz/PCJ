@@ -44,4 +44,8 @@ public class CommunicationTree {
     public void setChildren(List<Integer> children) {
         this.children = children;
     }
+
+    public void removeNode(int removedNodeIdx) {
+        children.remove((Integer)removedNodeIdx); // mstodo what if parent is removed???!!!
+    }
 }

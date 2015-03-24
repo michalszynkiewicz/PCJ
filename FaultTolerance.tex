@@ -1,0 +1,90 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+
+
+\linespread{1.05}
+
+\begin{document}
+
+
+\title{Fault Tolerance for PCJ}
+
+\author{Michał Szynkiewicz}
+\date{2015}
+\maketitle
+% mstodo: make it more a fairy-tale ;)
+
+\section{Motivation}
+
+Distributed computations are run on lots of nodes and often take large amount of time.
+Having a 24 hour long computation on 1000 nodes means almost 3 years computations.
+
+Hence, it is practical to make a parallel computing library fault tolerant.
+
+\section{Dictionary}
+\begin{itemize}
+\item \textbf{PCJ library} - a library for Java language that helps to perform parallel and distributed calculations, able to work over ethernet or infiniband providing users with the uniform view across nodes.
+
+\item \textbf{node} - a physical machine that takes a part in computations.
+
+\item \textbf{node 0} - distinguished node. This paper assumes it doesn't fail.
+
+\item \textbf{thread} - the smalles unit of computation. Realized by single java thread.
+\end{itemize}
+
+\section{Concepts}
+Currently we assume that there is a special node, namely node 0, that never dies.
+We plan to provide two fault tolerance strategies: ignoring node failure and respawning failed threads
+  \\
+Moreover we plan to provide a resilient storage to make it possible to restore thread state from a snapshot.
+Resilient storage will have two modes: synchronous and asynchronous.
+Synchronous mode will allow programs to recover from the latest position achieved by the failed thread.
+In asynchronous mode state will be saved to storage in a non-blocking fashion.
+Programs using this strategy will work much faster, but the state saved in the storage may be not the latest one.
+\\                                  \\
+Example use cases of strategies: \\
+% mstodo:
+\begin{tabular}{|l | p{3.5cm} | p{3.5cm} | p{3.5cm}|}
+  \hline
+  & No resilient storage & Asynchronous resilient storage & Synchronous resilient storage\\
+  \hline
+  Ignore &  the failed node is ignored, all its' data is lost. Might be used for instance
+                    for monte carlo algorithms, where part of the results can be ignored.
+                    &  & \\
+  \hline
+  Respawn &  a new node is created as a replacement for the failed node. &  a new node is created as a replacement for the failed node.
+                Resilient storage is used to snapshot the data and restore computations from latest snapshot.
+                     & a new node is created as a replacement for the failed node.
+                       Resilient storage is used to snapshot the data and restore computations from latest snapshot.
+                       Useful for algorithms which require \\
+  \hline
+\end{tabular}
+
+
+
+\section{Implementation outline}
+
+The immortal node 0 is monitoring other nodes by sending PING message and waiting for PONG.
+If, for some node, sending PING fails, or the node does not send PONG for a long time,
+it is assumed failed.
+
+When node0 discovers some node is down:
+\begin{itemize}
+\item for Ignore policy - it populates the information about failure to all nodes.
+Each node removes the failed node from its configuration and that node is no longer
+taken into account
+\item for Respawn policy - for each of threads on the failed node,
+it creates a thread on a working physical node. Then the newly created threads
+take over the job of failed nodes threads. As in the above case - reconfiguration message
+is sent to all nodes, which in turn replace old threads with new ones in their configuration.
+\end{itemize}
+
+
+\section{Current status}
+Currently no-resilient-storage, Ignore policy is being implemented.
+
+\section{Performance overhead}
+
+\section{Summary}
+
+\end{document}

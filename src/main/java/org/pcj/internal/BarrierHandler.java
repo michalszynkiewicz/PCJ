@@ -25,8 +25,8 @@ public class BarrierHandler {
         this.groupId = null;
     }
 
-    public void markCompleteOnPhysicalNode(int physicalId) throws IOException {
-        System.out.print("MARKING COMPLETE... ");
+    public void finishBarrierIfInFinished() throws IOException {
+        System.out.print("[barrier] marking complete... ");
         if (groupId != null) {
             System.out.print("in progress for groupId: " + groupId);
             InternalGroup group = getWorkerData().internalGroupsById.get(groupId);

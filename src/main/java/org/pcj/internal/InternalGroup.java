@@ -427,35 +427,30 @@ public class InternalGroup {
 
     public void removePhysicalNode(int physicalNodeId, Set<Integer> virtualNodes) {
         int removedNodeIdx = physicalIds.indexOf(physicalNodeId);
-        physicalIds.remove(removedNodeIdx);
+        if (removedNodeIdx == -1) {
+            System.err.println("No physical node with id: " + physicalNodeId + " found");
+            System.err.println("physical node ids: " + physicalIds);
+        } else {
+            physicalIds.remove(removedNodeIdx);
 
-        List<Integer> groupIdsToRemove = new ArrayList<>();
-        for (Map.Entry<Integer, Integer> nodeEntry : nodes.entrySet()) {
-            if (virtualNodes.contains(nodeEntry.getValue())) {
-                groupIdsToRemove.add(nodeEntry.getKey());
-            }
-        }
 
-        for (Integer groupId : groupIdsToRemove) {
-            nodes.remove(groupId);
-        }
-
-        localSync = rewriteBitMaskRemoving(localSync, removedNodeIdx);
-        localSyncMask = rewriteBitMaskRemoving(localSyncMask, removedNodeIdx);
-        physicalSync = rewriteBitMaskRemoving(physicalSync, removedNodeIdx);
-    }
-
-    private BitMask rewriteBitMaskRemoving(BitMask bitMask, int removedIdx) {
-        BitMask result = new BitMask(bitMask.getSize() - 1);
-        for (int i = 0; i < bitMask.getSize(); i++) {
-            if (bitMask.isSet(i)) {
-                if (i < removedIdx){
-                    result.set(i);
-                }else if (i > removedIdx) {
-                    result.set(i - 1);
+            List<Integer> groupIdsToRemove = new ArrayList<>();
+            for (Map.Entry<Integer, Integer> nodeEntry : nodes.entrySet()) {
+                if (virtualNodes.contains(nodeEntry.getValue())) {
+                    groupIdsToRemove.add(nodeEntry.getKey());
                 }
             }
+
+            for (Integer groupId : groupIdsToRemove) {
+                nodes.remove(groupId);
+            }
+
+            physicalCommunication.removeNode(removedNodeIdx);
+
+            localSync = localSync.without(removedNodeIdx);
+            localSyncMask = localSyncMask.without(removedNodeIdx);
+            physicalSync = physicalSync.without(removedNodeIdx);
         }
-        return result;
     }
+
 }

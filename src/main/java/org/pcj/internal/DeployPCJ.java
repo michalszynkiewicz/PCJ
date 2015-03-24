@@ -3,6 +3,9 @@
  */
 package org.pcj.internal;
 
+import org.pcj.internal.storage.InternalStorage;
+import org.pcj.internal.utils.NodeInfo;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -11,8 +14,6 @@ import java.lang.management.RuntimeMXBean;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.pcj.internal.storage.InternalStorage;
-import org.pcj.internal.utils.NodeInfo;
 
 /**
  * Class used for deploying PCJ when using one of deploy
@@ -137,7 +138,7 @@ final public class DeployPCJ {
     private Process exec(List<String> exec) throws IOException {
 //        System.err.println("exec(" + Arrays.toString(exec.toArray(new String[0])) + ")");
         ProcessBuilder processBuilder = new ProcessBuilder(exec);
-        //processBuilder.redirectErrorStream(true);
+//        processBuilder.redirectErrorStream(true);
 
         Process process = processBuilder.start();
         processes.add(process);

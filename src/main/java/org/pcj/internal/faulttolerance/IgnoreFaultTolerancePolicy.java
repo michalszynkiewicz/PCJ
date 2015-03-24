@@ -27,7 +27,7 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
 
         PCJ.getWorkerData().removePhysicalNode(failedNodeId);
 
-        finishBarrierIfInProgress(failedNodeId);
+        finishBarrierIfInProgress();
 
         WorkerData data = InternalPCJ.getWorkerData();
         mockNodeFinish(data);
@@ -41,9 +41,9 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
         }
     }
 
-    private void finishBarrierIfInProgress(int failedNodeId) {
+    private void finishBarrierIfInProgress() {
         try {
-            getBarrierHandler().markCompleteOnPhysicalNode(failedNodeId); // mstodo for non-root nodes as well!
+            getBarrierHandler().finishBarrierIfInFinished(); // mstodo for non-root nodes doesn't work!
         } catch (IOException e) {
             e.printStackTrace();
         }
