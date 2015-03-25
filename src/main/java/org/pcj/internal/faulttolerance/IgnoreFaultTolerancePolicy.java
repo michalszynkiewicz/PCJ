@@ -43,7 +43,7 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
 
     private void finishBarrierIfInProgress() {
         try {
-            getBarrierHandler().finishBarrierIfInFinished(); // mstodo for non-root nodes doesn't work!
+            getBarrierHandler().finishBarrierIfInFinished();
         } catch (IOException e) {
             e.printStackTrace();
         }
