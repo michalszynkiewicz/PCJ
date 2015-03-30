@@ -3,6 +3,8 @@
  */
 package org.pcj;
 
+import org.pcj.internal.WaitForHandler;
+
 import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -19,6 +21,7 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
 
     private transient final Map<String, Field> sharedFields = new HashMap<>();
     private transient final Map<String, Integer> monitorFields = new HashMap<>();
+    private transient WaitForHandler waitForHandler;
 
     protected Storage() {
         for (Field field : this.getClass().getDeclaredFields()) {
@@ -112,6 +115,11 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
     @Override
     final public boolean isAssignable(String variable, Object value, int... indexes) {
         return isAssignableFrom(variable, value.getClass(), indexes);
+    }
+
+    @Override
+    public void setWaitForHandler(WaitForHandler waitForHandler) {
+        this.waitForHandler = waitForHandler;
     }
 
     /**
@@ -242,13 +250,20 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
         final Field field = getField(variable);
         synchronized (field) {
             int v;
+            // mstodo add field to some waitForHandler
+            // mstodo on any node failure: 1. add node faiure info to some storage in handler 2. interrupt wait/trigger wait
+            // mstodo here throw excpetion if some node failure in the handler
+            waitForHandler.add(field);
             while ((v = monitorFields.get(variable)) < count) {
                 try {
                     field.wait();
                 } catch (InterruptedException ex) {
                     ex.printStackTrace(System.err);
                 }
+                waitForHandler.throwOnNodeFailure();
+
             }
+            waitForHandler.remove(field);
             monitorFields.put(variable, v - count);
         }
     }

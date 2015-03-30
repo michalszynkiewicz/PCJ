@@ -40,6 +40,7 @@ public abstract class InternalPCJ {
     private static Networker networker;
     private static WorkerData workerData;
     private static BarrierHandler barrierHandler;
+    private static WaitForHandler waitForHandler;
 
     // Suppress default constructor for noninstantiability
     // have to be protected to allow to inheritance
@@ -118,6 +119,10 @@ public abstract class InternalPCJ {
         boolean theSame = startPoint.equals(storage);
         localData = new ConcurrentHashMap<>();
         InternalGroup globalGroup = new InternalGroup(0, "");
+
+        barrierHandler = new BarrierHandler();
+        waitForHandler = new WaitForHandler();
+
         try {
             for (int i = 0; i < localIds.length; ++i) {
                 int localId = localIds[i];
@@ -129,6 +134,7 @@ public abstract class InternalPCJ {
                 /* create storage */
                 @SuppressWarnings("unchecked")
                 InternalStorage lStorage = createStorageConstructor(classLoader, storage.getName()).newInstance();
+                lStorage.setWaitForHandler(waitForHandler);
 
                 /* create startpoint */
                 if (theSame) {
@@ -175,8 +181,6 @@ public abstract class InternalPCJ {
 
             networker = new Networker(worker);
             networker.startup();
-
-            barrierHandler = new BarrierHandler();
 
             worker.setBarrierHandler(barrierHandler);
             worker.setNetworker(networker);
@@ -228,7 +232,10 @@ public abstract class InternalPCJ {
         return storageConstructor;
     }
 
-    private static void createPcjThreadAndThreadData(ConcurrentMap<Integer, PcjThreadLocalData> localData, Thread[] nodeThreads, int i, int localId, ClassLoader classLoader, InternalStartPoint lStartPoint, InternalStorage lStorage, Map<Integer, InternalGroup> groups, Map<String, InternalGroup> groupsByName) {
+    private static void createPcjThreadAndThreadData(ConcurrentMap<Integer, PcjThreadLocalData> localData, Thread[] nodeThreads,
+                                                     int i, int localId, ClassLoader classLoader, InternalStartPoint lStartPoint,
+                                                     InternalStorage lStorage, Map<Integer, InternalGroup> groups,
+                                                     Map<String, InternalGroup> groupsByName) {
         PcjThreadLocalData data = new PcjThreadLocalData(classLoader, lStorage, groups, groupsByName);
         localData.put(localId, data);
         nodeThreads[i] = new PcjThread(localId, lStartPoint, data);
@@ -340,6 +347,10 @@ public abstract class InternalPCJ {
 
     public static BarrierHandler getBarrierHandler() {
         return barrierHandler;
+    }
+
+    public static WaitForHandler getWaitForHandler() {
+        return waitForHandler;
     }
 
     public static Networker getNetworker() {

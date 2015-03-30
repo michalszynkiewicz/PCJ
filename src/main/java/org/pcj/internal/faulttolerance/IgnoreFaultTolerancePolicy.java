@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.pcj.internal.InternalPCJ.getBarrierHandler;
+import static org.pcj.internal.InternalPCJ.getWaitForHandler;
 
 /**
  * Author: Michal Szynkiewicz, michal.l.szynkiewicz@gmail.com
@@ -39,6 +40,7 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
                 propagateFailure(failedNodeId, node, failedNodes);  // mstodo handle things gathered in failedNodes
             }
         }
+        getWaitForHandler().nodeFailed(failedNodeId);
     }
 
     private void finishBarrierIfInProgress() {

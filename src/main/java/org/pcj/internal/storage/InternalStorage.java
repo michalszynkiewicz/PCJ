@@ -3,6 +3,8 @@
  */
 package org.pcj.internal.storage;
 
+import org.pcj.internal.WaitForHandler;
+
 /**
  * Internal interface describing Storage methods.
  *
@@ -87,4 +89,6 @@ public interface InternalStorage {
      * variable
      */
     boolean isAssignable(String variable, Object value, int... indexes);
+
+    void setWaitForHandler(WaitForHandler waitForHandler);
 }
