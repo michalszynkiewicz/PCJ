@@ -14,6 +14,7 @@ import java.util.Set;
  * Time: 10:17 PM
  */
 //mstodo analyze concurrency
+    // mstodo put/get handling node failure?
 public class WaitForHandler {
 
     private Set<Field> fieldsToAwake = new HashSet<>();

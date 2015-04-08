@@ -33,52 +33,57 @@ Hence, it is practical to make a parallel computing library fault tolerant.
 \end{itemize}
 
 \section{Concepts}
-Currently we assume that there is a special node, namely node 0, that never dies.
-We plan to provide two fault tolerance strategies: ignoring node failure and respawning failed threads
+Currently we assume that there is a special node, namely \textit{node 0}, that never dies.
+We plan to provide two fault tolerance strategies: ignoring node failure and respawning failed threads.
   \\
 Moreover we plan to provide a resilient storage to make it possible to restore thread state from a snapshot.
 Resilient storage will have two modes: synchronous and asynchronous.
 Synchronous mode will allow programs to recover from the latest position achieved by the failed thread.
-In asynchronous mode state will be saved to storage in a non-blocking fashion.
-Programs using this strategy will work much faster, but the state saved in the storage may be not the latest one.
-\\                                  \\
-Example use cases of strategies: \\
-% mstodo:
-\begin{tabular}{|l | p{3.5cm} | p{3.5cm} | p{3.5cm}|}
-  \hline
-  & No resilient storage & Asynchronous resilient storage & Synchronous resilient storage\\
-  \hline
-  Ignore &  the failed node is ignored, all its' data is lost. Might be used for instance
-                    for monte carlo algorithms, where part of the results can be ignored.
-                    &  & \\
-  \hline
-  Respawn &  a new node is created as a replacement for the failed node. &  a new node is created as a replacement for the failed node.
-                Resilient storage is used to snapshot the data and restore computations from latest snapshot.
-                     & a new node is created as a replacement for the failed node.
-                       Resilient storage is used to snapshot the data and restore computations from latest snapshot.
-                       Useful for algorithms which require \\
-  \hline
-\end{tabular}
+In asynchronous mode state will be saved in a storage in a non-blocking fashion.
+\\
+                \\
+%                mstodo: move descriptions elsewhere
+\section{Example use cases of strategies}
+Following are examples of possible usages of fault tolerance strategies described in this paper.
+\subsection{Ignore failure}
+The failed node is ignored, all of its' data is lost.
+Might be used for instance for monte carlo randomized algorithms, e.g. monte carlo Pi approxmiation.
+\subsection{Respawn node with synchronous resilient storage}
+The most powerful strategy. Upon failure of physical node all the threads running on it are recreated on other nodes.
+Then the state of threads is recreated from the latest saved state.
+Might be used for example for parallel FFT implementation.
+In FFT implementation, in multiple phases, each thread first makes computations and then broadcasts the results.
+It is crucial to remember the exact state from the broadcasting phase.
+% mstodo: verify
+\subsection{Respawn node with asynchronous resilient storage}
+As in previous strategy, threads are recreated on active nodes.
+The state is restored from resilient storage, but since the storage is asynchronous, it might contain old data.
 
+\section{API}
 
+\subsection{Impact on API}
 
-\section{Implementation outline}
+\section{Node failure handling implementation}
 
-The immortal node 0 is monitoring other nodes by sending PING message and waiting for PONG.
-If, for some node, sending PING fails, or the node does not send PONG for a long time,
-it is assumed failed.
+The main elements of implementation are: monitoring nodes for failure and adjusting configuration after node failure.
 
-When node0 discovers some node is down:
+\subsection{Node monitoring}
+Monitoring works in two ways::
 \begin{itemize}
-\item for Ignore policy - it populates the information about failure to all nodes.
-Each node removes the failed node from its configuration and that node is no longer
-taken into account
-\item for Respawn policy - for each of threads on the failed node,
-it creates a thread on a working physical node. Then the newly created threads
-take over the job of failed nodes threads. As in the above case - reconfiguration message
-is sent to all nodes, which in turn replace old threads with new ones in their configuration.
+\item The immortal \textit{node 0} is monitoring other nodes by sending PING message and waiting for PONG.
+If, for some node, sending PING fails, or the node does not answer with PONG for a long (configurable) time,
+it is assumed failed.
+\item
+If \textit{node A} encounters a communication error when trying to communicate with \textit{node B}
+(e.g. if updating a variable value on \textit{node B} fails), \textit{node A} informs \textit{node 0} that \textit{node B} has failed.
+
 \end{itemize}
 
+\subsection{Reconfiguration}
+On node failure \textit{node 0} sends a proper reconfiguration message to all nodes.
+Depending on the type of selected strategy there are two...
+
+\section{Resilient storage implementation}
 
 \section{Current status}
 Currently no-resilient-storage, Ignore policy is being implemented.

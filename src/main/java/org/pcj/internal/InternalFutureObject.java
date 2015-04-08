@@ -55,6 +55,7 @@ public class InternalFutureObject<T> implements Future<T>, ResponseAttachment {
      * Causes the current thread to wait until the response is set
      */
     private void waitFor() {
+        // mstodo fault tolerance for it!!!
         if (done) {
             return;
         }

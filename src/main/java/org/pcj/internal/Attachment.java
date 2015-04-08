@@ -17,5 +17,5 @@ public interface Attachment {
      * Attachment has been processed, <tt>false</tt>
      * otherwise.
      */
-    public boolean isDone();
+    boolean isDone();
 }
