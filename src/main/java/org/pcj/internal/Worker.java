@@ -3,6 +3,7 @@
  */
 package org.pcj.internal;
 
+import org.pcj.FutureObject;
 import org.pcj.internal.faulttolerance.FaultTolerancePolicy;
 import org.pcj.internal.message.*;
 import org.pcj.internal.network.LoopbackSocketChannel;
@@ -271,9 +272,9 @@ public class Worker implements Runnable {
         int groupId = message.getGroupId();
         InternalPCJ.getStdout().println(
                 (groupId == 0 ? "" : (data.internalGroupsById.get(groupId).getGroupName() + ":"))
-                + message.getGroupNodeId()
-                + " > "
-                + message.getLogText());
+                        + message.getGroupNodeId()
+                        + " > "
+                        + message.getLogText());
     }
 
     /**
@@ -882,8 +883,11 @@ public class Worker implements Runnable {
     private void valueAsyncGetResponse(MessageValueAsyncGetResponse message) {
         int inReplyTo = message.getInReplyTo();
         ResponseAttachment attachment = (ResponseAttachment) data.attachmentMap.remove(inReplyTo);
-        data.localData.get(message.getReceiverGlobalNodeId()).getDeserializer()
-                .deserialize(message.getVariableValue(), attachment);
+        Deserializer deserializer = data.localData.get(message.getReceiverGlobalNodeId()).getDeserializer();
+        deserializer.deserialize(message.getVariableValue(), attachment);
+        if (attachment instanceof FutureObject) {
+            InternalPCJ.getFutureHandler().unregisterFutureObject((FutureObject)attachment);
+        }
     }
 
     /**

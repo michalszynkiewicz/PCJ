@@ -6,5 +6,5 @@ package org.pcj.internal.faulttolerance;
  * Time: 10:30 PM
  */
 public class NodeFailedException extends RuntimeException {
-    // mstodo fill with failed nodes ids
+    // mstodo fill with failed nodes ids and THREADS ids
 }

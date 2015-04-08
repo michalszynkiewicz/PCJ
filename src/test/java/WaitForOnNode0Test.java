@@ -48,7 +48,7 @@ public class WaitForOnNode0Test extends Storage implements StartPoint {
         PCJ.log("my thread number: " + PCJ.myId());
     }
 
-    public static void main(String[] args) {
+    public static void main(String... args) {
         System.out.println(ManagementFactory.getRuntimeMXBean().getName());
 
         PCJ.deploy(WaitForOnNode0Test.class, WaitForOnNode0Test.class, System.getProperty("nodes").split(","));

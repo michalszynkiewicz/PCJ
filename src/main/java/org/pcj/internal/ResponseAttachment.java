@@ -13,7 +13,7 @@ package org.pcj.internal;
  */
 public interface ResponseAttachment extends Attachment {
 
-    public <T> T getObject();
+    <T> T getObject();
 
-    public void setObject(Object response);
+    void setObject(Object response);
 }

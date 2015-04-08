@@ -28,6 +28,7 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
 
         PCJ.getWorkerData().removePhysicalNode(failedNodeId);
 
+        PCJ.getFutureHandler().nodeFailed(failedNodeId);
         finishBarrierIfInProgress();
 
         WorkerData data = InternalPCJ.getWorkerData();

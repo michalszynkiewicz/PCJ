@@ -310,7 +310,7 @@ public class InternalGroup {
      *
      * @param nodeId group node id
      */
-    protected void barrier(int myNodeId, int nodeId) {   // mstodo fault tolerance!!!
+    protected void barrier(int myNodeId, int nodeId) { // mstodo fault tolerance
         // FIXME: trzeba sprawdzić jak to będzie działać w pętli.
 //        if (true) {
 //            sync(myNodeId, new int[]{nodeId});
@@ -368,8 +368,10 @@ public class InternalGroup {
         InternalPCJ.getWorkerData().attachmentMap.put(msg.getMessageId(), futureObject);
         try {
             InternalPCJ.getNetworker().send(nodeId, msg);
+            InternalPCJ.getFutureHandler().registerFutureObject(futureObject, nodeId);
             return futureObject;
         } catch (IOException ex) {
+            // mstodo: catch exception and assume nodeId is failed!
             throw new RuntimeException(ex);
         }
     }

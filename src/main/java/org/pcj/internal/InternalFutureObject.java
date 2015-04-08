@@ -17,6 +17,7 @@ public class InternalFutureObject<T> implements Future<T>, ResponseAttachment {
     final private Object waitObj = new Object();
     volatile private boolean done;
     private T response;
+    private RuntimeException excpetion;
 
     protected InternalFutureObject() {
         done = false;
@@ -41,6 +42,11 @@ public class InternalFutureObject<T> implements Future<T>, ResponseAttachment {
         }
     }
 
+    public void fail(RuntimeException exception) {
+        excpetion = exception;
+        waitObj.notify();
+    }
+
     /**
      * Checks whether response is set.
      *
@@ -55,7 +61,6 @@ public class InternalFutureObject<T> implements Future<T>, ResponseAttachment {
      * Causes the current thread to wait until the response is set
      */
     private void waitFor() {
-        // mstodo fault tolerance for it!!!
         if (done) {
             return;
         }
@@ -68,6 +73,9 @@ public class InternalFutureObject<T> implements Future<T>, ResponseAttachment {
                     ex.printStackTrace(System.err);
                 }
             }
+        }
+        if (excpetion != null) {
+            throw excpetion;
         }
     }
 
@@ -92,6 +100,9 @@ public class InternalFutureObject<T> implements Future<T>, ResponseAttachment {
                     ex.printStackTrace(System.err);
                 }
             }
+        }
+        if (excpetion != null) {
+            throw excpetion;
         }
     }
 

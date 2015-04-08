@@ -41,6 +41,7 @@ public abstract class InternalPCJ {
     private static WorkerData workerData;
     private static BarrierHandler barrierHandler;
     private static WaitForHandler waitForHandler;
+    private static FutureHandler futureHandler;
 
     // Suppress default constructor for noninstantiability
     // have to be protected to allow to inheritance
@@ -122,6 +123,7 @@ public abstract class InternalPCJ {
 
         barrierHandler = new BarrierHandler();
         waitForHandler = new WaitForHandler();
+        futureHandler = new FutureHandler();
 
         try {
             for (int i = 0; i < localIds.length; ++i) {
@@ -347,6 +349,10 @@ public abstract class InternalPCJ {
 
     public static BarrierHandler getBarrierHandler() {
         return barrierHandler;
+    }
+
+    public static FutureHandler getFutureHandler() {
+        return futureHandler;
     }
 
     public static WaitForHandler getWaitForHandler() {
