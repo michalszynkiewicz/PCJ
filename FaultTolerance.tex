@@ -1,8 +1,6 @@
-\documentclass[12pt]{article}
+\documentclass{llncs}
 \usepackage[utf8]{inputenc}
 
-
-\linespread{1.05}
 
 \begin{document}
 
@@ -10,14 +8,15 @@
 \title{Fault Tolerance for PCJ}
 
 \author{Michał Szynkiewicz}
+\institute{Faculty of Mathematics and Computer Science Nicolaus Copernicus University}
+
 \date{2015}
 \maketitle
-% mstodo: make it more a fairy-tale ;)
 
 \section{Motivation}
 
 Distributed computations are run on lots of nodes and often take large amount of time.
-Having a 24 hour long computation on 1000 nodes means almost 3 years computations.
+Having a 24 hour long computation on 1000 nodes means almost 3 years of computations.
 
 Hence, it is practical to make a parallel computing library fault tolerant.
 
