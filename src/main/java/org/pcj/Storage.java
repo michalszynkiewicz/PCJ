@@ -250,9 +250,6 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
         final Field field = getField(variable);
         synchronized (field) {
             int v;
-            // mstodo add field to some waitForHandler
-            // mstodo on any node failure: 1. add node faiure info to some storage in handler 2. interrupt wait/trigger wait
-            // mstodo here throw excpetion if some node failure in the handler
             waitForHandler.add(field);
             while ((v = monitorFields.get(variable)) < count) {
                 try {

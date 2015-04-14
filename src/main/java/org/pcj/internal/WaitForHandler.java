@@ -20,15 +20,15 @@ public class WaitForHandler {
     private Set<Field> fieldsToAwake = new HashSet<>();
     private List<Integer> failedNodes = new ArrayList<>();
 
-    public synchronized void add(Field field) {
+    public void add(Field field) {
         fieldsToAwake.add(field);
     }
 
-    public synchronized void remove(Field field) {
+    public void remove(Field field) {
         fieldsToAwake.remove(field);
     }
 
-    public synchronized void nodeFailed(int failedNodeId) {
+    public void nodeFailed(int failedNodeId) {
         failedNodes.add(failedNodeId); // mstodo translate to thread ids ?
         fieldsToAwake.forEach(f -> {
             synchronized (f) {
@@ -37,7 +37,7 @@ public class WaitForHandler {
         });
     }
 
-    public synchronized void throwOnNodeFailure() { // mstodo would be good to do something to remove this synchronization
+    public void throwOnNodeFailure() { // mstodo would be good to do something to remove this synchronization
         if (!failedNodes.isEmpty()) {
             failedNodes.clear();
             throw new NodeFailedException(); // mstodo add info which node/threads failed

@@ -3,21 +3,25 @@
  */
 package org.pcj;
 
-import java.io.IOException;
 import org.pcj.internal.InternalPCJ;
 import org.pcj.internal.InternalStartPoint;
 import org.pcj.internal.PcjThread;
+import org.pcj.internal.faulttolerance.Lock;
 import org.pcj.internal.storage.InternalStorage;
 import org.pcj.internal.utils.Configuration;
 import org.pcj.internal.utils.NodesFile;
 
+import java.io.IOException;
+
 /**
  * Main PCJ class with static methods.
- * 
+ * <p>
  * Static methods provide way to use library.
- * 
+ *
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
+
+// todo: fix locking
 final public class PCJ extends org.pcj.internal.InternalPCJ {
 
     // Suppress default constructor for noninstantiability
@@ -30,18 +34,18 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * and Storage class. Array <tt>nodes</tt> contains list of hostnames.
      * Hostnames can be specified many times, so more than one instance of PCJ
      * will be run on node. Empty hostnames means current JVM.
-     *
+     * <p>
      * Hostnames can take port (after colon ':'), eg. ["localhost:8000",
      * "localhost:8001", "localhost", "host2:8001", "host2"]. Default port is
      * 8091 and can be modified using <tt>pcj.port</tt> system property value.
      *
      * @param startPoint start point class
-     * @param storage storage class
-     * @param nodes array of nodes
+     * @param storage    storage class
+     * @param nodes      array of nodes
      */
     public static void deploy(Class<? extends InternalStartPoint> startPoint,
-            Class<? extends InternalStorage> storage,
-            String[] nodes) {
+                              Class<? extends InternalStorage> storage,
+                              String[] nodes) {
         NodesFile nodesFile = new NodesFile(nodes);
         InternalPCJ.deploy(startPoint, storage, nodesFile);
     }
@@ -50,13 +54,13 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * Deploys and starts PCJ calculations on nodes using specified StartPoint
      * and Storage class.
      *
-     * @param startPoint start point class
-     * @param storage storage class
+     * @param startPoint    start point class
+     * @param storage       storage class
      * @param nodesFilename file with descriptions of nodes
      */
     public static void deploy(Class<? extends InternalStartPoint> startPoint,
-            Class<? extends InternalStorage> storage,
-            String nodesFilename) {
+                              Class<? extends InternalStorage> storage,
+                              String nodesFilename) {
         try {
             NodesFile nodesFile = new NodesFile(nodesFilename);
             InternalPCJ.deploy(startPoint, storage, nodesFile);
@@ -76,10 +80,10 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * <li>or <i>"nodes.file"</i></li></ol>
      *
      * @param startPoint start point class
-     * @param storage storage class
+     * @param storage    storage class
      */
     public static void deploy(Class<? extends InternalStartPoint> startPoint,
-            Class<? extends InternalStorage> storage) {
+                              Class<? extends InternalStorage> storage) {
         deploy(startPoint, storage, Configuration.NODES_FILENAME);
     }
 
@@ -89,12 +93,12 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * in calculations.
      *
      * @param startPoint start point class
-     * @param storage storage class
-     * @param nodes array of nodes
+     * @param storage    storage class
+     * @param nodes      array of nodes
      */
     public static void start(Class<? extends InternalStartPoint> startPoint,
-            Class<? extends InternalStorage> storage,
-            String[] nodes) {
+                             Class<? extends InternalStorage> storage,
+                             String[] nodes) {
         NodesFile nodesFile = new NodesFile(nodes);
         InternalPCJ.start(startPoint, storage, nodesFile);
     }
@@ -104,13 +108,13 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * Storage class. Descriptions of all nodes used in calculations are read
      * from supplied file.
      *
-     * @param startPoint start point class
-     * @param storage storage class
+     * @param startPoint    start point class
+     * @param storage       storage class
      * @param nodesFilename file with descriptions of nodes
      */
     public static void start(Class<? extends InternalStartPoint> startPoint,
-            Class<? extends InternalStorage> storage,
-            String nodesFilename) {
+                             Class<? extends InternalStorage> storage,
+                             String nodesFilename) {
         try {
             NodesFile nodesFile = new NodesFile(nodesFilename);
             InternalPCJ.start(startPoint, storage, nodesFile);
@@ -130,10 +134,10 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * <li>or <i>"nodes.file"</i></li></ol>
      *
      * @param startPoint start point class
-     * @param storage storage class
+     * @param storage    storage class
      */
     public static void start(Class<? extends InternalStartPoint> startPoint,
-            Class<? extends InternalStorage> storage) {
+                             Class<? extends InternalStorage> storage) {
         start(startPoint, storage, Configuration.NODES_FILENAME);
     }
 
@@ -141,42 +145,70 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
 //    public static <X extends Storage> X getStorage() {
 //        return (X) PcjThread.threadStorage();
 //    }
+
     /**
      * Returns global node id.
      *
      * @return global node id
      */
     public static int myId() {
-        return ((Group) PcjThread.threadGlobalGroup()).myId();
+        Lock.readLock();
+        try {
+            return ((Group) PcjThread.threadGlobalGroup()).myId();
+        } finally
+
+        {
+            Lock.readUnlock();
+        }
     }
 
     /**
      * Returns physical node id (internal value for distinguishing nodes).
-     * 
+     *
      * @return physical node id
      */
     public static int getPhysicalNodeId() {
-        return InternalPCJ.getPhysicalNodeId();
+        Lock.readLock();
+        try {
+            return InternalPCJ.getPhysicalNodeId();
+        } finally {
+            Lock.readUnlock();
+        }
     }
-    
+
     /**
      * Returns global number of nodes used in calculations.
      *
      * @return global number of nodes used in calculations
      */
     public static int threadCount() {
-        return ((Group) PcjThread.threadGlobalGroup()).threadCount();
+        Lock.readLock();
+        try {
+            return ((Group) PcjThread.threadGlobalGroup()).threadCount();
+        } finally {
+            Lock.readUnlock();
+        }
     }
 
     /**
      * Synchronizes all nodes used in calculations.
      */
     public static void barrier() {
-        ((Group) PcjThread.threadGlobalGroup()).barrier();
+        Lock.readLock();
+        try {
+            ((Group) PcjThread.threadGlobalGroup()).barrier();
+        } finally {
+            Lock.readUnlock();
+        }
     }
 
     public static void barrier(int node) {
-        ((Group) PcjThread.threadGlobalGroup()).barrier(node);
+        Lock.readLock();
+        try {
+            ((Group) PcjThread.threadGlobalGroup()).barrier(node);
+        } finally {
+            Lock.readUnlock();
+        }
     }
 
     /**
@@ -185,7 +217,12 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @param variable name of variable
      */
     public static void monitor(String variable) {
-        PcjThread.threadStorage().monitor(variable);
+        Lock.readLock();
+        try {
+            PcjThread.threadStorage().monitor(variable);
+        } finally {
+            Lock.readUnlock();
+        }
     }
 
     /**
@@ -197,7 +234,12 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @param variable name of variable
      */
     public static void waitFor(String variable) {
-        PcjThread.threadStorage().waitFor(variable);
+        Lock.readLock();
+        try {
+            PcjThread.threadStorage().waitFor(variable);
+        } finally {
+            Lock.readUnlock();
+        }
     }
 
     /**
@@ -205,10 +247,15 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * count times. Resets the state after <i>touches</i>.
      *
      * @param variable name of variable
-     * @param count number of <i>touches</i>
+     * @param count    number of <i>touches</i>
      */
     public static void waitFor(String variable, int count) {
-        PcjThread.threadStorage().waitFor(variable, count);
+        Lock.readLock();
+        try {
+            PcjThread.threadStorage().waitFor(variable, count);
+        } finally {
+            Lock.readUnlock();
+        }
     }
 
     /**
@@ -218,53 +265,84 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @return value of variable
      */
     public static <T> T getLocal(String variable) {
-        return PcjThread.threadStorage().get(variable);
+        Lock.readLock();
+        try {
+            return PcjThread.threadStorage().get(variable);
+        } finally {
+            Lock.readUnlock();
+        }
     }
 
     /**
      * Gets the value from current thread Storage
      *
      * @param variable name of array variable
-     * @param indexes indexes of array
+     * @param indexes  indexes of array
      * @return value of variable
      */
     public static <T> T getLocal(String variable, int... indexes) {
-        return PcjThread.threadStorage().get(variable, indexes);
+        Lock.readLock();
+        try {
+            return PcjThread.threadStorage().get(variable, indexes);
+        } finally {
+            Lock.readUnlock();
+        }
     }
 
     /**
      * Fully asynchronous get from other thread Storage
      *
-     * @param nodeId global node id
+     * @param nodeId   global node id
      * @param variable name of array variable
      * @return FutureObject that will contain received data
      */
     public static <T> FutureObject<T> getFutureObject(int nodeId, String variable) {
-        return ((Group) PcjThread.threadGlobalGroup()).getFutureObject(nodeId, variable);
+        Lock.readLock();
+        try {
+            return ((Group) PcjThread.threadGlobalGroup()).getFutureObject(nodeId, variable);
+        } finally {
+            Lock.readUnlock();
+        }
     }
 
     /**
      * Fully asynchronous get from other thread Storage
      *
-     * @param nodeId global node id
+     * @param nodeId   global node id
      * @param variable name of array variable
-     * @param indexes indexes of array
+     * @param indexes  indexes of array
      * @return FutureObject that will contain received data
      */
     public static <T> FutureObject<T> getFutureObject(int nodeId, String variable, int... indexes) {
-        return ((Group) PcjThread.threadGlobalGroup()).getFutureObject(nodeId, variable, indexes);
+        Lock.readLock();
+        try {
+            return ((Group) PcjThread.threadGlobalGroup()).getFutureObject(nodeId, variable, indexes);
+        } finally {
+            Lock.readUnlock();
+        }
     }
 
     public static <T> T get(int nodeId, String variable) {
-        FutureObject<T> futureObject = getFutureObject(nodeId, variable);
-
+        Lock.readLock();
+        FutureObject<T> futureObject;
+        try {
+            futureObject = getFutureObject(nodeId, variable);
+        } finally {
+            Lock.readUnlock();
+        }
         return futureObject.get();
     }
 
     public static <T> T get(int nodeId, String variable, int... indexes) {
-        FutureObject<T> futureObject = getFutureObject(nodeId, variable, indexes);
-
+        Lock.readLock();
+        FutureObject<T> futureObject;
+        try {
+            futureObject = getFutureObject(nodeId, variable, indexes);
+        } finally {
+            Lock.readUnlock();
+        }
         return futureObject.get();
+
     }
 
     /**
@@ -273,10 +351,15 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @param variable name of variable
      * @param newValue new value of variable
      * @throws ClassCastException when the value cannot be cast to the type of
-     * variable in Storage
+     *                            variable in Storage
      */
     public static void putLocal(String variable, Object newValue) throws ClassCastException {
-        PcjThread.threadStorage().put(variable, newValue);
+        Lock.readLock();
+        try {
+            PcjThread.threadStorage().put(variable, newValue);
+        } finally {
+            Lock.readUnlock();
+        }
     }
 
     /**
@@ -284,47 +367,62 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      *
      * @param variable name of array variable
      * @param newValue new value of variable
-     * @param indexes indexes of array
+     * @param indexes  indexes of array
      * @throws ClassCastException when the value cannot be cast to the type of
-     * variable in Storage
+     *                            variable in Storage
      */
     public static void putLocal(String variable, Object newValue, int... indexes) throws ClassCastException {
-        PcjThread.threadStorage().put(variable, newValue, indexes);
+        Lock.readLock();
+        try {
+            PcjThread.threadStorage().put(variable, newValue, indexes);
+        } finally {
+            Lock.readUnlock();
+        }
     }
 
     /**
      * Puts the value to other thread Storage
      *
-     * @param nodeId other node global node id
+     * @param nodeId   other node global node id
      * @param variable name of variable
      * @param newValue new value of variable
      * @throws ClassCastException when the value cannot be cast to the type of
-     * variable in Storage
+     *                            variable in Storage
      */
     public static <T> void put(int nodeId, String variable, T newValue) throws ClassCastException {
-        if (PcjThread.threadStorage().isAssignable(variable, newValue) == false) {
-            throw new ClassCastException("Cannot cast " + newValue.getClass().getCanonicalName()
-                    + " to the type of variable '" + variable + "'");
+        Lock.readLock();
+        try {
+            if (PcjThread.threadStorage().isAssignable(variable, newValue) == false) {
+                throw new ClassCastException("Cannot cast " + newValue.getClass().getCanonicalName()
+                        + " to the type of variable '" + variable + "'");
+            }
+            ((Group) PcjThread.threadGlobalGroup()).put(nodeId, variable, newValue);
+        } finally {
+            Lock.readUnlock();
         }
-        ((Group) PcjThread.threadGlobalGroup()).put(nodeId, variable, newValue);
     }
 
     /**
      * Puts the value to other thread Storage
      *
-     * @param nodeId other node global node id
+     * @param nodeId   other node global node id
      * @param variable name of array variable
      * @param newValue new value of variable
-     * @param indexes indexes of array
+     * @param indexes  indexes of array
      * @throws ClassCastException when the value cannot be cast to the type of
-     * variable in Storage
+     *                            variable in Storage
      */
     public static <T> void put(int nodeId, String variable, T newValue, int... indexes) throws ClassCastException {
-        if (PcjThread.threadStorage().isAssignable(variable, newValue, indexes) == false) {
-            throw new ClassCastException("Cannot cast " + newValue.getClass().getCanonicalName()
-                    + " to the type of variable '" + variable + "'");
+        Lock.readLock();
+        try {
+            if (PcjThread.threadStorage().isAssignable(variable, newValue, indexes) == false) {
+                throw new ClassCastException("Cannot cast " + newValue.getClass().getCanonicalName()
+                        + " to the type of variable '" + variable + "'");
+            }
+            ((Group) PcjThread.threadGlobalGroup()).put(nodeId, variable, newValue, indexes);
+        } finally {
+            Lock.readUnlock();
         }
-        ((Group) PcjThread.threadGlobalGroup()).put(nodeId, variable, newValue, indexes);
     }
 
     /**
@@ -333,14 +431,19 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @param variable name of variable
      * @param newValue new value of variable
      * @throws ClassCastException when the value cannot be cast to the type of
-     * variable in Storage
+     *                            variable in Storage
      */
     public static void broadcast(String variable, Object newValue) throws ClassCastException {
-        if (PcjThread.threadStorage().isAssignable(variable, newValue) == false) {
-            throw new ClassCastException("Cannot cast " + newValue.getClass().getCanonicalName()
-                    + " to the type of variable '" + variable + "'");
+        Lock.readLock();
+        try {
+            if (PcjThread.threadStorage().isAssignable(variable, newValue) == false) {
+                throw new ClassCastException("Cannot cast " + newValue.getClass().getCanonicalName()
+                        + " to the type of variable '" + variable + "'");
+            }
+            ((Group) PcjThread.threadGlobalGroup()).broadcast(variable, newValue);
+        } finally {
+            Lock.readUnlock();
         }
-        ((Group) PcjThread.threadGlobalGroup()).broadcast(variable, newValue);
     }
 
     /**
@@ -349,7 +452,12 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @return the global group
      */
     public static Group getGlobalGroup() {
-        return ((Group) PcjThread.threadGlobalGroup());
+        Lock.readLock();
+        try {
+            return ((Group) PcjThread.threadGlobalGroup());
+        } finally {
+            Lock.readUnlock();
+        }
     }
 
     /**
@@ -359,7 +467,12 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @return group by name
      */
     public static Group getGroup(String name) {
-        return (Group) PcjThread.threadGroup(name);
+        Lock.readLock();
+        try {
+            return (Group) PcjThread.threadGroup(name);
+        } finally {
+            Lock.readUnlock();
+        }
     }
 
     /**
@@ -369,8 +482,13 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @return group to which thread joined
      */
     public static Group join(String name) {
-        int myNodeId = ((Group) PcjThread.threadGlobalGroup()).myId();
-        return (Group) InternalPCJ.join(myNodeId, name);
+        Lock.readLock();
+        try {
+            int myNodeId = ((Group) PcjThread.threadGlobalGroup()).myId();
+            return (Group) InternalPCJ.join(myNodeId, name);
+        } finally {
+            Lock.readUnlock();
+        }
     }
 
     /**
@@ -379,6 +497,11 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @param text text to send
      */
     public static void log(String text) {
-        ((Group) PcjThread.threadGlobalGroup()).log(text);
+        Lock.readLock();
+        try {
+            ((Group) PcjThread.threadGlobalGroup()).log(text);
+        } finally {
+            Lock.readUnlock();
+        }
     }
 }
