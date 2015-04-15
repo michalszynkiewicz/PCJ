@@ -11,8 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import static org.pcj.internal.InternalPCJ.getBarrierHandler;
-import static org.pcj.internal.InternalPCJ.getWaitForHandler;
+import static org.pcj.internal.InternalPCJ.*;
 
 /**
  * Author: Michal Szynkiewicz, michal.l.szynkiewicz@gmail.com
@@ -20,28 +19,31 @@ import static org.pcj.internal.InternalPCJ.getWaitForHandler;
  * Time: 10:43 PM
  */
 public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
-    // mstodo throw exceptoins in places where we're waiting for something to come
     @Override
     public void handleNodeFailure(int failedNodeId) {           // mstodo maybe lock should be at this level?
         List<Integer> failedNodes = new ArrayList<>();
-        System.out.println("\n\n\n\nnode failed\n\n");
+        Lock.writeLock();
+        try {
+            System.out.println("\n\n\n\nnode failed\n\n");
 
-        PCJ.getWorkerData().removePhysicalNode(failedNodeId);
+            getWorkerData().removePhysicalNode(failedNodeId);
 
-        PCJ.getFutureHandler().nodeFailed(failedNodeId);
-        finishBarrierIfInProgress();
+            PCJ.getFutureHandler().nodeFailed(failedNodeId);
+            finishBarrierIfInProgress();
 
-        WorkerData data = InternalPCJ.getWorkerData();
-        mockNodeFinish(data);
-        Set<Integer> physicalNodes = data.getPhysicalNodes().keySet();   // todo: is synchronization needed?
-        int root = InternalPCJ.getWorkerData().getInternalGlobalGroup().getPhysicalMaster();
+            mockNodeFinish(getWorkerData());
+            getWaitForHandler().nodeFailed(failedNodeId);
+        } finally {
+            Lock.writeUnlock();
+        }
+        Set<Integer> physicalNodes = getWorkerData().getPhysicalNodes().keySet();   // todo: is synchronization needed?
+        int root = getWorkerData().getInternalGlobalGroup().getPhysicalMaster();
         for (Integer node : physicalNodes) {
 //            sending to the failed node will fail && there's no point in sending to current node == master
             if (!node.equals(failedNodeId) && node != root) {
                 propagateFailure(failedNodeId, node, failedNodes);  // mstodo handle things gathered in failedNodes
             }
         }
-        getWaitForHandler().nodeFailed(failedNodeId);
     }
 
     private void finishBarrierIfInProgress() {
@@ -63,6 +65,7 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
 
     private void propagateFailure(int failedNodeId, Integer node, List<Integer> failedNodes) {
         try {
+            System.out.println("will send node " +failedNodeId+ "  removed to node: " + node);
             InternalPCJ.getNetworker().sendToPhysicalNode(node, new MessageNodeRemoved(failedNodeId));
         } catch (IOException e) {
             e.printStackTrace();

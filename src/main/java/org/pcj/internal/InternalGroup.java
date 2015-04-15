@@ -3,6 +3,7 @@
  */
 package org.pcj.internal;
 
+import org.pcj.internal.faulttolerance.Lock;
 import org.pcj.internal.message.*;
 import org.pcj.internal.utils.*;
 
@@ -288,20 +289,33 @@ public class InternalGroup {
     }
 
     protected void barrier(int myNodeId) {
-        syncObject.lock();
-        InternalPCJ.getBarrierHandler().setGroupUnderBarrier(groupId);
+        Lock.readLock();
+        boolean unlocked = false;
         try {
-            localSync.set(myNodeId);
-            if (localSync.isSet(localSyncMask)) {
-                InternalPCJ.getNetworker().send(getPhysicalMaster(), syncMessage);
-                localSync.clear();
+            syncObject.lock();
+            InternalPCJ.getBarrierHandler().setGroupUnderBarrier(groupId);
+            try {
+                localSync.set(myNodeId);
+                if (localSync.isSet(localSyncMask)) {
+                    try {
+                        InternalPCJ.getNetworker().send(getPhysicalMaster(), syncMessage);
+                    } catch (IOException e) {
+                        throw new RuntimeException("Node 0 failed!");
+                    }
+                    localSync.clear();
+                }
+                Lock.readUnlock();
+                unlocked = true;
+                syncObject.await();
+            } catch (InterruptedException ex) {
+                throw new RuntimeException(ex);
             }
-            syncObject.await();
-        } catch (InterruptedException | IOException ex) {
-            throw new RuntimeException(ex);
+            InternalPCJ.getBarrierHandler().resetBarrier();
+        } finally {
+            if (!unlocked) {
+                syncObject.unlock();
+            }
         }
-        InternalPCJ.getBarrierHandler().resetBarrier();
-        syncObject.unlock();
     }
 
     /**
@@ -310,7 +324,7 @@ public class InternalGroup {
      *
      * @param nodeId group node id
      */
-    protected void barrier(int myNodeId, int nodeId) { // mstodo fault tolerance
+    protected void barrier(int myNodeId, int nodeId) { // mstodo fault tolerance  !!
         // FIXME: trzeba sprawdzić jak to będzie działać w pętli.
 //        if (true) {
 //            sync(myNodeId, new int[]{nodeId});

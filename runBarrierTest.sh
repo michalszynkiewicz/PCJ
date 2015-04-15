@@ -11,6 +11,9 @@ HOSTS=("192.168.0.104" "192.168.0.105")
 if (( $# > 0 )); then
     echo "will build"
     gradle build
+    if (( $? != 0 )); then
+        exit 0
+    fi
 fi
 
 cp build/libs/${LIB_BINARY} build/tmp/dist

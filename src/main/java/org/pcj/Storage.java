@@ -4,6 +4,7 @@
 package org.pcj;
 
 import org.pcj.internal.WaitForHandler;
+import org.pcj.internal.faulttolerance.Lock;
 
 import java.io.Serializable;
 import java.lang.reflect.Array;
@@ -248,20 +249,30 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
     @Override
     final public void waitFor(String variable, int count) {
         final Field field = getField(variable);
-        synchronized (field) {
-            int v;
-            waitForHandler.add(field);
-            while ((v = monitorFields.get(variable)) < count) {
-                try {
-                    field.wait();
-                } catch (InterruptedException ex) {
-                    ex.printStackTrace(System.err);
-                }
-                waitForHandler.throwOnNodeFailure();
+        Lock.readLock();
+        boolean locked = true;
+        try {
+            synchronized (field) {
+                int v;
+                waitForHandler.add(field);
+                while ((v = monitorFields.get(variable)) < count) {
+                    Lock.readUnlock();
+                    locked = false;
+                    try {
+                        field.wait();
+                    } catch (InterruptedException ex) {
+                        ex.printStackTrace(System.err);
+                    }
+                    waitForHandler.throwOnNodeFailure();
 
+                }
+                waitForHandler.remove(field);
+                monitorFields.put(variable, v - count);
             }
-            waitForHandler.remove(field);
-            monitorFields.put(variable, v - count);
+        } finally {
+            if (locked) {
+                Lock.readUnlock();
+            }
         }
     }
 }

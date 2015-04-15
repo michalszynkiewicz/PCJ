@@ -12,6 +12,7 @@ import org.pcj.internal.utils.Configuration;
 import org.pcj.internal.utils.NodesFile;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * Main PCJ class with static methods.
@@ -152,14 +153,7 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @return global node id
      */
     public static int myId() {
-        Lock.readLock();
-        try {
-            return ((Group) PcjThread.threadGlobalGroup()).myId();
-        } finally
-
-        {
-            Lock.readUnlock();
-        }
+        return ((Group) PcjThread.threadGlobalGroup()).myId();
     }
 
     /**
@@ -194,17 +188,12 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * Synchronizes all nodes used in calculations.
      */
     public static void barrier() {
-        Lock.readLock();
-        try {
-            ((Group) PcjThread.threadGlobalGroup()).barrier();
-        } finally {
-            Lock.readUnlock();
-        }
+        ((Group) PcjThread.threadGlobalGroup()).barrier();
     }
 
     public static void barrier(int node) {
         Lock.readLock();
-        try {
+        try {                      // mstodo move out lock
             ((Group) PcjThread.threadGlobalGroup()).barrier(node);
         } finally {
             Lock.readUnlock();
@@ -234,12 +223,7 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @param variable name of variable
      */
     public static void waitFor(String variable) {
-        Lock.readLock();
-        try {
-            PcjThread.threadStorage().waitFor(variable);
-        } finally {
-            Lock.readUnlock();
-        }
+        PcjThread.threadStorage().waitFor(variable);
     }
 
     /**
@@ -503,5 +487,10 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
         } finally {
             Lock.readUnlock();
         }
+    }
+
+    public static List<Long> getFailedThreadIds() {
+        // mstodo
+        return null;
     }
 }

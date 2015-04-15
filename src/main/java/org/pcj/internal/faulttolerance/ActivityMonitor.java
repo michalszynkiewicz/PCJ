@@ -44,13 +44,23 @@ public class ActivityMonitor implements Runnable {
     @Override
     public void run() {
         while (true) {
-            Set<Integer> physicalNodes = getWorkerData().getPhysicalNodes().keySet();
-            for (Integer nodeId : physicalNodes) {
-                if (nodeId != 0) {
-                    if (isTimedOut(nodeId)
-                            || !sendPing(nodeId)) {
-                        handleNodeFailure(nodeId);
+            Lock.readLock();
+            boolean locked = true;
+            try {
+                Set<Integer> physicalNodes = getWorkerData().getPhysicalNodes().keySet();
+                for (Integer nodeId : physicalNodes) {
+                    if (nodeId != 0) {
+                        if (isTimedOut(nodeId)
+                                || !sendPing(nodeId)) {
+                            Lock.readUnlock();
+                            locked = false;
+                            handleNodeFailure(nodeId);
+                        }
                     }
+                }
+            } finally {
+                if (locked) {
+                    Lock.readUnlock();
                 }
             }
             if (!sleep()) break;

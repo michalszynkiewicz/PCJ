@@ -5,6 +5,7 @@ package org.pcj.internal;
 
 import org.pcj.FutureObject;
 import org.pcj.internal.faulttolerance.FaultTolerancePolicy;
+import org.pcj.internal.faulttolerance.Lock;
 import org.pcj.internal.message.*;
 import org.pcj.internal.network.LoopbackSocketChannel;
 import org.pcj.internal.network.SocketData;
@@ -137,113 +138,131 @@ public class Worker implements Runnable {
                 System.err.println("" + this.data.physicalId + " recv " + message.getType() + " from " + message.getSocket().getRemoteAddress());
             }
         }
-        switch (message.getType()) {
-            case UNKNOWN:
-                break;
-            case ABORT:
-                break;
-            case LOG:
-                log((MessageLog) message);
-                break;
-            case HELLO:
-                hello((MessageHello) message);
-                break;
-            case HELLO_RESPONSE:
-                helloResponse((MessageHelloResponse) message);
-                break;
-            case HELLO_INFORM:
-                helloInform((MessageHelloInform) message);
-                break;
-            case HELLO_BONJOUR:
-                helloBonjour((MessageHelloBonjour) message);
-                break;
-            case HELLO_COMPLETED:
-                helloCompleted();
-                break;
-            case HELLO_GO:
-                helloGo((MessageHelloGo) message);
-                break;
-            case FINISHED:
-                finished((MessageFinished) message);
-                break;
-            case FINISH_COMPLETED:
-                finishCompleted((MessageFinishCompleted) message);
-                break;
-            case SYNC_WAIT:
-                syncWait((MessageSyncWait) message);
-                break;
-            case SYNC_GO:
-                syncGo((MessageSyncGo) message);
-                break;
-            case NODES_SYNC_WAIT:
-                nodesSyncWait((MessageNodesSyncWait) message);
-                break;
-            case NODES_SYNC_GO:
-                nodesSyncGo((MessageNodesSyncGo) message);
-                break;
-            case NODE_SYNC:
-                nodeSync((MessageNodeSync) message);
-                break;
-            case GROUP_JOIN_QUERY:
-                groupJoinQuery((MessageGroupJoinQuery) message);
-                break;
-            case GROUP_JOIN_ANSWER:
-                groupJoinAnswer((MessageGroupJoinAnswer) message);
-                break;
-            case GROUP_JOIN_REQUEST:
-                groupJoinRequest((MessageGroupJoinRequest) message);
-                break;
-            case GROUP_JOIN_RESPONSE:
-                groupJoinResponse((MessageGroupJoinResponse) message);
-                break;
-            case GROUP_JOIN_INFORM:
-                groupJoinInform((MessageGroupJoinInform) message);
-                break;
-            case GROUP_JOIN_BONJOUR:
-                groupJoinBonjour((MessageGroupJoinBonjour) message);
-                break;
-            case VALUE_ASYNC_GET_REQUEST:
-                valueAsyncGetRequest((MessageValueAsyncGetRequest) message);
-                break;
-            case VALUE_ASYNC_GET_REQUEST_INDEXES:
-                valueAsyncGetRequestIndexes((MessageValueAsyncGetRequestIndexes) message);
-                break;
-            case VALUE_ASYNC_GET_RESPONSE:
-                valueAsyncGetResponse((MessageValueAsyncGetResponse) message);
-                break;
-            case VALUE_PUT:
-                valuePut((MessageValuePut) message);
-                break;
-            case VALUE_PUT_INDEXES:
-                valuePutIndexes((MessageValuePutIndexes) message);
-                break;
-            case VALUE_BROADCAST:
-                valueBroadcast((MessageValueBroadcast) message);
-                break;
-            case PING:
-                ping((MessagePing) message);
-                break;
-            case PONG:
-                pong((MessagePong) message);
-                break;
-            case NODE_FAILED:
-                nodeFailed((MessageNodeFailed) message);
-                break;
-            case NODE_REMOVED:
-                nodeRemoved((MessageNodeRemoved) message);
-                break;
-            default:
-                throw new AssertionError(message.getType().name());
+        Lock.readLock();
+        boolean locked = true;
+        try {
+            switch (message.getType()) {
+                case UNKNOWN:
+                    break;
+                case ABORT:
+                    break;
+                case LOG:
+                    log((MessageLog) message);
+                    break;
+                case HELLO:
+                    hello((MessageHello) message);
+                    break;
+                case HELLO_RESPONSE:
+                    helloResponse((MessageHelloResponse) message);
+                    break;
+                case HELLO_INFORM:
+                    helloInform((MessageHelloInform) message);
+                    break;
+                case HELLO_BONJOUR:
+                    helloBonjour((MessageHelloBonjour) message);
+                    break;
+                case HELLO_COMPLETED:
+                    helloCompleted();
+                    break;
+                case HELLO_GO:
+                    helloGo((MessageHelloGo) message);
+                    break;
+                case FINISHED:
+                    finished((MessageFinished) message);
+                    break;
+                case FINISH_COMPLETED:
+                    finishCompleted((MessageFinishCompleted) message);
+                    break;
+                case SYNC_WAIT:
+                    syncWait((MessageSyncWait) message);
+                    break;
+                case SYNC_GO:
+                    syncGo((MessageSyncGo) message);
+                    break;
+                case NODES_SYNC_WAIT:
+                    nodesSyncWait((MessageNodesSyncWait) message);
+                    break;
+                case NODES_SYNC_GO:
+                    nodesSyncGo((MessageNodesSyncGo) message);
+                    break;
+                case NODE_SYNC:
+                    nodeSync((MessageNodeSync) message);
+                    break;
+                case GROUP_JOIN_QUERY:
+                    groupJoinQuery((MessageGroupJoinQuery) message);
+                    break;
+                case GROUP_JOIN_ANSWER:
+                    groupJoinAnswer((MessageGroupJoinAnswer) message);
+                    break;
+                case GROUP_JOIN_REQUEST:
+                    groupJoinRequest((MessageGroupJoinRequest) message);
+                    break;
+                case GROUP_JOIN_RESPONSE:
+                    groupJoinResponse((MessageGroupJoinResponse) message);
+                    break;
+                case GROUP_JOIN_INFORM:
+                    groupJoinInform((MessageGroupJoinInform) message);
+                    break;
+                case GROUP_JOIN_BONJOUR:
+                    groupJoinBonjour((MessageGroupJoinBonjour) message);
+                    break;
+                case VALUE_ASYNC_GET_REQUEST:
+                    valueAsyncGetRequest((MessageValueAsyncGetRequest) message);
+                    break;
+                case VALUE_ASYNC_GET_REQUEST_INDEXES:
+                    valueAsyncGetRequestIndexes((MessageValueAsyncGetRequestIndexes) message);
+                    break;
+                case VALUE_ASYNC_GET_RESPONSE:
+                    valueAsyncGetResponse((MessageValueAsyncGetResponse) message);
+                    break;
+                case VALUE_PUT:
+                    valuePut((MessageValuePut) message);
+                    break;
+                case VALUE_PUT_INDEXES:
+                    valuePutIndexes((MessageValuePutIndexes) message);
+                    break;
+                case VALUE_BROADCAST:
+                    valueBroadcast((MessageValueBroadcast) message);
+                    break;
+                case PING:
+                    ping((MessagePing) message);
+                    break;
+                case PONG:
+                    pong((MessagePong) message);
+                    break;
+                case NODE_FAILED:
+                    Lock.readUnlock();
+                    locked = false;
+                    nodeFailed((MessageNodeFailed) message);
+                    break;
+                case NODE_REMOVED:
+                    Lock.readUnlock();
+                    locked = false;
+                    nodeRemoved((MessageNodeRemoved) message);
+                    break;
+                default:
+                    throw new AssertionError(message.getType().name());
+            }
+        } finally {
+            if (locked) {
+                Lock.readUnlock();
+            }
         }
     }
 
     private void nodeRemoved(MessageNodeRemoved message) {
-        int failedNodeId = message.getFailedNodePhysicalId();
-        data.removePhysicalNode(failedNodeId);
+        Lock.writeLock();
         try {
-            barrierHandler.finishBarrierIfInFinished();
-        } catch (IOException e) {
-            e.printStackTrace(); // mstodo can we do sth with it?
+            int failedNodeId = message.getFailedNodePhysicalId();
+            System.out.println("GOT NODE REMOVED: " + failedNodeId);
+            data.removePhysicalNode(failedNodeId);
+            try {
+                barrierHandler.finishBarrierIfInFinished();
+            } catch (IOException e) {
+                e.printStackTrace(); // mstodo can we do sth with it?
+            }
+        } finally {
+            Lock.writeUnlock();
         }
     }
 
