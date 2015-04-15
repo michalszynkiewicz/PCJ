@@ -54,9 +54,12 @@ In first case each task has to call \inlinecode{barrier} method.
 Fields that should be put into shared address space have to be annotated in \inlinecode{@Shared} annotation.
 Aformentioned fields are accessible from other threads via following methods:
 \begin{itemize}
-\item\inlinecode{get()}
+\item\inlinecode{get(threadId, variableName)}, \inlinecode{getFutureObject(threadId, variableName)} - read the value of given variable
+in a synchronous and asynchronous fashion
+\item\inlinecode{put(threadId, variableName, value)} - asynchronously update variable value on given node.
+\item\inlinecode{broadcast(variableName, value)} - asynchronously update variable value on all nodes.
 \end{itemize}
-
+\inlinecode{waitFor(variableName)} and \inlinecode{monitor(variableName)} can be used to lock the current thread until other thread updates given variable on this node.
 
 
 
@@ -89,6 +92,7 @@ Aformentioned fields are accessible from other threads via following methods:
 %The state is restored from resilient storage, but since the storage is asynchronous, it might contain old data.
 
 \section{API}
+The main concern for the API changes provided by the implementation is not to break
 
 \subsection{Impact on API}
 
