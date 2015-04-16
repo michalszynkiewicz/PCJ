@@ -205,7 +205,7 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      *
      * @param variable name of variable
      */
-    public static void monitor(String variable) {
+    public static void monitor(String variable) {  // mstodo move the lock out
         Lock.readLock();
         try {
             PcjThread.threadStorage().monitor(variable);
@@ -234,12 +234,7 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @param count    number of <i>touches</i>
      */
     public static void waitFor(String variable, int count) {
-        Lock.readLock();
-        try {
-            PcjThread.threadStorage().waitFor(variable, count);
-        } finally {
-            Lock.readUnlock();
-        }
+        PcjThread.threadStorage().waitFor(variable, count);
     }
 
     /**

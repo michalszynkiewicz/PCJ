@@ -4,7 +4,6 @@
 package org.pcj;
 
 import org.pcj.internal.WaitForHandler;
-import org.pcj.internal.faulttolerance.Lock;
 
 import java.io.Serializable;
 import java.lang.reflect.Array;
@@ -109,7 +108,7 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
      * Storage
      *
      * @param variable name of variable stored in Storage
-     * @param value to check
+     * @param value    to check
      * @return true if the value can be assigned to the
      * variable
      */
@@ -127,15 +126,13 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
      * Returns variable from Storages
      *
      * @param variable name of Shared variable
-     * @param indexes (optional) indexes into the array
-     *
+     * @param indexes  (optional) indexes into the array
      * @return value of variable[indexes] or variable if
      * indexes omitted
-     *
-     * @throws ClassCastException there is more indexes than
-     * variable dimension
+     * @throws ClassCastException             there is more indexes than
+     *                                        variable dimension
      * @throws ArrayIndexOutOfBoundsException one of indexes
-     * is out of bound
+     *                                        is out of bound
      */
     @Override
     @SuppressWarnings("unchecked")
@@ -168,13 +165,12 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
      *
      * @param variable name of Shared variable
      * @param newValue new value of variable
-     * @param indexes (optional) indexes into the array
-     *
-     * @throws ClassCastException there is more indexes than
-     * variable dimension or value cannot be assigned to the
-     * variable
+     * @param indexes  (optional) indexes into the array
+     * @throws ClassCastException             there is more indexes than
+     *                                        variable dimension or value cannot be assigned to the
+     *                                        variable
      * @throws ArrayIndexOutOfBoundsException one of indexes
-     * is out of bound
+     *                                        is out of bound
      */
     @Override
     final public void put(String variable, Object newValue, int... indexes) throws ArrayIndexOutOfBoundsException, ClassCastException {
@@ -249,30 +245,20 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
     @Override
     final public void waitFor(String variable, int count) {
         final Field field = getField(variable);
-        Lock.readLock();
-        boolean locked = true;
-        try {
-            synchronized (field) {
-                int v;
-                waitForHandler.add(field);
-                while ((v = monitorFields.get(variable)) < count) {
-                    Lock.readUnlock();
-                    locked = false;
-                    try {
-                        field.wait();
-                    } catch (InterruptedException ex) {
-                        ex.printStackTrace(System.err);
-                    }
-                    waitForHandler.throwOnNodeFailure();
-
+        synchronized (field) {
+            int v;
+            waitForHandler.add(field);
+            while ((v = monitorFields.get(variable)) < count) {
+                try {
+                    field.wait();
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace(System.err);
                 }
-                waitForHandler.remove(field);
-                monitorFields.put(variable, v - count);
+                waitForHandler.throwOnNodeFailure();
+
             }
-        } finally {
-            if (locked) {
-                Lock.readUnlock();
-            }
+            waitForHandler.remove(field);
+            monitorFields.put(variable, v - count);
         }
     }
 }
