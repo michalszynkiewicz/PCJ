@@ -37,13 +37,15 @@ The changes introduce \emph{Ignore failure} fault tolerance policy.
 This is a minimum-overhead, no-checkpoint strategy.
 
 For programs that do not require results from all nodes to finish, like Monte Carlo randomized algorithms, the strategy is enough to finish calculations properly.
-For others, the strategy provides a useful base on which the programmer may build a dedicated solution (e.g. replaying failed nodes work on other node).
-
+For other programs, the strategy provides a useful base on which the programmer may build a dedicated solution (e.g. replaying failed nodes work on other node).
 
 
 \section{PCJ library}
-PCJ library is an implementation of PGAS model.
-The smallest unit of computation is called a \emph{thread}. Each \emph{thread} has its own local address space and shared address space.
+PCJ library is a Java implementation of PGAS model.
+It is fast, lightweight and it ships as a single jar.
+
+
+The smallest unit of computation in PCJ is called a \emph{thread}. Each \emph{thread} has its own local address space and shared address space.
 The owner thread accesses local and global address spaces variables as usual Java fields.
 Following is a description of PCJ features. For more details please see \cite{pcj-manual}.
 \subsection{Synchronization}
@@ -61,13 +63,19 @@ in a synchronous and asynchronous fashion
 \end{itemize}
 \inlinecode{waitFor(variableName)} and \inlinecode{monitor(variableName)} can be used to lock the current thread until other thread updates given variable on this node.
 
-\section{Related work}  - czy to dobry tytuł?
+\section{Related work}
+As argued in \cite{shmem}, failures are becoming a norm in todays supercomputing systems.
+Hence, recently more and more parallel computing libraries start to provide fault tolerance features.
 
+TODO: Resilient X10
 
-TODO!!
-% mstodo co piszą inni teraz
+Authors of \cite{shmem} propose a checkpoint/restart fault tolerance policy for OpenSHMEM.
+In the suggested model \inlinecode{shmem\_checkpoint\_all()} method is introduced.
+Call to \inlinecode{shmem\_checkpoint\_all()} will result in copying all of its shared (symmetric) data to another node.
+The method needs to be called on all nodes.
+Then, in case of a failure, the failed nodes can be restarted and job of all nodes can be started from the latest checkpoint.
+The power of this solution comes with the cost of all nodes synchronization on every checkpoint.
 
-% mstodo move to the bottom, describe current solution?
 %\section{Concepts}
 %Currently we assume that there is a special node, namely \textit{node 0}, that never dies.
 %We plan to provide two fault tolerance strategies: ignoring node failure and respawning failed threads.
@@ -140,14 +148,20 @@ Depending on the type of selected strategy there are two...
 Leslie Lamport, Dave Cunningham, Dave Grove, Ben Herta, Arun Iyengar, Kiyokuni Kawachiya, Hiroki Murata, Vijay Saraswat, Mikio Takeuchi, Olivier Tardieu
 \emph{Resilient X10. Efficient failure-aware programming},
 19th ACM SIGPLAN Symposium on Principles and Practice of Parallel Programming, Orlando, Florida, 2014, Lecture
+
 \bibitem{pcj}
 Marek Nowicki, Piotr Bała
 \emph{PCJ - New Approach for Parallel Computations in Java}
 Applied Parallel and Scientific Computing, 11th International Conference, PARA 2012, Helsinki, Finland, June 10-13, 2012, Revised Selected Papers
 % mstodo how to cite it properly?
+
 \bibitem{pcj-manual}
 Marek Nowicki, Piotr Bała
 \emph{PCJ. Parallel Computing in Java}, 2013, [Online]. Available: \url{http://pcj.icm.edu.pl/c/document_library/get_file?uuid=e8b5a416-644d-43d0-a19c-74e14555ef96&groupId=43801} [2015, April 14]
+
+\bibitem{shmem}
+Pengfei Hao, Pavel Shamis, Manjunath Gorentla Venkata, Swaroop Pophale, Aaron Welch, Stephen Poole, Barbara Chapman, \emph{Fault Tolerance for OpenSHMEM}, PGAS/OUG14
+Available: \url{http://nic.uoregon.edu/pgas14/oug_submissions/oug2014_submission_12.pdf} [2015, April 17.]
 
 \end{thebibliography}
 
