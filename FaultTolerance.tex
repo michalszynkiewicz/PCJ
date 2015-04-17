@@ -22,7 +22,7 @@
 
 Nowadays, distributed computations are often run on large amounts of nodes for a significant amount of time.
 Having a 24 hour long computation on 1000 nodes means almost 3 years of computations.
-As calculated in \cite{rx10}, with 6 month mean time between failures, it gives less than 1\% chance of success.
+As calculated in \cite{RX10}, with 6 month mean time between failures, it gives less than 1\% chance of success.
 
 PCJ library is a high-performance parallel computing library for Java implementing PGAS model.
 
@@ -67,15 +67,23 @@ in a synchronous and asynchronous fashion
 As argued in \cite{shmem}, failures are becoming a norm in todays supercomputing systems.
 Hence, recently more and more parallel computing libraries start to provide fault tolerance features.
 
-TODO: Resilient X10
-
-Authors of \cite{shmem} propose a checkpoint/restart fault tolerance policy for OpenSHMEM.
+Authors of \cite{shmem} propose a checkpoint/restart fault tolerance policy for OpenSHMEM - PGAS library with C and FORTRAN APIs.
 In the suggested model \inlinecode{shmem\_checkpoint\_all()} method is introduced.
 Call to \inlinecode{shmem\_checkpoint\_all()} will result in copying all of its shared (symmetric) data to another node.
 The method needs to be called on all nodes.
 Then, in case of a failure, the failed nodes can be restarted and job of all nodes can be started from the latest checkpoint.
-The power of this solution comes with the cost of all nodes synchronization on every checkpoint.
+The power of this solution comes with the cost of synchronization of all nodes on every checkpoint.
 
+\cite{RX10} describes a fault tolerance policy for X10 language, asynchronous PGAS (APGAS) implementation.
+Language after changes is called Resilient X10.
+Resilient X10 introduces resilient storage that allows access to nodes data even if the node has failed
+and enables programmer to handle failures by throwing DeadPlaceException when node fails.
+
+
+
+\section{Fault tolerance}
+TODO: Always alive node0 - why is it ok - gathering results + arguments from \cite{shmem}
+TODO: outline of algorithm
 %\section{Concepts}
 %Currently we assume that there is a special node, namely \textit{node 0}, that never dies.
 %We plan to provide two fault tolerance strategies: ignoring node failure and respawning failed threads.
@@ -103,16 +111,16 @@ The power of this solution comes with the cost of all nodes synchronization on e
 %As in previous strategy, threads are recreated on active nodes.
 %The state is restored from resilient storage, but since the storage is asynchronous, it might contain old data.
 
-\section{API}
+\subsection{API}
 The main concern for the API changes provided by the implementation is not to break
 
-\subsection{Impact on API}
+\subsubsection{Impact on API}
 
-\section{Node failure handling implementation}
+\subsection{Node failure handling implementation}
 
 The main elements of implementation are: monitoring nodes for failure and adjusting configuration after node failure.
 
-\subsection{Node monitoring}
+\subsubsection{Node monitoring}
 Monitoring works in two ways::
 \begin{itemize}
 \item The immortal \textit{node 0} is monitoring other nodes by sending PING message and waiting for PONG.
@@ -131,23 +139,23 @@ If \textit{node A} encounters a communication error when trying to communicate w
   \label{pinging}
 \end{figure}
 
-\subsection{Reconfiguration}
+\subsubsection{Reconfiguration}
 On node failure \textit{node 0} sends a proper reconfiguration message to all nodes.
 Depending on the type of selected strategy there are two...
 
-\section{Performance overhead}
+\subsection{Performance overhead}
 
-\section{Future plans}
+\section{Future work}
 \subsection{Resilient storage implementation}
 
 \section{Conclusion}
 
 \begin{thebibliography}{1}
 
-\bibitem{rx10}
+\bibitem{RX10}
 Leslie Lamport, Dave Cunningham, Dave Grove, Ben Herta, Arun Iyengar, Kiyokuni Kawachiya, Hiroki Murata, Vijay Saraswat, Mikio Takeuchi, Olivier Tardieu
 \emph{Resilient X10. Efficient failure-aware programming},
-19th ACM SIGPLAN Symposium on Principles and Practice of Parallel Programming, Orlando, Florida, 2014, Lecture
+PPoPP '14 Proceedings of the 19th ACM SIGPLAN symposium on Principles and practice of parallel programming
 
 \bibitem{pcj}
 Marek Nowicki, Piotr Bała
