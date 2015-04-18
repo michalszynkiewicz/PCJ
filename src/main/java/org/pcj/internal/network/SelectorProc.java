@@ -3,24 +3,17 @@
  */
 package org.pcj.internal.network;
 
+import org.pcj.internal.Worker;
+import org.pcj.internal.utils.Configuration;
+
 import java.io.IOException;
 import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.channels.SelectableChannel;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
+import java.nio.channels.*;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import org.pcj.internal.Worker;
-import org.pcj.internal.utils.Configuration;
 
 /**
  * Main Runnable class for process all incoming data from
@@ -108,11 +101,11 @@ public class SelectorProc implements Runnable {
     @Override
     public void run() {
         int ready;
-        for (;;) {
+        for (; ; ) {
             try {
                 for (ChangeRequest changeRequest = interestChanges.poll();
-                        changeRequest != null;
-                        changeRequest = interestChanges.poll()) {
+                    changeRequest != null;
+                    changeRequest = interestChanges.poll()) {
                     switch (changeRequest.getType()) {
                         case CHANGEOPS:
                             SelectionKey key = changeRequest.getSocket().keyFor(selector);

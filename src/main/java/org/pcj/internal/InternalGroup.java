@@ -297,6 +297,8 @@ public class InternalGroup {
             try {
                 localSync.set(myNodeId);
                 if (localSync.isSet(localSyncMask)) {
+                    Lock.readUnlock();
+                    unlocked = true;
                     try {
                         InternalPCJ.getNetworker().send(getPhysicalMaster(), syncMessage);
                     } catch (IOException e) {
@@ -304,16 +306,19 @@ public class InternalGroup {
                     }
                     localSync.clear();
                 }
-                Lock.readUnlock();
-                unlocked = true;
+                if (!unlocked) {
+                    Lock.readUnlock();
+                    unlocked = true;
+                }
                 syncObject.await();
             } catch (InterruptedException ex) {
                 throw new RuntimeException(ex);
             }
             InternalPCJ.getBarrierHandler().resetBarrier();
+            syncObject.unlock();
         } finally {
             if (!unlocked) {
-                syncObject.unlock();
+                Lock.readUnlock();
             }
         }
     }

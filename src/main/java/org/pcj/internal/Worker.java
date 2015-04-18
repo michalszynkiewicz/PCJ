@@ -11,8 +11,6 @@ import org.pcj.internal.network.LoopbackSocketChannel;
 import org.pcj.internal.network.SocketData;
 import org.pcj.internal.utils.*;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -280,7 +278,7 @@ public class Worker implements Runnable {
         try {
             networker.send(message.getSocket(), pong);
         } catch (IOException e) {
-            e.printStackTrace(); // mstodo: can we do sth with it?
+            System.err.println("Exception in sending pong message. Computation might have been finished");
         }
     }
 
@@ -538,36 +536,28 @@ public class Worker implements Runnable {
     private void finished(MessageFinished message) throws IOException {
         data.physicalNodesCount--;
         System.out.println("GOT MESSAGE FINISHED for node: " + data.getPhysicalId(message.getSocket()) + " . NODES LEFT: " + data.physicalNodesCount);
-        if (data.physicalNodesCount == 0) {        // mstodo is not enough! the other node doesn't react on this msg.
+        if (data.physicalNodesCount == 0) {
             System.out.println("NO PHYSICAL NODES LEFT, WILL STOP");
             InternalGroup globalGroup = data.internalGlobalGroup;
 
             MessageFinishCompleted reply = new MessageFinishCompleted();
             reply.setInReplyTo(message.getMessageId());
             networker.send(globalGroup, reply);
+            System.out.println("SENT FINISH COMPLETE");
         }
     }
 
     private void finishCompleted(MessageFinishCompleted message) {
-        File f = new File("/tmp/pcj-log.txt");
-        try {
-            f.createNewFile();
-            FileWriter writer = new FileWriter(f);
-            writer.append("got message finished\n");
 
-            writer.flush();
         InternalGroup globalGroup = data.internalGlobalGroup;
         broadcast(globalGroup, message);
-
-            writer.append("after broadcast\n"); writer.flush();
-        synchronized (data.finishObject) {
-            writer.append("in synchronized\n"); writer.flush();
-            data.finishObject.notifyAll();
+        try {
+            Thread.sleep(2000l);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
-            writer.append("after synchronized\n"); writer.flush();
-            writer.close();
-        } catch (Exception ignored) {
-
+        synchronized (data.finishObject) {
+            data.finishObject.notifyAll();
         }
     }
 

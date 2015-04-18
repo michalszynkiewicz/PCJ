@@ -12,16 +12,32 @@ import java.lang.management.ManagementFactory;
 public class BarrierTest extends Storage implements StartPoint {
     @Override
     public void main() throws Throwable {
-        if (PCJ.myId() != 0) {
+//         warmup
+        for (int i = 0; i < 1000; i++) {
+            PCJ.barrier();
+        }
+        long time = System.nanoTime();
+        if (PCJ.myId() == 0) {
+            System.out.println("START");
             PCJ.log("will sleep");
             Thread.sleep(8000l);
             PCJ.log("woken up");
         } else {
             PCJ.log("won't sleep");
         }
-        PCJ.barrier();
-        PCJ.log(ManagementFactory.getRuntimeMXBean().getName());
-        PCJ.log("my thread number: " + PCJ.myId());
+        for (int i = 0; i < 100; i++) {
+            PCJ.barrier();
+        }
+//        PCJ.log(ManagementFactory.getRuntimeMXBean().getName());
+//        PCJ.log("my thread number: " + PCJ.myId());
+        if (PCJ.myId() == 0) {
+            long nanos = System.nanoTime() - time;
+            long millis = nanos/(1000*1000);
+            long secs = millis/1000;
+            millis -= secs*1000;
+            nanos -= millis * 1000*1000;
+            System.out.println("WORKING TIME: " + secs + "." + millis + "." + nanos + "ns");
+        }
     }
 
     public static void main(String[] args) {

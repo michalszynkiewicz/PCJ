@@ -22,6 +22,7 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
     @Override
     public void handleNodeFailure(int failedNodeId) {           // mstodo maybe lock should be at this level?
         List<Integer> failedNodes = new ArrayList<>();
+        System.out.println("NODE FAILED!!! will handle node failure!");
         Lock.writeLock();
         try {
             System.out.println("\n\n\n\nnode failed\n\n");
