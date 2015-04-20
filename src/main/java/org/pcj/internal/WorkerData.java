@@ -4,6 +4,7 @@
 package org.pcj.internal;
 
 import org.pcj.internal.faulttolerance.ActivityMonitor;
+import org.pcj.internal.faulttolerance.BroadcastCache;
 import org.pcj.internal.faulttolerance.IgnoreFaultTolerancePolicy;
 import org.pcj.internal.message.MessageHello;
 import org.pcj.internal.network.LoopbackSocketChannel;
@@ -56,6 +57,7 @@ public final class WorkerData {
     final Object finishObject;
 
     final ActivityMonitor activityMonitor;
+    final BroadcastCache broadcastCache;
 
     // mstodo reconfigure global group on node failure
     public WorkerData(int[] localIds, ConcurrentMap<Integer, PcjThreadLocalData> localData, InternalGroup globalGroup) {
@@ -107,7 +109,8 @@ public final class WorkerData {
         attachmentMap = new ConcurrentHashMap<>();
 
         finishObject = new Object();
-        activityMonitor = new ActivityMonitor(new IgnoreFaultTolerancePolicy()); // mstodo
+        activityMonitor = new ActivityMonitor(new IgnoreFaultTolerancePolicy()); // mstodo customization
+        broadcastCache = new BroadcastCache();
     }
 
     void addGroup(InternalGroup group) {
@@ -125,8 +128,7 @@ public final class WorkerData {
 
     public void removePhysicalNode(int physicalNodeId) {
         // total physical nodes count is decreased elsewhere - via MessageFinished
-        System.out.println(" REMOVING PHYSICAL NODE: " + physicalNodeId);
-        megaLock();
+//        System.out.println(" REMOVING PHYSICAL NODE: " + physicalNodeId);
         SocketChannel socketChannel = physicalNodes.get(physicalNodeId);
 
         physicalNodes.remove(physicalNodeId);
@@ -146,16 +148,8 @@ public final class WorkerData {
         for (InternalGroup group : internalGroupsById.values()) {
             group.removePhysicalNode(physicalNodeId, virtualNodesToRemove);
         }
-        megaUnlock();
     }
 
-    private void megaUnlock() {
-        // mstodo
-    }
-
-    private void megaLock() {
-        // mstodo
-    }
 
     public Map<Integer, SocketChannel> getPhysicalNodes() {
         return physicalNodes;

@@ -4,6 +4,7 @@
 package org.pcj.internal;
 
 import org.pcj.internal.faulttolerance.NodeFailedException;
+import org.pcj.internal.message.BroadcastedMessage;
 import org.pcj.internal.message.Message;
 import org.pcj.internal.network.LoopbackSocketChannel;
 import org.pcj.internal.network.MessageOutputStream;
@@ -150,6 +151,12 @@ public class Networker {        // mstodo: access rights!
         try {
             ByteBuffer mbuf = null;
 
+            if (message instanceof BroadcastedMessage) {
+                // LogUtils.log(InternalPCJ.getWorkerData().physicalId,
+//                        "adding message to broadcast cache [" + message.getType() + "]: " + message.getMessageId());
+                workerData.broadcastCache.add((BroadcastedMessage) message);
+            }
+
             if (left != null) {
                 if (left instanceof LoopbackSocketChannel) {
                     worker.enqueueMessage(left, message);
@@ -176,7 +183,7 @@ public class Networker {        // mstodo: access rights!
 //                }
 //            }
         } catch (IOException ex) {
-            throw new RuntimeException(ex);
+            throw new NodeFailedException(ex);
         }
     }
 

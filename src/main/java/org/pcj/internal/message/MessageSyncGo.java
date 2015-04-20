@@ -3,14 +3,14 @@
  */
 package org.pcj.internal.message;
 
-import org.pcj.internal.network.MessageOutputStream;
 import org.pcj.internal.network.MessageInputStream;
+import org.pcj.internal.network.MessageOutputStream;
 
 /**
  * @see MessageTypes#SYNC_GO
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
-final public class MessageSyncGo extends Message {
+final public class MessageSyncGo extends BroadcastedMessage {
 
     private int groupId;
 

@@ -25,24 +25,31 @@ public class BarrierHandler {
         this.groupId = null;
     }
 
-    public void finishBarrierIfInFinished() throws IOException {
-        System.out.print("[barrier] marking complete... ");
+    public void finishBarrierIfInProgress(int failedNodeId) throws IOException {
+//        LogUtils.setEnabled(true);
+//        LogUtils.log("[barrier] marking complete... ");
         if (groupId != null) {
-            System.out.print("in progress for groupId: " + groupId);
+//            LogUtils.log("in progress for groupId: " + groupId);
             InternalGroup group = getWorkerData().internalGroupsById.get(groupId);
             final BitMask physicalSync = group.getPhysicalSync();
             synchronized (physicalSync) {
-                if (physicalSync.isSet()) {
-                    physicalSync.clear();
+                if (!physicalSync.isSet(failedNodeId)) {
+                    physicalSync.set(failedNodeId);
+                    if (physicalSync.isSet()) {
+//                        LogUtils.log(getWorkerData().physicalId, "Barrier to finish");
+                        physicalSync.clear();
 
-                    MessageSyncGo msg = new MessageSyncGo();
-                    msg.setGroupId(groupId);
-                    getNetworker().send(group, msg);
+                        MessageSyncGo msg = new MessageSyncGo();
+                        msg.setGroupId(groupId);
+                        getNetworker().send(group, msg);
+//                        LogUtils.log(getWorkerData().physicalId, "sent sync go");
+//                    } else {
+//                        LogUtils.log(getWorkerData().physicalId, "Barrier not finished yet, bitmask: " + physicalSync.toString());
+                    }
                 }
             }
-            System.out.println("DONE");
         } else {
-            System.out.println("UNNECESSARY");
+            // LogUtils.log("UNNECESSARY");
         }
     }
 
@@ -51,14 +58,15 @@ public class BarrierHandler {
         final BitMask physicalSync = group.getPhysicalSync();
         synchronized (physicalSync) {
             if (group.physicalSync(physicalId)) {
-                System.out.println("BARRIER FINISHED");
                 physicalSync.clear();
 
                 MessageSyncGo msg = new MessageSyncGo();
                 msg.setGroupId(groupId);
+
                 getNetworker().send(group, msg);
+                // LogUtils.log("BARRIER FINISHED - bitmask: " + physicalSync);
             } else {
-                System.out.println("BARRIER NOT FINISHED - bitmask: " +  physicalSync);
+                // LogUtils.log("BARRIER NOT FINISHED - bitmask: " + physicalSync);
             }
         }
     }

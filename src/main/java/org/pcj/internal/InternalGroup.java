@@ -173,6 +173,10 @@ public class InternalGroup {
 
     boolean physicalSync(int physicalId) {
         int position = physicalIds.indexOf(physicalId);
+        // LogUtils.log(0, "barrier for: " + physicalId);
+//        if (physicalSync.isSet(position)) {
+//            LogUtils.log("PHYSICAL SYNC ALREADY SET FOR POSITION: " + position);
+//        }
         physicalSync.set(position);
         return physicalSync.isSet();
     }
@@ -202,7 +206,7 @@ public class InternalGroup {
         this.physicalCommunication.setParent(physicalParent);
     }
 
-    Integer getPhysicalLeft() {
+    public Integer getPhysicalLeft() {
         List<Integer> children = physicalCommunication.getChildren();
         if (children.size() < 1) {
             return null;
@@ -219,7 +223,7 @@ public class InternalGroup {
         }
     }
 
-    Integer getPhysicalRight() {
+    public Integer getPhysicalRight() {
         List<Integer> children = physicalCommunication.getChildren();
         if (children.size() < 2) {
             return null;
@@ -289,18 +293,24 @@ public class InternalGroup {
     }
 
     protected void barrier(int myNodeId) {
+//        LogUtils.log(myNodeId, "barrier] will do"); // todo virtual node in log
         Lock.readLock();
         boolean unlocked = false;
+//        LogUtils.log(myNodeId, "barrier] lock"); // todo virtual node in log
+
         try {
             syncObject.lock();
             InternalPCJ.getBarrierHandler().setGroupUnderBarrier(groupId);
             try {
                 localSync.set(myNodeId);
+                LogUtils.log(myNodeId, "barrier] set localSync");
                 if (localSync.isSet(localSyncMask)) {
+                    // LogUtils.log(myNodeId, "barrier] localSync is set");
                     Lock.readUnlock();
                     unlocked = true;
                     try {
-                        InternalPCJ.getNetworker().send(getPhysicalMaster(), syncMessage);
+                        // LogUtils.log(myNodeId, "barrier] sending syncMessage");
+                        InternalPCJ.getNetworker().send(getPhysicalMaster(), syncMessage); // goes to node 0 for "normal" barrier
                     } catch (IOException e) {
                         throw new RuntimeException("Node 0 failed!");
                     }
@@ -310,6 +320,7 @@ public class InternalGroup {
                     Lock.readUnlock();
                     unlocked = true;
                 }
+                // LogUtils.log(myNodeId, "barrier] will await");
                 syncObject.await();
             } catch (InterruptedException ex) {
                 throw new RuntimeException(ex);
@@ -474,4 +485,13 @@ public class InternalGroup {
         }
     }
 
+    public void updateCommunicationTree(Integer left, Integer right) {
+        if (left != null) {
+            setPhysicalLeft(left);
+        }
+        if (right != null) {
+            setPhysicalRight(right);
+        }
+    }
 }
+

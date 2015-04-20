@@ -435,7 +435,8 @@ public enum MessageTypes {
         MessageNodeFailed createMessage() {
             return new MessageNodeFailed();
         }
-    }, NODE_REMOVED(64) {
+    },
+    NODE_REMOVED(64) {
         MessageNodeRemoved createMessage() {
             return new MessageNodeRemoved();
         }

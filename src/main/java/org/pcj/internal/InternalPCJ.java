@@ -39,6 +39,7 @@ public abstract class InternalPCJ {
     private static SocketChannel node0Socket;
     private static Networker networker;
     private static WorkerData workerData;
+    private static Node0Data node0Data;
     private static BarrierHandler barrierHandler;
     private static WaitForHandler waitForHandler;
     private static FutureHandler futureHandler;
@@ -202,6 +203,7 @@ public abstract class InternalPCJ {
         if (isNode0) {
             System.err.println("Starting " + startPoint.getName() + " with " + clientsCount + " thread(s)...");
             workerData.activityMonitor.start();
+            node0Data = new Node0Data(getWorkerData().getPhysicalNodes().size());
         }
 
         try {
@@ -433,5 +435,9 @@ public abstract class InternalPCJ {
      */
     protected static PrintStream getStderr() {
         return stderr;
+    }
+
+    public static Node0Data getNode0Data() {
+        return node0Data;
     }
 }

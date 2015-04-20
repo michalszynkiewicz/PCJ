@@ -6,6 +6,7 @@ package org.pcj.internal;
 import org.pcj.FutureObject;
 import org.pcj.internal.faulttolerance.FaultTolerancePolicy;
 import org.pcj.internal.faulttolerance.Lock;
+import org.pcj.internal.faulttolerance.NodeFailedException;
 import org.pcj.internal.message.*;
 import org.pcj.internal.network.LoopbackSocketChannel;
 import org.pcj.internal.network.SocketData;
@@ -25,11 +26,13 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static org.pcj.internal.InternalPCJ.getWaitForHandler;
+
 /**
  * This class processes incoming messages.
- * 
+ * <p>
  * At present this class can be used only in sequential manner.
- * 
+ *
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
 public class Worker implements Runnable {
@@ -92,9 +95,9 @@ public class Worker implements Runnable {
     @Override
     public void run() {
         try {
-            for (;;) {
+            for (; ; ) {
                 try {
-                    for (;;) {
+                    for (; ; ) {
                         processMessage(requestQueue.take());
                     }
                 } catch (IOException ex) {
@@ -117,12 +120,12 @@ public class Worker implements Runnable {
 
         SocketChannel left = null;
         if (leftChildrenIndex != null) {
-            left = data.physicalNodes.get(group.getPhysicalLeft());
+            left = data.physicalNodes.get(leftChildrenIndex);
         }
 
         SocketChannel right = null;
         if (rightChildrenIndex != null) {
-            right = data.physicalNodes.get(group.getPhysicalRight());
+            right = data.physicalNodes.get(rightChildrenIndex);
         }
 
         networker.broadcast(left, right, message);
@@ -136,8 +139,14 @@ public class Worker implements Runnable {
                 System.err.println("" + this.data.physicalId + " recv " + message.getType() + " from " + message.getSocket().getRemoteAddress());
             }
         }
-        Lock.readLock();
+        if (handleReplayEvent(message)) {
+            return;
+        }
         boolean locked = true;
+//        if (Lock.isWriteLocked()) {
+            // LogUtils.log(data.physicalId, "!!!will wait for write lock!!!");
+//        }
+        Lock.readLock();
         try {
             switch (message.getType()) {
                 case UNKNOWN:
@@ -248,19 +257,67 @@ public class Worker implements Runnable {
         }
     }
 
+    private boolean handleReplayEvent(Message message) {
+        if (message instanceof BroadcastedMessage) {
+            // LogUtils.log(data.physicalId, ".");
+            BroadcastedMessage broadcastedMessage = (BroadcastedMessage) message;
+            if (data.broadcastCache.isProcessed(broadcastedMessage)) {
+               // LogUtils.setEnabled(true);
+                // LogUtils.log(data.physicalId, "Will replay event: " + message.getType() + ", msgId=" + message.getMessageId());
+                broadcast(broadcastedMessage);
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void nodeRemoved(MessageNodeRemoved message) {
+//        LogUtils.setEnabled(true);
+        // LogUtils.log("[" + data.physicalId + "] in node removed");
         Lock.writeLock();
+        // LogUtils.log("[" + data.physicalId + "] after lock ");
         try {
             int failedNodeId = message.getFailedNodePhysicalId();
-            System.out.println("GOT NODE REMOVED: " + failedNodeId);
+            // LogUtils.log(data.physicalId, "GOT NODE REMOVED: " + failedNodeId);
+//            try {
+//                barrierHandler.finishBarrierIfInProgress(failedNodeId);
+//            } catch (IOException e) {
+//                e.printStackTrace(); // mstodo can we do sth with it?
+//            }
             data.removePhysicalNode(failedNodeId);
-            try {
-                barrierHandler.finishBarrierIfInFinished();
-            } catch (IOException e) {
-                e.printStackTrace(); // mstodo can we do sth with it?
+            getWaitForHandler().nodeFailed(failedNodeId);
+
+            if (data.physicalId == message.getNewCommunicationNode()) {
+//                LogUtils.setEnabled(true);
+                // LogUtils.log(data.physicalId, "############will attach " + message.getNewCommunicationLeft() + ", " +
+//                        message.getNewCommunicationRight());
+                data.internalGlobalGroup.updateCommunicationTree(message.getNewCommunicationLeft(),
+                        message.getNewCommunicationRight());
+                // LogUtils.log(data.physicalId, "attached");
+                replayBroadcast();
             }
         } finally {
             Lock.writeUnlock();
+        }
+    }
+
+    private void replayBroadcast() {
+        List<BroadcastedMessage> list = data.broadcastCache.getList();
+//        LogUtils.setEnabled(true);
+        // LogUtils.log(data.physicalId, "replaying events after prev parent failure. ");
+        for (BroadcastedMessage message : list) {
+            // LogUtils.log(data.physicalId, "event[" + message.getType() + "] : " + message.getMessageId());
+            broadcast(message);
+        }
+    }
+
+    private void broadcast(BroadcastedMessage message) {
+        InternalGroup group = data.internalGroupsById.get(message.getGroupId());
+        try {
+            broadcast(group, message);
+        } catch (NodeFailedException nfe) {
+            nfe.printStackTrace();
+            // do nothing, the message will be replayed when the node failure is handled
         }
     }
 
@@ -535,15 +592,15 @@ public class Worker implements Runnable {
      */
     private void finished(MessageFinished message) throws IOException {
         data.physicalNodesCount--;
-        System.out.println("GOT MESSAGE FINISHED for node: " + data.getPhysicalId(message.getSocket()) + " . NODES LEFT: " + data.physicalNodesCount);
+//        System.out.println("GOT MESSAGE FINISHED for node: " + data.getPhysicalId(message.getSocket()) + " . NODES LEFT: " + data.physicalNodesCount);
         if (data.physicalNodesCount == 0) {
-            System.out.println("NO PHYSICAL NODES LEFT, WILL STOP");
+//            System.out.println("NO PHYSICAL NODES LEFT, WILL STOP");
             InternalGroup globalGroup = data.internalGlobalGroup;
 
             MessageFinishCompleted reply = new MessageFinishCompleted();
             reply.setInReplyTo(message.getMessageId());
             networker.send(globalGroup, reply);
-            System.out.println("SENT FINISH COMPLETE");
+//            System.out.println("SENT FINISH COMPLETE");
         }
     }
 
@@ -573,8 +630,10 @@ public class Worker implements Runnable {
      * @see MessageTypes#SYNC_GO
      */
     private void syncGo(MessageSyncGo message) {
+        // LogUtils.log(data.physicalId, "JKIAgot sync go with id: " + message.getMessageId());
         InternalGroup group = data.internalGroupsById.get(message.getGroupId());
-        broadcast(group, message);
+        broadcast(message);
+        // LogUtils.log(getWorkerData().physicalId, "JKIAbroadcast sent");
 
         WaitObject sync = group.getSyncObject();
         sync.signalAll();
@@ -816,26 +875,28 @@ public class Worker implements Runnable {
     }
 
     private void nodesSyncGo(MessageNodesSyncGo message) {
-        int[] nodes = message.getNodesGlobalIds();
-        NodesSyncData nsd = new NodesSyncData(nodes);
-        nsd = data.nodesSyncData.remove(nsd);
-
-        List<Integer> physicalIds = nsd.getPhysicalIds();
-        int physicalIndex = physicalIds.indexOf(data.physicalId);
-
-        SocketChannel left = null;
-        SocketChannel right = null;
-        if (physicalIndex * 2 + 1 < physicalIds.size()) {
-            left = data.physicalNodes.get(physicalIds.get(physicalIndex * 2 + 1));
-
-            if (physicalIndex * 2 + 2 < physicalIds.size()) {
-                right = data.physicalNodes.get(physicalIds.get(physicalIndex * 2 + 2));
-            }
-        }
-
-        networker.broadcast(left, right, message);
-
-        nsd.getSyncObject().signalAll();
+        throw new IllegalStateException("This method should not be used");
+//
+//        int[] nodes = message.getNodesGlobalIds();
+//        NodesSyncData nsd = new NodesSyncData(nodes);
+//        nsd = data.nodesSyncData.remove(nsd);
+//
+//        List<Integer> physicalIds = nsd.getPhysicalIds();
+//        int physicalIndex = physicalIds.indexOf(data.physicalId);
+//
+//        SocketChannel left = null;
+//        SocketChannel right = null;
+//        if (physicalIndex * 2 + 1 < physicalIds.size()) {
+//            left = data.physicalNodes.get(physicalIds.get(physicalIndex * 2 + 1));
+//
+//            if (physicalIndex * 2 + 2 < physicalIds.size()) {
+//                right = data.physicalNodes.get(physicalIds.get(physicalIndex * 2 + 2));
+//            }
+//        }
+//
+//        networker.broadcast(left, right, message);
+//
+//        nsd.getSyncObject().signalAll();
     }
 
     /**
@@ -895,7 +956,7 @@ public class Worker implements Runnable {
         Deserializer deserializer = data.localData.get(message.getReceiverGlobalNodeId()).getDeserializer();
         deserializer.deserialize(message.getVariableValue(), attachment);
         if (attachment instanceof FutureObject) {
-            InternalPCJ.getFutureHandler().unregisterFutureObject((FutureObject)attachment);
+            InternalPCJ.getFutureHandler().unregisterFutureObject((FutureObject) attachment);
         }
     }
 
@@ -920,7 +981,7 @@ public class Worker implements Runnable {
      */
     private void valueBroadcast(MessageValueBroadcast message) {
         InternalGroup group = data.internalGroupsById.get(message.getGroupId());
-        broadcast(group, message);
+        broadcast(message);
 
         for (int id : group.getLocalIds()) {
             int nodeId = group.getNode(id);

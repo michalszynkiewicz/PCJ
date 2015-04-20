@@ -2,12 +2,14 @@ package org.pcj.internal.faulttolerance;
 
 import org.pcj.PCJ;
 import org.pcj.internal.InternalPCJ;
+import org.pcj.internal.Node0Data;
 import org.pcj.internal.WorkerData;
 import org.pcj.internal.message.MessageFinished;
 import org.pcj.internal.message.MessageNodeRemoved;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -19,37 +21,52 @@ import static org.pcj.internal.InternalPCJ.*;
  * Time: 10:43 PM
  */
 public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
+
+    private Set<Integer> failedNodes = new HashSet<>();
+
     @Override
     public void handleNodeFailure(int failedNodeId) {           // mstodo maybe lock should be at this level?
-        List<Integer> failedNodes = new ArrayList<>();
-        System.out.println("NODE FAILED!!! will handle node failure!");
+//        LogUtils.setEnabled(true);
+//        System.out.println("NODE REMOVED");
+        if (failedNodes.contains(failedNodeId)) {
+            return;
+        }
+        failedNodes.add(failedNodeId);
+//        System.out.print("LOCK...");
         Lock.writeLock();
+        Node0Data.CommunicationReplacement replacement;
         try {
-            System.out.println("\n\n\n\nnode failed\n\n");
+            replacement = InternalPCJ.getNode0Data().remove(failedNodeId);
+//            System.out.print("\tACQUIRED...");
+            finishBarrierIfInProgress(failedNodeId);
 
             getWorkerData().removePhysicalNode(failedNodeId);
 
             PCJ.getFutureHandler().nodeFailed(failedNodeId);
-            finishBarrierIfInProgress();
 
             mockNodeFinish(getWorkerData());
             getWaitForHandler().nodeFailed(failedNodeId);
         } finally {
             Lock.writeUnlock();
         }
+
+//        System.out.println("\tRELEASED");
+
         Set<Integer> physicalNodes = getWorkerData().getPhysicalNodes().keySet();   // todo: is synchronization needed?
-        int root = getWorkerData().getInternalGlobalGroup().getPhysicalMaster();
+        int root = 0;
+        List<Integer> failedNodes = new ArrayList<>();
+
         for (Integer node : physicalNodes) {
 //            sending to the failed node will fail && there's no point in sending to current node == master
             if (!node.equals(failedNodeId) && node != root) {
-                propagateFailure(failedNodeId, node, failedNodes);  // mstodo handle things gathered in failedNodes
+                propagateFailure(failedNodeId, node, failedNodes, replacement);  // mstodo handle things gathered in failedNodes
             }
         }
     }
 
-    private void finishBarrierIfInProgress() {
+    private void finishBarrierIfInProgress(int failedNodeId) {
         try {
-            getBarrierHandler().finishBarrierIfInFinished();
+            getBarrierHandler().finishBarrierIfInProgress(failedNodeId);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -57,20 +74,25 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
 
     private void mockNodeFinish(WorkerData data) { // mstodo replace with invoking local method!!!
         try {
-            System.out.println("WILL SEND MESSAGE FINISHED BECAUSE OF NODE FAILURE");
             InternalPCJ.getNetworker().send(data.getInternalGlobalGroup(), new MessageFinished());
         } catch (IOException e) {
             e.printStackTrace(); // mstodo
         }
     }
 
-    private void propagateFailure(int failedNodeId, Integer node, List<Integer> failedNodes) {
+    private void propagateFailure(int failedNodeId, Integer node, List<Integer> failedNodes, Node0Data.CommunicationReplacement replacement) {
         try {
-            System.out.println("will send node " +failedNodeId+ "  removed to node: " + node);
-            InternalPCJ.getNetworker().sendToPhysicalNode(node, new MessageNodeRemoved(failedNodeId));
+            MessageNodeRemoved message = new MessageNodeRemoved(failedNodeId);
+            if (replacement.doesReplace()) {
+                message.setNewCommunicationNode(replacement.parent);
+                message.setNewCommunicationLeft(replacement.newLeftChild);
+                message.setNewCommunicationRight(replacement.newRightChild);
+            }
+            InternalPCJ.getNetworker().sendToPhysicalNode(node, message);
         } catch (IOException e) {
             e.printStackTrace();
             failedNodes.add(failedNodeId);
         }
     }
+
 }

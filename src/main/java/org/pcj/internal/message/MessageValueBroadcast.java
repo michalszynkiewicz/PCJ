@@ -3,14 +3,14 @@
  */
 package org.pcj.internal.message;
 
-import org.pcj.internal.network.MessageOutputStream;
 import org.pcj.internal.network.MessageInputStream;
+import org.pcj.internal.network.MessageOutputStream;
 
 /**
  * @see MessageTypes#VALUE_BROADCAST
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
-final public class MessageValueBroadcast extends Message {
+final public class MessageValueBroadcast extends BroadcastedMessage {
 
     private int groupId;
     private String variableName;

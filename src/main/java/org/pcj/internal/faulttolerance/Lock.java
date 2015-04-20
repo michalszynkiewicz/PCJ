@@ -1,5 +1,6 @@
 package org.pcj.internal.faulttolerance;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -10,10 +11,10 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class Lock {
     private static final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
-//    static ThreadLocal<Integer> localLockCount;
-//    static ThreadLocal<Integer> localWriteLockCount = new ThreadLocal<>();
-//    static AtomicInteger lockCount = new AtomicInteger(0);
-//    static AtomicInteger writeLockCount = new AtomicInteger(0);
+    static ThreadLocal<Integer> localLockCount;
+    static ThreadLocal<Integer> localWriteLockCount = new ThreadLocal<>();
+    static AtomicInteger lockCount = new AtomicInteger(0);
+    static AtomicInteger writeLockCount = new AtomicInteger(0);
 
     public static void readLock() {
 //        System.out.print("will read lock...\t");
@@ -22,8 +23,12 @@ public class Lock {
 //        localWriteLockCount.set(localCount);
 //        System.out.println("DONE. read lock count:" + lockCount.incrementAndGet() +
 //                " this thread read lock count: " + localCount);
-//
+
 //        Thread.dumpStack();
+    }
+
+    public static boolean isWriteLocked() {
+        return readWriteLock.isWriteLocked();
     }
 
     public static void readUnlock() {
