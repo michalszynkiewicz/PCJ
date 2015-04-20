@@ -44,9 +44,12 @@ For other programs, the strategy provides a useful base on which the programmer 
 PCJ library is a Java implementation of PGAS model.
 It is fast, lightweight and it ships as a single jar.
 
-
 The smallest unit of computation in PCJ is called a \emph{thread}. Each \emph{thread} has its own local address space and shared address space.
 The owner thread accesses local and global address spaces variables as usual Java fields.
+
+Multiple \emph{threads} may be run on one physical machine, within a single Java Virtual Machine (JVM).
+A \emph{thread} or group of \emph{threads} run on a single JVM are called a \emph{node}.
+
 Following is a description of PCJ features. For more details please see \cite{pcj-manual}.
 \subsection{Synchronization}
 Threads synchronization in PCJ is realized by \inlinecode{barrier}.
@@ -55,12 +58,17 @@ In first case each task has to call \inlinecode{barrier} method.
 \subsection{Shared memory}
 Fields that should be put into shared address space have to be annotated in \inlinecode{@Shared} annotation.
 Aformentioned fields are accessible from other threads via following methods:
+\vspace{-2mm}
 \begin{itemize}
 \item\inlinecode{get(threadId, variableName)}, \inlinecode{getFutureObject(threadId, variableName)} - read the value of given variable
 in a synchronous and asynchronous fashion
-\item\inlinecode{put(threadId, variableName, value)} - asynchronously update variable value on given node.
-\item\inlinecode{broadcast(variableName, value)} - asynchronously update variable value on all nodes.
+\item\inlinecode{put(threadId, variableName, value)} - asynchronously update variable value in given thread.
+\item\inlinecode{broadcast(variableName, value)}\label{broadcast} - asynchronously update variable value in all threadsWhat makes \inlinecode{broadcast} fast is the fact that it does not update the variable value one by one,.
+   What makes \inlinecode{broadcast} fast is the fact that it does not update the variable value one by one.
+   Underlying communication is organized in a balanced binary tree which means that the update will reach each node in at most \emph{O(log n)}, where \emph{n} is number of nodes.
+
 \end{itemize}
+
 \inlinecode{waitFor(variableName)} and \inlinecode{monitor(variableName)} can be used to lock the current thread until other thread updates given variable on this node.
 
 \section{Related work}
@@ -82,12 +90,73 @@ and enables programmer to handle failures by throwing DeadPlaceException when no
 TODO: maybe a few words about things from "Fault Tolerance for Remote Memory Access Programming Models"
 
 \section{Fault tolerance}
-TODO: Always alive node0 - why is it ok - gathering results + arguments from \cite{shmem}
-TODO: outline of algorithm
-%\section{Concepts}
-%Currently we assume that there is a special node, namely \textit{node 0}, that never dies.
-%We plan to provide two fault tolerance strategies: ignoring node failure and respawning failed threads.
-%  \\
+PCJ library distinguishes one of the nodes - the node which is responsible for configuring the computation.
+I will call the distinguished node \emph{node 0}.
+Described solution assumes that \emph{node 0} never dies.
+Although this makes the solution not entirely fault tolerant, it is a common practice to do it.
+\emph{node 0} is the place where typically results are gathered.
+Hence if the computation would continue after its failure, it would require additional work to find where the results were stored.
+Moreover the probability of \emph{node 0} failure is much smaller than the probability of failure of one of all nodes.
+
+The solution consists of two parts: monitoring and reconfiguring of nodes and tries to minimize changes in the API.
+
+\subsection{API}
+The main concern for the API changes provided by the implementation is not to break currently implemented programs.
+
+Most of the changes are transparent for the programmer.
+
+In order to let programmer check which threads failed, \inlinecode{getFailedNodes()} method have been introduced.
+
+The implementation introduces \inlinecode{NodeFailedException}, which is thrown by methods which cannot finish properly because of node failure.
+The fact that it is a runtime exception makes programs written in non-fault-tolerant versions of PCJ runnable also on this version.
+
+Methods that might throw \inlinecode{NodeFailedException} are:
+\vspace{-2mm}
+\begin{itemize}
+\item \inlinecode{get}/\inlinecode{getFutureObject} - when it tries to access data from a failed node.
+In case of \inlinecode{get} the exception is thrown right away.
+In case of \inlinecode{getFutureObject} the exception might be thrown right away or when program tries to read the result of future object.
+\item \inlinecode{waitFor} - on any node failure. \inlinecode{waitFor} is used to wait for an update of a variable. PCJ does not have any information which node should update the variable.
+ In order to let the program work - the exception is thrown.
+ The programmer may then check via \inlinecode{getFailedNodes()} if the node that should update the variable is still alive and invoke \inlinecode{waitFor} again. % mstodo code snippet
+\item \inlinecode{put} - on attempt to update a variable on a node that failed
+\end{itemize}
+
+
+\subsection{Implementation}
+
+The main elements of implementation are: monitoring nodes for failure and adjusting configuration after node failure.
+
+\subsubsection{Node monitoring}
+The immortal \emph{node 0} is monitoring other nodes by sending PING message and waiting for PONG.
+If, for some node, sending PING fails, or the node does not answer with PONG for a long (configurable) time,
+it is assumed failed. Please see Fig. \ref{pinging} \nameref{pinging}.
+
+\begin{figure}
+  \centering
+      \includegraphics[width=0.5\textwidth]{node-monitoring.eps}
+  \caption{Node monitoring}
+  \label{pinging}
+\end{figure}
+
+\subsubsection{Reconfiguration}
+Let's denote the failed node \emph{node k}.
+When \emph{node 0} discovers that \emph{node k} failed it does the following things:
+\begin{enumerate}
+\item removes the failed node from configuration - not to try to send any data to it
+\item if there is a barrier in progress - removes the node from the barrier.
+If it is the last node the barrier is waiting for - the barrier is finished and its finish is propagated to other nodes   % mstodo diagram
+\item the communication tree is updated. If, in the communication tree, \emph{node k} has two children: \emph{node i} and \emph{node j},
+  they are reattached to another node that is still active. This is realized in a following manner: first, \emph{node 0} find a leaf in a communication tree.
+  Then \emph{node i} and \emph{node j} are attached to the leaf as its children.
+                      %mstodo three pics how it's done
+\end{enumerate}
+
+
+\subsection{Performance overhead}
+
+\section{Future work}
+
 %Moreover we plan to provide a resilient storage to make it possible to restore thread state from a snapshot.
 %Resilient storage will have two modes: synchronous and asynchronous.
 %Synchronous mode will allow programs to recover from the latest position achieved by the failed thread.
@@ -98,7 +167,7 @@ TODO: outline of algorithm
 %\section{Example use cases of strategies}
 %Following are examples of possible usages of fault tolerance strategies described in this paper.
 %\subsection{Ignore failure}
-%The failed node is ignored, all of its' data is lost.
+%The failed node is ignored, all of its data is lost.
 %Might be used for instance for monte carlo randomized algorithms, e.g. monte carlo Pi approxmiation.
 %\subsection{Respawn node with synchronous resilient storage}
 %The most powerful strategy. Upon failure of physical node all the threads running on it are recreated on other nodes.
@@ -111,41 +180,6 @@ TODO: outline of algorithm
 %As in previous strategy, threads are recreated on active nodes.
 %The state is restored from resilient storage, but since the storage is asynchronous, it might contain old data.
 
-\subsection{API}
-The main concern for the API changes provided by the implementation is not to break
-
-\subsubsection{Impact on API}
-
-\subsection{Node failure handling implementation}
-
-The main elements of implementation are: monitoring nodes for failure and adjusting configuration after node failure.
-
-\subsubsection{Node monitoring}
-Monitoring works in two ways::
-\begin{itemize}
-\item The immortal \textit{node 0} is monitoring other nodes by sending PING message and waiting for PONG.
-If, for some node, sending PING fails, or the node does not answer with PONG for a long (configurable) time,
-it is assumed failed. Please see Fig. \ref{pinging} \nameref{pinging}.
-\item
-If \textit{node A} encounters a communication error when trying to communicate with \textit{node B}
-(e.g. if updating a variable value on \textit{node B} fails), \textit{node A} informs \textit{node 0} that \textit{node B} has failed.
-
-\end{itemize}
-
-\begin{figure}
-  \centering
-      \includegraphics[width=0.5\textwidth]{node-monitoring.eps}
-  \caption{Node monitoring}
-  \label{pinging}
-\end{figure}
-
-\subsubsection{Reconfiguration}
-On node failure \textit{node 0} sends a proper reconfiguration message to all nodes.
-Depending on the type of selected strategy there are two...
-
-\subsection{Performance overhead}
-
-\section{Future work}
 \subsection{Resilient storage implementation}
 
 \section{Conclusion}

@@ -4,6 +4,7 @@
 package org.pcj.internal;
 
 import org.pcj.internal.faulttolerance.Lock;
+import org.pcj.internal.faulttolerance.NodeFailedException;
 import org.pcj.internal.message.*;
 import org.pcj.internal.utils.*;
 
@@ -402,7 +403,7 @@ public class InternalGroup {
             return futureObject;
         } catch (IOException ex) {
             // mstodo: catch exception and assume nodeId is failed!
-            throw new RuntimeException(ex);
+            throw new NodeFailedException(ex);
         }
     }
 
@@ -426,7 +427,7 @@ public class InternalGroup {
         try {
             InternalPCJ.getNetworker().send(nodeId, msg);
         } catch (IOException ex) {
-            throw new RuntimeException(ex);
+            throw new NodeFailedException(ex);
         }
     }
 
@@ -439,7 +440,7 @@ public class InternalGroup {
         try {
             InternalPCJ.getNetworker().send(this, msg);
         } catch (IOException ex) {
-            throw new RuntimeException(ex);
+            throw new NodeFailedException(ex);
         }
     }
 
@@ -452,7 +453,7 @@ public class InternalGroup {
         try {
             InternalPCJ.getNetworker().send(InternalPCJ.getNode0Socket(), msg);
         } catch (final IOException ex) {
-            throw new RuntimeException(ex);
+            throw new NodeFailedException(ex);
         }
 
     }
