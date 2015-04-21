@@ -45,16 +45,22 @@ PCJ library is a Java implementation of PGAS model.
 It is fast, lightweight and it ships as a single jar.
 
 The smallest unit of computation in PCJ is called a \emph{thread}. Each \emph{thread} has its own local address space and shared address space.
-The owner thread accesses local and global address spaces variables as usual Java fields.
+The owner \emph{thread} accesses local and global address spaces variables as usual Java fields.
 
 Multiple \emph{threads} may be run on one physical machine, within a single Java Virtual Machine (JVM).
 A \emph{thread} or group of \emph{threads} run on a single JVM are called a \emph{node}.
 
+PCJ distinguishes one node, namely \emph{node 0}. This is the start node for all computations.
+
 Following is a description of PCJ features. For more details please see \cite{pcj-manual}.
-\subsection{Synchronization}
+\subsection{Synchronization}\label{sync}
 Threads synchronization in PCJ is realized by \inlinecode{barrier}.
 Barrier can be made either across all threads or two threads.
 In first case each task has to call \inlinecode{barrier} method.
+Barrier is managed by \emph{node 0} and realized in two steps.
+First, each node on which all threads have called \inlinecode{barrier} informs \emph{node 0} that it has reached \inlinecode{barrier} and starts waiting.
+When \emph{node 0} gathers barrier confirmations from all nodes, it releases the barrier by broadcasting a specific message to all nodes.
+Broadcasting is realized in an efficient way described later.
 \subsection{Shared memory}
 Fields that should be put into shared address space have to be annotated in \inlinecode{@Shared} annotation.
 Aformentioned fields are accessible from other threads via following methods:
@@ -63,9 +69,10 @@ Aformentioned fields are accessible from other threads via following methods:
 \item\inlinecode{get(threadId, variableName)}, \inlinecode{getFutureObject(threadId, variableName)} - read the value of given variable
 in a synchronous and asynchronous fashion
 \item\inlinecode{put(threadId, variableName, value)} - asynchronously update variable value in given thread.
-\item\inlinecode{broadcast(variableName, value)}\label{broadcast} - asynchronously update variable value in all threadsWhat makes \inlinecode{broadcast} fast is the fact that it does not update the variable value one by one,.
+\item\inlinecode{broadcast(variableName, value)} - asynchronously update variable value in all threadsWhat makes \inlinecode{broadcast} fast is the fact that it does not update the variable value one by one,.
    What makes \inlinecode{broadcast} fast is the fact that it does not update the variable value one by one.
    Underlying communication is organized in a balanced binary tree which means that the update will reach each node in at most \emph{O(log n)}, where \emph{n} is number of nodes.
+   This is also the way that barrier finish message is broadcasted.
 
 \end{itemize}
 
@@ -90,15 +97,11 @@ and enables programmer to handle failures by throwing DeadPlaceException when no
 TODO: maybe a few words about things from "Fault Tolerance for Remote Memory Access Programming Models"
 
 \section{Fault tolerance}
-PCJ library distinguishes one of the nodes - the node which is responsible for configuring the computation.
-I will call the distinguished node \emph{node 0}.
 Described solution assumes that \emph{node 0} never dies.
 Although this makes the solution not entirely fault tolerant, it is a common practice to do it.
 \emph{node 0} is the place where typically results are gathered.
 Hence if the computation would continue after its failure, it would require additional work to find where the results were stored.
 Moreover the probability of \emph{node 0} failure is much smaller than the probability of failure of one of all nodes.
-
-The solution consists of two parts: monitoring and reconfiguring of nodes and tries to minimize changes in the API.
 
 \subsection{API}
 The main concern for the API changes provided by the implementation is not to break currently implemented programs.
@@ -125,7 +128,7 @@ In case of \inlinecode{getFutureObject} the exception might be thrown right away
 
 \subsection{Implementation}
 
-The main elements of implementation are: monitoring nodes for failure and adjusting configuration after node failure.
+The main elements of implementation are: monitoring nodes for failure, adjusting configuration after node failure and replaing the messages that might have been lost.
 
 \subsubsection{Node monitoring}
 The immortal \emph{node 0} is monitoring other nodes by sending PING message and waiting for PONG.
@@ -145,13 +148,28 @@ When \emph{node 0} discovers that \emph{node k} failed it does the following thi
 \begin{enumerate}
 \item removes the failed node from configuration - not to try to send any data to it
 \item if there is a barrier in progress - removes the node from the barrier.
-If it is the last node the barrier is waiting for - the barrier is finished and its finish is propagated to other nodes   % mstodo diagram
+If it is the last node the barrier is waiting for - the barrier is finished and its finish is propagated to other nodes. A more detailed description of barrier   % mstodo diagram
 \item the communication tree is updated. If, in the communication tree, \emph{node k} has two children: \emph{node i} and \emph{node j},
-  they are reattached to another node that is still active. This is realized in a following manner: first, \emph{node 0} find a leaf in a communication tree.
+  they are reattached to another node that is still active. This is realized in a following manner: first, \emph{node 0} finds a leaf in a communication tree.
   Then \emph{node i} and \emph{node j} are attached to the leaf as its children.
                       %mstodo three pics how it's done
 \end{enumerate}
 
+\subsubsection{Replaying communication}
+Node failure can cause loss of underlying communication.
+
+Let's take a look at \inlinecode{barrier}.
+As described in \ref{sync}, when barrier is reached by all threads, \emph{node 0} broadcasts a message that releases the barrier to all nodes.
+When \emph{node k} fails during broadcast and it has \emph{node i} and \emph{node j} as children, \emph{node i} and \emph{node j} will not get this message and hang.
+
+To prevent this situation \emph{node l}, which is established a new communication parent for \emph{node i} and \emph{node j}, has to replay communication.
+Since a node can never know in advance when it will become a communication parent, every node stores all broadcast communication that it gets to be able to resend.
+Messages are stored for some amount of time and evicted when the time passes.
+
+When \emph{node i} and \emph{node j} are attached to \emph{node l}, \emph{node l} sends all broadcast messages to \emph{node i} and \emph{node j}.
+It might happen that a message was already processed on e.g. \emph{node i}.
+Each message is given a unique identifier. Based on this identifier, PCJ internals figure out if the message has been already processed or not.
+If it has not, the message is processed and sent further in the communication tree. If it has, the message is only passed through.
 
 \subsection{Performance overhead}
 
