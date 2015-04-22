@@ -31,6 +31,7 @@ public class FutureHandler {
         return InternalFutureObjects;
     }
 
+    // mstoodo test if we need synchronization - Lock should handle it
     public synchronized void unregisterFutureObject(InternalFutureObject<?> InternalFutureObject) {
         Integer nodeId = futuresReverse.remove(InternalFutureObject);
         futures.get(nodeId).remove(InternalFutureObject);

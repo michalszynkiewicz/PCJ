@@ -15,7 +15,7 @@ public class BroadcastCache {
     private List<Entry> entries = new LinkedList<>();
     private Set<Integer> processedMessages = new HashSet<>();
 
-    public synchronized void add(BroadcastedMessage message) {
+    public void add(BroadcastedMessage message) {
         long now = getNow();
         removeOldOnes(now);
 
@@ -26,7 +26,7 @@ public class BroadcastCache {
         processedMessages.add(message.getMessageId());
     }
 
-    public synchronized List<BroadcastedMessage> getList() {
+    public List<BroadcastedMessage> getList() {
         long now = getNow();
         removeOldOnes(now);
 
@@ -38,7 +38,7 @@ public class BroadcastCache {
         return resultList;
     }
 
-    public synchronized boolean isProcessed(BroadcastedMessage message) {
+    public boolean isProcessed(BroadcastedMessage message) {
         return processedMessages.contains(message.getMessageId());
     }
 
@@ -50,6 +50,8 @@ public class BroadcastCache {
             processedMessages.remove(entry.message.getMessageId());
             if (entry.time < expiryDate) {
                 iterator.remove();
+            } else {
+                break;
             }
         }
 

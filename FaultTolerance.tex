@@ -189,6 +189,15 @@ Each message is given a unique identifier. Based on this identifier, PCJ interna
 If it has not, the message is processed and sent further in the communication tree. If it has, the message is only passed through.
 
 \subsection{Performance overhead}
+To check performance overhead of introduced changes, a test that invoked barriers one by one was executed.
+The test was performed on a 4 core machine with 20 PCJ nodes.
+
+Fig. \ref{performance} \nameref{performance} shows results of the test.
+Each result is a median of three test runs.
+
+TODO: analyze
+
+
 
 \begin{figure}
   \centering
