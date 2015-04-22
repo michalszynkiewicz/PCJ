@@ -304,7 +304,7 @@ public class InternalGroup {
             InternalPCJ.getBarrierHandler().setGroupUnderBarrier(groupId);
             try {
                 localSync.set(myNodeId);
-                LogUtils.log(myNodeId, "barrier] set localSync");
+//                LogUtils.log(myNodeId, "barrier] set localSync");
                 if (localSync.isSet(localSyncMask)) {
                     // LogUtils.log(myNodeId, "barrier] localSync is set");
                     Lock.readUnlock();
@@ -461,8 +461,7 @@ public class InternalGroup {
     public void removePhysicalNode(int physicalNodeId, Set<Integer> virtualNodes) {
         int removedNodeIdx = physicalIds.indexOf(physicalNodeId);
         if (removedNodeIdx == -1) {
-            System.err.println("No physical node with id: " + physicalNodeId + " found");
-            System.err.println("physical node ids: " + physicalIds);
+            LogUtils.log(InternalPCJ.getWorkerData().physicalId, "No physical node with id: " + physicalNodeId + " found" + "\tphysical node ids: " + physicalIds);
         } else {
             physicalIds.remove(removedNodeIdx);
 

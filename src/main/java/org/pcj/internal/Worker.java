@@ -259,41 +259,40 @@ public class Worker implements Runnable {
 
     private boolean handleReplayEvent(Message message) {
         if (message instanceof BroadcastedMessage) {
-            // LogUtils.log(data.physicalId, ".");
+//            LogUtils.log(data.physicalId, "" + message.getMessageId() + " is a replay event");
             BroadcastedMessage broadcastedMessage = (BroadcastedMessage) message;
             if (data.broadcastCache.isProcessed(broadcastedMessage)) {
+//                LogUtils.log(data.physicalId, "" + message.getMessageId() + " was already processed");
                // LogUtils.setEnabled(true);
                 // LogUtils.log(data.physicalId, "Will replay event: " + message.getType() + ", msgId=" + message.getMessageId());
                 broadcast(broadcastedMessage);
                 return true;
+            } else {
+                // mstodo verify if it is ok for node 0
+                data.broadcastCache.add(broadcastedMessage);
             }
         }
         return false;
     }
 
     private void nodeRemoved(MessageNodeRemoved message) {
-//        LogUtils.setEnabled(true);
+        LogUtils.setEnabled(true);
         // LogUtils.log("[" + data.physicalId + "] in node removed");
         Lock.writeLock();
         // LogUtils.log("[" + data.physicalId + "] after lock ");
         try {
             int failedNodeId = message.getFailedNodePhysicalId();
             // LogUtils.log(data.physicalId, "GOT NODE REMOVED: " + failedNodeId);
-//            try {
-//                barrierHandler.finishBarrierIfInProgress(failedNodeId);
-//            } catch (IOException e) {
-//                e.printStackTrace(); // mstodo can we do sth with it?
-//            }
             data.removePhysicalNode(failedNodeId);
             getWaitForHandler().nodeFailed(failedNodeId);
 
             if (data.physicalId == message.getNewCommunicationNode()) {
 //                LogUtils.setEnabled(true);
-                // LogUtils.log(data.physicalId, "############will attach " + message.getNewCommunicationLeft() + ", " +
+//                 LogUtils.log(data.physicalId, "############will attach " + message.getNewCommunicationLeft() + ", " +
 //                        message.getNewCommunicationRight());
                 data.internalGlobalGroup.updateCommunicationTree(message.getNewCommunicationLeft(),
                         message.getNewCommunicationRight());
-                // LogUtils.log(data.physicalId, "attached");
+//                 LogUtils.log(data.physicalId, "attached");
                 replayBroadcast();
             }
         } finally {
@@ -304,9 +303,9 @@ public class Worker implements Runnable {
     private void replayBroadcast() {
         List<BroadcastedMessage> list = data.broadcastCache.getList();
 //        LogUtils.setEnabled(true);
-        // LogUtils.log(data.physicalId, "replaying events after prev parent failure. ");
+//         LogUtils.log(data.physicalId, "replaying events after prev parent failure. ");
         for (BroadcastedMessage message : list) {
-            // LogUtils.log(data.physicalId, "event[" + message.getType() + "] : " + message.getMessageId());
+//             LogUtils.log(data.physicalId, "event[" + message.getType() + "] : " + message.getMessageId());
             broadcast(message);
         }
     }
@@ -626,10 +625,17 @@ public class Worker implements Runnable {
         barrierHandler.markCompleteOnPhysicalNode(message.getGroupId(), physicalId);
     }
 
+    private Set<Integer> messageIds = new HashSet<>();
     /**
      * @see MessageTypes#SYNC_GO
      */
     private void syncGo(MessageSyncGo message) {
+        // mstodo fix it!!!
+        if (messageIds.contains(message.getMessageId())) {
+//            LogUtils.log(data.physicalId, "got already processed sync go!!!!: " + message.getMessageId());
+            return;
+        }
+        messageIds.add(message.getMessageId());
         // LogUtils.log(data.physicalId, "JKIAgot sync go with id: " + message.getMessageId());
         InternalGroup group = data.internalGroupsById.get(message.getGroupId());
         broadcast(message);

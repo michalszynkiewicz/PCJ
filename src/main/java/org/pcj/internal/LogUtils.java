@@ -11,8 +11,7 @@ import java.util.Date;
  */
 public class LogUtils {
 
-    private static volatile boolean enabled = true;
-//    private static volatile boolean enabled = false;
+    private static volatile boolean enabled = false;
 
     public static void setEnabled(boolean enabled) {
         LogUtils.enabled = enabled;

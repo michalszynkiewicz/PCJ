@@ -148,12 +148,29 @@ When \emph{node 0} discovers that \emph{node k} failed it does the following thi
 \begin{enumerate}
 \item removes the failed node from configuration - not to try to send any data to it
 \item if there is a barrier in progress - removes the node from the barrier.
-If it is the last node the barrier is waiting for - the barrier is finished and its finish is propagated to other nodes. A more detailed description of barrier   % mstodo diagram
+If it is the last node the barrier is waiting for - the barrier is finished and its finish is propagated to other nodes.
+See Fig. \ref{barrier} \nameref{barrier}.
 \item the communication tree is updated. If, in the communication tree, \emph{node k} has two children: \emph{node i} and \emph{node j},
   they are reattached to another node that is still active. This is realized in a following manner: first, \emph{node 0} finds a leaf in a communication tree.
-  Then \emph{node i} and \emph{node j} are attached to the leaf as its children.
-                      %mstodo three pics how it's done
+  Then \emph{node i} and \emph{node j} are attached to the leaf as its children. Please see Fig. \ref{communication-fix} \nameref{communication-fix}
+  Note that after this operation the tree is no longer fully balanced.
 \end{enumerate}
+
+
+
+\begin{figure}
+  \centering
+      \includegraphics[width=0.7\textwidth]{barrier.eps}
+  \caption{Continuing barrier after node failure}
+  \label{barrier}
+\end{figure}
+
+\begin{figure}
+  \centering
+      \includegraphics[width=1\textwidth]{communicatio-tree-fix.eps}
+  \caption{Fixing communication tree}
+  \label{communication-fix}
+\end{figure}
 
 \subsubsection{Replaying communication}
 Node failure can cause loss of underlying communication.
@@ -172,6 +189,14 @@ Each message is given a unique identifier. Based on this identifier, PCJ interna
 If it has not, the message is processed and sent further in the communication tree. If it has, the message is only passed through.
 
 \subsection{Performance overhead}
+
+\begin{figure}
+  \centering
+      \includegraphics[width=1\textwidth]{barrier-test-chart.eps}
+  \caption{Performance comparison}
+  \label{performance}
+\end{figure}
+
 
 \section{Future work}
 

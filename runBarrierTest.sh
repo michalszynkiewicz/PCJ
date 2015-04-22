@@ -22,10 +22,10 @@ cp build/libs/${LIB_BINARY} build/tmp/dist
 cp src/test/java/${TEST_CLASS}.java build/tmp/dist
 pushd build/tmp/dist && javac -cp .::${LIB_BINARY} "${TEST_CLASS}.java"
 
-#LOCAL=$(ifconfig wlan0 | grep inet | grep -v inet6 | awk '{print$2}' | awk -F  ":" '/1/ {print $2}')
-LOCAL=$(ifconfig eth0 | grep inet | grep -v inet6 | awk '{print$2}' | awk -F  ":" '/1/ {print $2}')
-HOSTS_PROPERTY=${LOCAL}:8087,${LOCAL}:8187,${LOCAL}:8287,${LOCAL}:8387,${LOCAL}:8487,${LOCAL}:8587,${LOCAL}:8687,${LOCAL}:8787,${LOCAL}:8887,${LOCAL}:8987
-HOSTS_PROPERTY=${HOSTS_PROPERTY},${LOCAL}:9087,${LOCAL}:9187,${LOCAL}:9287,${LOCAL}:9387,${LOCAL}:9487,${LOCAL}:9587,${LOCAL}:9687,${LOCAL}:9787,${LOCAL}:9887,${LOCAL}:9987
+LOCAL=$(ifconfig wlan0 | grep inet | grep -v inet6 | awk '{print$2}' | awk -F  ":" '/1/ {print $2}')
+#LOCAL=$(ifconfig eth0 | grep inet | grep -v inet6 | awk '{print$2}' | awk -F  ":" '/1/ {print $2}')
+HOSTS_PROPERTY=${LOCAL}:8087,${LOCAL}:8187,${LOCAL}:8287,${LOCAL}:8387,${LOCAL}:8487,${LOCAL}:8587,${LOCAL}:8687,${LOCAL}:8787 #,${LOCAL}:8887,${LOCAL}:8987
+#HOSTS_PROPERTY=${HOSTS_PROPERTY},${LOCAL}:9087,${LOCAL}:9187,${LOCAL}:9287,${LOCAL}:9387,${LOCAL}:9487,${LOCAL}:9587,${LOCAL}:9687,${LOCAL}:9787,${LOCAL}:9887,${LOCAL}:9987
 
 
 #for host in ${HOSTS[*]}

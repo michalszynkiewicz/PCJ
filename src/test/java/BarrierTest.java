@@ -13,22 +13,23 @@ public class BarrierTest extends Storage implements StartPoint {
     @Override
     public void main() throws Throwable {
 //         warmup
-//        for (int i = 0; i < 1000; i++) {
-//            PCJ.barrier();
-//        }
-        long time = System.nanoTime();
-        if (PCJ.myId() == 0) {
-            System.out.println("START");
-            PCJ.log("will sleep");
-//            Thread.sleep(8000l);
-            PCJ.log("woken up");
-        } else {
-            PCJ.log("won't sleep");
+        for (int i = 0; i < 10000; i++) {
+            PCJ.barrier();
         }
+        long time = System.nanoTime();
+//        if (PCJ.myId() == 0) {
+//            System.out.println("START");
+//            PCJ.log("will sleep");
+//            Thread.sleep(8000l);
+//            PCJ.log("woken up");
+//        } else {
+//            PCJ.log("won't sleep");
+//        }
+        PCJ.log("Starting test");
         Integer barrierCount = Integer.valueOf(System.getProperty("barrierCount"));
         for (int i = 0; i < barrierCount; i++) {
             PCJ.barrier();
-            // LogUtils.log(PCJ.getPhysicalNodeId(), "after barrier: " + (i + 1) + "/" + barrierCount);
+//            LogUtils.log(PCJ.getPhysicalNodeId(), "after barrier: " + (i + 1) + "/" + barrierCount);
         }
         PCJ.log("After all barriers");
 //        PCJ.log(ManagementFactory.getRuntimeMXBean().getName());
