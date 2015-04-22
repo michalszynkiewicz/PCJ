@@ -244,12 +244,7 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @return value of variable
      */
     public static <T> T getLocal(String variable) {
-        Lock.readLock();
-        try {
-            return PcjThread.threadStorage().get(variable);
-        } finally {
-            Lock.readUnlock();
-        }
+        return PcjThread.threadStorage().get(variable);
     }
 
     /**

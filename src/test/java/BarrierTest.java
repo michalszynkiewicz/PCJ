@@ -49,15 +49,5 @@ public class BarrierTest extends Storage implements StartPoint {
     public static void main(String[] args) {
         System.out.println(ManagementFactory.getRuntimeMXBean().getName());
         PCJ.deploy(BarrierTest.class, BarrierTest.class, System.getProperty("nodes").split(","));
-//        new String[]{
-//                "localhost",
-//                "localhost"
-//                "192.168.0.104",
-//                "192.168.42.240",
-//                "192.168.42.229"
-//                "192.168.0.106",
-//                "192.168.0.107",
-//                "192.168.0.108"
-//        });
     }
 }

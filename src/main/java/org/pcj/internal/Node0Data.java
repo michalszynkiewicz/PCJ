@@ -30,9 +30,8 @@ public class Node0Data {
         Integer newLeftChild = nullSafeId(leaf.left);
         Integer newRightChild = nullSafeId(leaf.right);
 
-        CommunicationReplacement result = new CommunicationReplacement(leaf.id, newLeftChild, newRightChild);
         // LogUtils.log("found replacement: " + result);
-        return result;
+        return new CommunicationReplacement(leaf.id, newLeftChild, newRightChild);
     }
 
     private Integer nullSafeId(CommunicationNode node) {
@@ -85,8 +84,12 @@ public class Node0Data {
             if (left == node || right == node) {
                 return this;
             }
-            CommunicationNode parent = left.findParent(node);
-            if (parent == null) {
+
+            CommunicationNode parent = null;
+            if (left != null) {
+                parent = left.findParent(node);
+            }
+            if (parent == null && right != null) {
                 parent = right.findParent(node);
             }
             return parent;
