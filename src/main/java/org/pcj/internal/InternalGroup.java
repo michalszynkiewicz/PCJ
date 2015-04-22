@@ -380,6 +380,9 @@ public class InternalGroup {
     }
 
     protected <T> InternalFutureObject<T> getFutureObject(InternalFutureObject<T> futureObject, int myNodeId, int nodeId, String variable, int... indexes) {
+        if (!nodes.containsKey(nodeId)) {
+            throw new NodeFailedException();
+        }
         nodeId = nodes.get(nodeId);
 
         Message msg;
