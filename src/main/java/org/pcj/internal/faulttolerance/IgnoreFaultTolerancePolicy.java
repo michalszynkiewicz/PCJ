@@ -23,21 +23,19 @@ import static org.pcj.internal.InternalPCJ.*;
 public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
 
     private Set<Integer> failedNodes = new HashSet<>();
+    private Set<Integer> failedThreads = new HashSet<>();
 
     @Override
-    public void handleNodeFailure(int failedNodeId) {           // mstodo maybe lock should be at this level?
-//        LogUtils.setEnabled(true);
-//        System.out.println("NODE REMOVED");
+    public void handleNodeFailure(int failedNodeId) {
         if (failedNodes.contains(failedNodeId)) {
             return;
         }
         failedNodes.add(failedNodeId);
-//        System.out.print("LOCK...");
         Lock.writeLock();
+        failedThreads.addAll(getWorkerData().getVirtualNodes(failedNodeId));
         Node0Data.CommunicationReplacement replacement;
         try {
             replacement = InternalPCJ.getNode0Data().remove(failedNodeId);
-//            System.out.print("\tACQUIRED...");
             finishBarrierIfInProgress(failedNodeId);
 
             getWorkerData().removePhysicalNode(failedNodeId);
@@ -49,8 +47,6 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
         } finally {
             Lock.writeUnlock();
         }
-
-//        System.out.println("\tRELEASED");
 
         Set<Integer> physicalNodes = getWorkerData().getPhysicalNodes().keySet();   // todo: is synchronization needed?
         int root = 0;
@@ -66,7 +62,7 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
 
     private void finishBarrierIfInProgress(int failedNodeId) {
         try {
-            getBarrierHandler().finishBarrierIfInProgress(failedNodeId);
+            getBarrierHandler().finishBarrierIfInProgress(failedNodeId, failedThreads);
         } catch (IOException e) {
             e.printStackTrace();
         }

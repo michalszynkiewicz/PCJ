@@ -635,6 +635,8 @@ public class Worker implements Runnable {
 //            LogUtils.log(data.physicalId, "got already processed sync go!!!!: " + message.getMessageId());
             return;
         }
+        // mstodo use failed thread ids
+
         messageIds.add(message.getMessageId());
         // LogUtils.log(data.physicalId, "JKIAgot sync go with id: " + message.getMessageId());
         InternalGroup group = data.internalGroupsById.get(message.getGroupId());

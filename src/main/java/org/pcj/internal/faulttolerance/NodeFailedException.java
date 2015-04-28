@@ -10,5 +10,4 @@ public class NodeFailedException extends RuntimeException {
     public NodeFailedException(Exception cause) {
         super(cause);
     }
-    // mstodo fill with failed nodes ids and THREADS ids
 }

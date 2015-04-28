@@ -12,7 +12,7 @@ import org.pcj.internal.utils.Configuration;
 import org.pcj.internal.utils.NodesFile;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Set;
 
 /**
  * Main PCJ class with static methods.
@@ -479,8 +479,7 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
         }
     }
 
-    public static List<Long> getFailedThreadIds() {
-        // mstodo
-        return null;
+    public static Set<Integer> getFailedThreadIds() {
+        return InternalPCJ.getWorkerData().getFailedThreadIds();
     }
 }

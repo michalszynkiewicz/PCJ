@@ -57,9 +57,9 @@ public final class WorkerData {
     final Object finishObject;
 
     final ActivityMonitor activityMonitor;
+    final Set<Integer> failedThreadIds = new HashSet<>();
     final BroadcastCache broadcastCache;
 
-    // mstodo reconfigure global group on node failure
     public WorkerData(int[] localIds, ConcurrentMap<Integer, PcjThreadLocalData> localData, InternalGroup globalGroup) {
         this(localIds, localData, globalGroup, null);
     }
@@ -85,7 +85,7 @@ public final class WorkerData {
             groupsMaster = new ConcurrentHashMap<>();
             groupsMaster.put(0, 0);
 
-            helloMessages = Collections.synchronizedSortedMap(new TreeMap<Integer, MessageHello>());
+            helloMessages = Collections.synchronizedSortedMap(new TreeMap<>());
         }
         this.localIds = localIds;
         this.localData = localData;
@@ -155,11 +155,21 @@ public final class WorkerData {
         return physicalNodes;
     }
 
-    public int getPhysicalNodesCount() {
-        return physicalNodesCount;
-    }
-
     public InternalGroup getInternalGlobalGroup() {
         return internalGlobalGroup;
+    }
+
+    public Set<Integer> getFailedThreadIds() {
+        return Collections.unmodifiableSet(failedThreadIds);
+    }
+
+    public List<Integer> getVirtualNodes(int physicalNodeId) {
+        List<Integer> nodes = new ArrayList<>();
+        for (Map.Entry<Integer, Integer> vNodeEntry : virtualNodes.entrySet()) {
+            if (vNodeEntry.getValue() == physicalNodeId) {
+                nodes.add(vNodeEntry.getKey());
+            }
+        }
+        return nodes;
     }
 }

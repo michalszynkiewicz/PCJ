@@ -4,6 +4,7 @@ import org.pcj.internal.message.MessageSyncGo;
 import org.pcj.internal.utils.BitMask;
 
 import java.io.IOException;
+import java.util.Set;
 
 import static org.pcj.internal.InternalPCJ.getNetworker;
 import static org.pcj.internal.InternalPCJ.getWorkerData;
@@ -25,7 +26,7 @@ public class BarrierHandler {
         this.groupId = null;
     }
 
-    public void finishBarrierIfInProgress(int failedNodeId) throws IOException {
+    public void finishBarrierIfInProgress(int failedNodeId, Set<Integer> failedThreads) throws IOException {
 //        LogUtils.setEnabled(true);
 //        LogUtils.log("[barrier] marking complete... ");
         if (groupId != null) {
@@ -41,6 +42,7 @@ public class BarrierHandler {
 
                         MessageSyncGo msg = new MessageSyncGo();
                         msg.setGroupId(groupId);
+                        msg.setFailedThreads(failedThreads);
                         getNetworker().send(group, msg);
 //                        LogUtils.log(getWorkerData().physicalId, "sent sync go");
 //                    } else {
