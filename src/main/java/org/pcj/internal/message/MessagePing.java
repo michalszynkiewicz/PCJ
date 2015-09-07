@@ -9,16 +9,24 @@ import org.pcj.internal.network.MessageOutputStream;
  * Time: 10:46 PM
  */
 final public class MessagePing extends Message {
+    private int sourceNode = -1;
+
     public MessagePing() {
         super(MessageTypes.PING);
+    }
+    public MessagePing(int sourceNode) {
+        super(MessageTypes.PING);
+        this.sourceNode = sourceNode;
     }
 
     @Override
     void writeObjects(MessageOutputStream bbos) {
+        bbos.writeInt(sourceNode);
     }
 
     @Override
     void readObjects(MessageInputStream bbis) {
+        this.sourceNode = bbis.readInt();
     }
 
     @Override

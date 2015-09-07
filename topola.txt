@@ -1,0 +1,2 @@
+[plgmich4l@t1-13 ~]$ module load plgrid/tools/openmpi/common/intel
+[plgmich4l@t1-13 ~]$ module load plgrid/tools/java8/oracle/1.8.0_00

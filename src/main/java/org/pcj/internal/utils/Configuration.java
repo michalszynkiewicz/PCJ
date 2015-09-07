@@ -81,7 +81,7 @@ final public class Configuration {
         REDIRECT_ERR = getPropertyInt("pcj.redirect.err", 1) == 1;
         REDIRECT_NODE0 = getPropertyInt("pcj.redirect.node0", 0) == 1;
         NODE_TIMEOUT = getPropertyInt("pcj.node.timeout", 10);
-        NODE_PING_INTERVAL = getPropertyInt("pcj.node.ping", 500);
+        NODE_PING_INTERVAL = getPropertyInt("pcj.node.ping", 200);
         NODES_FILENAME = getNodesFilename();
     }
 

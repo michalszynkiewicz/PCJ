@@ -8,10 +8,7 @@ import org.pcj.internal.message.MessageFinished;
 import org.pcj.internal.message.MessageNodeRemoved;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static org.pcj.internal.InternalPCJ.*;
 
@@ -31,7 +28,9 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
             return;
         }
         failedNodes.add(failedNodeId);
+        System.out.println("[" + new Date() + "]Acquiring write lock...");
         Lock.writeLock();
+        System.out.println("[" + new Date() + "]DONE");
         failedThreads.addAll(getWorkerData().getVirtualNodes(failedNodeId));
         Node0Data.CommunicationReplacement replacement;
         try {

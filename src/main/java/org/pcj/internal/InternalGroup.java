@@ -194,7 +194,7 @@ public class InternalGroup {
         this.physicalCommunication.setRoot(physicalMaster);
     }
 
-    Integer getPhysicalParent() {
+    public Integer getPhysicalParent() {
 //        int index = (physicalIndex - 1) / 2;
 //        if (0 <= index && index < physicalIds.size()) {
 //            return physicalIds.getFutureObject(index);
@@ -205,6 +205,7 @@ public class InternalGroup {
 
     void setPhysicalParent(int physicalParent) {
         this.physicalCommunication.setParent(physicalParent);
+        // mstodo update on parent replacement!!!!
     }
 
     public Integer getPhysicalLeft() {

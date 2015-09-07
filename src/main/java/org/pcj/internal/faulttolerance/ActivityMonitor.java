@@ -50,6 +50,10 @@ public class ActivityMonitor implements Runnable {
                 Set<Integer> physicalNodes = getWorkerData().getPhysicalNodes().keySet();
                 for (Integer nodeId : physicalNodes) {
                     if (nodeId != 0) {
+                        if (!locked) {
+                            Lock.readLock();
+                            locked = true;
+                        }
                         if (isTimedOut(nodeId)
                                 || !sendPing(nodeId)) {
                             Lock.readUnlock();
