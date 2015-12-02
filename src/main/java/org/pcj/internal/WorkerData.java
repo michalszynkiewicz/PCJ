@@ -3,9 +3,10 @@
  */
 package org.pcj.internal;
 
-import org.pcj.internal.faulttolerance.ActivityMonitor;
 import org.pcj.internal.faulttolerance.BroadcastCache;
+import org.pcj.internal.faulttolerance.FaultTolerancePolicy;
 import org.pcj.internal.faulttolerance.IgnoreFaultTolerancePolicy;
+import org.pcj.internal.faulttolerance.LazyActivityMonitor;
 import org.pcj.internal.message.MessageHello;
 import org.pcj.internal.network.LoopbackSocketChannel;
 import org.pcj.internal.utils.PcjThreadPair;
@@ -56,7 +57,7 @@ public final class WorkerData {
     /* finish */
     final Object finishObject;
 
-    final ActivityMonitor activityMonitor;
+    final LazyActivityMonitor activityMonitor;
     final Set<Integer> failedThreadIds = new HashSet<>();
     final BroadcastCache broadcastCache;
 
@@ -109,7 +110,8 @@ public final class WorkerData {
         attachmentMap = new ConcurrentHashMap<>();
 
         finishObject = new Object();
-        activityMonitor = new ActivityMonitor(new IgnoreFaultTolerancePolicy()); // mstodo customization
+        activityMonitor = new LazyActivityMonitor(new IgnoreFaultTolerancePolicy());// mstodo children
+        // mstodo 2 fault tolerance policy customization
         broadcastCache = new BroadcastCache();
     }
 
@@ -120,7 +122,7 @@ public final class WorkerData {
         }
     }
 
-    int getPhysicalId(SocketChannel socket) {
+    Integer getPhysicalId(SocketChannel socket) {
         return (socket instanceof LoopbackSocketChannel)
                 ? physicalId
                 : physicalNodesIds.get(socket);
@@ -130,6 +132,7 @@ public final class WorkerData {
         // total physical nodes count is decreased elsewhere - via MessageFinished
 //        System.out.println(" REMOVING PHYSICAL NODE: " + physicalNodeId);
         SocketChannel socketChannel = physicalNodes.get(physicalNodeId);
+        System.err.println("removing socketChannel: " + socketChannel + " for ndoe: " + physicalNodeId); // mstodo remove
 
         physicalNodes.remove(physicalNodeId);
         physicalNodesIds.remove(socketChannel);
@@ -171,5 +174,21 @@ public final class WorkerData {
             }
         }
         return nodes;
+    }
+
+    public FaultTolerancePolicy getFaultTolerancePolicy() {
+        return activityMonitor.getFaultTolerancePolicy();
+    }
+
+    public int getPhysicalId() {
+        return physicalId;
+    }
+
+    public LazyActivityMonitor getActivityMonitor() {
+        return activityMonitor;
+    }
+
+    public BroadcastCache getBroadcastCache() {
+        return broadcastCache;
     }
 }

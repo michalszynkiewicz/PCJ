@@ -10,4 +10,8 @@ public class NodeFailedException extends RuntimeException {
     public NodeFailedException(Exception cause) {
         super(cause);
     }
+
+    public NodeFailedException(int physicalNodeId) {
+        super("Node failed: " + physicalNodeId);
+    }
 }

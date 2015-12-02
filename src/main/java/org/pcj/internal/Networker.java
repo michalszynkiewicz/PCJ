@@ -4,6 +4,7 @@
 package org.pcj.internal;
 
 import org.pcj.internal.faulttolerance.NodeFailedException;
+import org.pcj.internal.message.BroadcastedMessage;
 import org.pcj.internal.message.Message;
 import org.pcj.internal.network.LoopbackSocketChannel;
 import org.pcj.internal.network.MessageOutputStream;
@@ -22,6 +23,8 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Deque;
 import java.util.concurrent.ConcurrentLinkedDeque;
+
+import static org.pcj.internal.InternalPCJ.getWorkerData;
 
 /**
  * This is intermediate file (between classes that want to
@@ -139,7 +142,35 @@ public class Networker {        // mstodo: access rights!
         return buf;
     }
 
-    void broadcast(SocketChannel left, SocketChannel right, Message message) {
+    public void broadcast(BroadcastedMessage message) {
+        InternalGroup group = getWorkerData().internalGroupsById.get(message.getGroupId());
+        try {
+            broadcast(group, message);
+        } catch (NodeFailedException nfe) {
+            nfe.printStackTrace();
+            // do nothing, the message will be replayed when the node failure is handled
+        }
+    }
+
+    protected void broadcast(InternalGroup group, Message message) {
+//        System.err.println("broadcast:" + message + " to " + group.getGroupName());
+        Integer leftChildrenIndex = group.getPhysicalLeft();
+        Integer rightChildrenIndex = group.getPhysicalRight();
+
+        SocketChannel left = null;
+        if (leftChildrenIndex != null) {
+            left = getWorkerData().physicalNodes.get(leftChildrenIndex);
+        }
+
+        SocketChannel right = null;
+        if (rightChildrenIndex != null) {
+            right = getWorkerData().physicalNodes.get(rightChildrenIndex);
+        }
+
+        broadcast(left, right, message);
+    }
+
+    public void broadcast(SocketChannel left, SocketChannel right, Message message) {
         if ((Configuration.DEBUG & 2) == 2) {
             if ((Configuration.DEBUG & 4) == 4) {
                 System.err.println("" + worker.getData().physicalId + " broadcast: " + message + " to " + left + " and " + right);
@@ -263,7 +294,7 @@ public class Networker {        // mstodo: access rights!
     public void sendToPhysicalNode(int physicalNodeId, Message message) throws IOException {
         SocketChannel socket = workerData.physicalNodes.get(physicalNodeId);
         if (socket == null) {
-            throw new NodeFailedException();
+            throw new NodeFailedException(physicalNodeId);
         }
         send(socket, message);
     }

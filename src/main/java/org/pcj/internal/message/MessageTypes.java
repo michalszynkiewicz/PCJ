@@ -425,12 +425,6 @@ public enum MessageTypes {
             return new MessagePing();
         }
     },
-    PONG(62) {
-        @Override
-        MessagePong createMessage() {
-            return new MessagePong();
-        }
-    },
     NODE_FAILED(63) {
         MessageNodeFailed createMessage() {
             return new MessageNodeFailed();

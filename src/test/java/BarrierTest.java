@@ -1,6 +1,7 @@
 import org.pcj.PCJ;
 import org.pcj.StartPoint;
 import org.pcj.Storage;
+import org.pcj.internal.LogUtils;
 
 import java.lang.management.ManagementFactory;
 
@@ -28,10 +29,14 @@ public class BarrierTest extends Storage implements StartPoint {
         PCJ.log("Starting test");
         Integer barrierCount = Integer.valueOf(System.getProperty("barrierCount"));
         for (int i = 0; i < barrierCount; i++) {
+//            LogUtils.log(PCJ.getPhysicalNodeId(), "-   will do barrier number: " + i);
             PCJ.barrier();
-//            LogUtils.log(PCJ.getPhysicalNodeId(), "after barrier: " + (i + 1) + "/" + barrierCount);
+//            LogUtils.log(PCJ.getPhysicalNodeId(), "+   after barrier number: " + i);
+//            if (PCJ.getPhysicalNodeId() == 2) {
+//                System.exit(12);
+//            }
         }
-        PCJ.log("After all barriers");
+//        PCJ.log("After all barriers");
 //        PCJ.log(ManagementFactory.getRuntimeMXBean().getName());
 //        PCJ.log("my thread number: " + PCJ.myId());
         if (PCJ.myId() == 0) {

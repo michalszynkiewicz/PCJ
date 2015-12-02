@@ -138,7 +138,7 @@ final public class DeployPCJ {
     private Process exec(List<String> exec) throws IOException {
 //        System.err.println("exec(" + Arrays.toString(exec.toArray(new String[0])) + ")");
         ProcessBuilder processBuilder = new ProcessBuilder(exec);
-//        processBuilder.redirectErrorStream(true);
+        processBuilder.redirectErrorStream(true);
 
         Process process = processBuilder.start();
         processes.add(process);

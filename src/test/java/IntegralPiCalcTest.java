@@ -16,7 +16,8 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
 
     public static final Work FINISH_WORK = new Work(true);
 
-    private static final long n = 100_000_000_000l;
+//    private static final long n = 100_000_000_000l;    // mstodo
+    private static final long n = 20_000_000_000l;
     private static final double weight = 1.0 / (double) n;
 
     // all nodes data:

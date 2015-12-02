@@ -51,7 +51,7 @@ public abstract class InternalPCJ {
     }
 
     protected static void deploy(Class<? extends InternalStartPoint> startPoint,
-            Class<? extends InternalStorage> storage, NodesFile nodesFile) {
+                                 Class<? extends InternalStorage> storage, NodesFile nodesFile) {
         NodeInfo node0 = nodesFile.getNode0();
         NodeInfo localNode = nodesFile.getLocalNode();
         Integer clientsCount = nodesFile.getClientsCount();
@@ -85,8 +85,8 @@ public abstract class InternalPCJ {
     }
 
     protected static void start(Class<? extends InternalStartPoint> startPoint,
-            Class<? extends InternalStorage> storage,
-            NodesFile nodesFile) {
+                                Class<? extends InternalStorage> storage,
+                                NodesFile nodesFile) {
         NodeInfo node0 = nodesFile.getNode0();
         NodeInfo localNode = nodesFile.getLocalNode();
 
@@ -98,10 +98,10 @@ public abstract class InternalPCJ {
     }
 
     protected static void start(Class<? extends InternalStartPoint> startPoint,
-            Class<? extends InternalStorage> storage,
-            NodeInfo node0, // node0 - work also as manager
-            NodeInfo localNode,
-            Integer clientsCount) throws IOException {
+                                Class<? extends InternalStorage> storage,
+                                NodeInfo node0, // node0 - work also as manager
+                                NodeInfo localNode,
+                                Integer clientsCount) throws IOException {
         validateParameters(node0, localNode);
 
         ConcurrentMap<Integer, PcjThreadLocalData> localData;
@@ -202,9 +202,9 @@ public abstract class InternalPCJ {
 
         if (isNode0) {
             System.err.println("Starting " + startPoint.getName() + " with " + clientsCount + " thread(s)...");
-            workerData.activityMonitor.start();
             node0Data = new Node0Data(getWorkerData().getPhysicalNodes().size());
         }
+        workerData.activityMonitor.start();
 
         try {
             disableStandardOutput(isNode0);
@@ -373,7 +373,7 @@ public abstract class InternalPCJ {
         return node0Socket;
     }
 
-    protected static int getPhysicalNodeId() {
+    public static int getPhysicalNodeId() {
         return workerData.physicalId;
     }
 

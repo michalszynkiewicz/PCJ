@@ -18,6 +18,7 @@ public class WaitForOnNode0Test extends Storage implements StartPoint {
 
     @Override
     public void main() throws Throwable {
+        System.out.println("starting");
         switch (PCJ.myId()) {
             case 0:
                 try {

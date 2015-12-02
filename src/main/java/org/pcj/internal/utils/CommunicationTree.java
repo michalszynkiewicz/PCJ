@@ -15,6 +15,7 @@ public class CommunicationTree {
 
     private Integer root;
     private Integer parent;
+    private Integer id; // mstodo
     private List<Integer> children;
 
     public CommunicationTree() {
@@ -47,5 +48,19 @@ public class CommunicationTree {
 
     public void removeNode(int removedNodeIdx) {
         children.remove((Integer)removedNodeIdx);
+    }
+
+    @Override
+    public String toString() {
+        return "[id = " + id + ", parent = " + parent + ", root = " + root + " children: " + childrenToString();
+    }
+
+    private String childrenToString() {
+        switch (children.size()) {
+            case 0: return "NONE";
+            case 1: return "left(" + children.get(0);
+            case 2: return "left(" + children.get(0) + "), right(" + children.get(1) + ")";
+            default: throw new IllegalStateException("invalid number of children: " + children.size());
+        }
     }
 }

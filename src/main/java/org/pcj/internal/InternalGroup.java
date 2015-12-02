@@ -3,8 +3,10 @@
  */
 package org.pcj.internal;
 
+import org.pcj.internal.faulttolerance.FaultTolerancePolicy;
 import org.pcj.internal.faulttolerance.Lock;
 import org.pcj.internal.faulttolerance.NodeFailedException;
+import org.pcj.internal.faulttolerance.SetChild;
 import org.pcj.internal.message.*;
 import org.pcj.internal.utils.*;
 
@@ -144,8 +146,8 @@ public class InternalGroup {
      * adds info about new node in group, or nothing if
      * groupNodeId exists in group
      *
-     * @param groupNodeId groupNodeId of adding node
-     * @param globalNodeId globalNodeId of adding node
+     * @param groupNodeId          groupNodeId of adding node
+     * @param globalNodeId         globalNodeId of adding node
      * @param remotePhysicalNodeId physicalId of adding node
      */
     synchronized void add(int groupNodeId, int globalNodeId, int remotePhysicalNodeId) {
@@ -174,11 +176,14 @@ public class InternalGroup {
 
     boolean physicalSync(int physicalId) {
         int position = physicalIds.indexOf(physicalId);
-        // LogUtils.log(0, "barrier for: " + physicalId);
+        System.err.print("barrier for: " + physicalId + " translated to bitmask position: " + position);
+        System.err.print("\tbbitmask be4: " + physicalSync);
 //        if (physicalSync.isSet(position)) {
 //            LogUtils.log("PHYSICAL SYNC ALREADY SET FOR POSITION: " + position);
 //        }
         physicalSync.set(position);
+
+        System.err.println("\tbbitmask after: " + physicalSync);
         return physicalSync.isSet();
     }
 
@@ -205,7 +210,6 @@ public class InternalGroup {
 
     void setPhysicalParent(int physicalParent) {
         this.physicalCommunication.setParent(physicalParent);
-        // mstodo update on parent replacement!!!!
     }
 
     public Integer getPhysicalLeft() {
@@ -216,12 +220,16 @@ public class InternalGroup {
         return children.get(0);
     }
 
-    void setPhysicalLeft(int physicalLeft) {
+    void setPhysicalLeft(Integer physicalLeft) {
         List<Integer> children = physicalCommunication.getChildren();
-        if (children.size() < 1) {
-            children.add(physicalLeft);
+        if (physicalLeft != null) {
+            if (children.size() < 1) {
+                children.add(physicalLeft);
+            } else {
+                children.set(0, physicalLeft);
+            }
         } else {
-            children.set(0, physicalLeft);
+            children.clear(); // we have a fully balanced tree - removal of left child means there's no right child eiter
         }
     }
 
@@ -233,12 +241,16 @@ public class InternalGroup {
         return children.get(1);
     }
 
-    void setPhysicalRight(int physicalRight) {
+    void setPhysicalRight(Integer physicalRight) {
         List<Integer> children = physicalCommunication.getChildren();
-        if (children.size() < 2) {
-            children.add(physicalRight);
+        if (physicalRight != null) {
+            if (children.size() < 2) {
+                children.add(physicalRight);
+            } else {
+                children.set(1, physicalRight);
+            }
         } else {
-            children.set(1, physicalRight);
+            physicalCommunication.setChildren(children.subList(0, 1));
         }
     }
 
@@ -406,7 +418,8 @@ public class InternalGroup {
             InternalPCJ.getFutureHandler().registerFutureObject(futureObject, nodeId);
             return futureObject;
         } catch (IOException ex) {
-            // mstodo: catch exception and assume nodeId is failed!
+            FaultTolerancePolicy faultTolerancePolicy = InternalPCJ.getWorkerData().getFaultTolerancePolicy();
+            faultTolerancePolicy.reportError(nodeId);
             throw new NodeFailedException(ex);
         }
     }
@@ -431,6 +444,8 @@ public class InternalGroup {
         try {
             InternalPCJ.getNetworker().send(nodeId, msg);
         } catch (IOException ex) {
+            FaultTolerancePolicy faultTolerancePolicy = InternalPCJ.getWorkerData().getFaultTolerancePolicy();
+            faultTolerancePolicy.reportError(nodeId);
             throw new NodeFailedException(ex);
         }
     }
@@ -465,7 +480,7 @@ public class InternalGroup {
     public void removePhysicalNode(int physicalNodeId, Set<Integer> virtualNodes) {
         int removedNodeIdx = physicalIds.indexOf(physicalNodeId);
         if (removedNodeIdx == -1) {
-            LogUtils.log(InternalPCJ.getWorkerData().physicalId, "No physical node with id: " + physicalNodeId + " found" + "\tphysical node ids: " + physicalIds);
+//            LogUtils.log(InternalPCJ.getWorkerData().physicalId, "No physical node with id: " + physicalNodeId + " found" + "\tphysical node ids: " + physicalIds);
         } else {
             physicalIds.remove(removedNodeIdx);
 
@@ -489,13 +504,19 @@ public class InternalGroup {
         }
     }
 
-    public void updateCommunicationTree(Integer left, Integer right) {
-        if (left != null) {
-            setPhysicalLeft(left);
+    public void updateCommunicationTree(SetChild update) {
+        switch (update.getDirection()) {
+            case LEFT:
+                setPhysicalLeft(update.getChild());
+                break;
+            case RIGHT:
+                setPhysicalRight(update.getChild());
+                break;
         }
-        if (right != null) {
-            setPhysicalRight(right);
-        }
+    }
+
+    public void printCommunicationTree() {
+        System.out.println(physicalCommunication.toString());
     }
 }
 

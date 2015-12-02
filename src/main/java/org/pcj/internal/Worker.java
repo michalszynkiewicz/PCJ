@@ -6,7 +6,7 @@ package org.pcj.internal;
 import org.pcj.FutureObject;
 import org.pcj.internal.faulttolerance.FaultTolerancePolicy;
 import org.pcj.internal.faulttolerance.Lock;
-import org.pcj.internal.faulttolerance.NodeFailedException;
+import org.pcj.internal.faulttolerance.SetChild;
 import org.pcj.internal.message.*;
 import org.pcj.internal.network.LoopbackSocketChannel;
 import org.pcj.internal.network.SocketData;
@@ -26,18 +26,16 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static org.pcj.internal.InternalPCJ.getWaitForHandler;
+import static org.pcj.internal.InternalPCJ.*;
 
 /**
  * This class processes incoming messages.
- * <p>
+ * <p/>
  * At present this class can be used only in sequential manner.
  *
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
 public class Worker implements Runnable {
-
-    private final MessagePong pong = new MessagePong();
 
     private final WorkerData data;
     private final BlockingQueue<Message> requestQueue;
@@ -113,24 +111,6 @@ public class Worker implements Runnable {
         return data;
     }
 
-    private void broadcast(InternalGroup group, Message message) {
-//        System.err.println("broadcast:" + message + " to " + group.getGroupName());
-        Integer leftChildrenIndex = group.getPhysicalLeft();
-        Integer rightChildrenIndex = group.getPhysicalRight();
-
-        SocketChannel left = null;
-        if (leftChildrenIndex != null) {
-            left = data.physicalNodes.get(leftChildrenIndex);
-        }
-
-        SocketChannel right = null;
-        if (rightChildrenIndex != null) {
-            right = data.physicalNodes.get(rightChildrenIndex);
-        }
-
-        networker.broadcast(left, right, message);
-    }
-
     private void processMessage(Message message) throws IOException {
         if ((Configuration.DEBUG & 1) == 1) {
             if ((Configuration.DEBUG & 4) == 4) {
@@ -144,7 +124,7 @@ public class Worker implements Runnable {
         }
         boolean locked = true;
 //        if (Lock.isWriteLocked()) {
-            // LogUtils.log(data.physicalId, "!!!will wait for write lock!!!");
+//            LogUtils.log(data.physicalId, "!!!will wait for write lock!!!");
 //        }
         Lock.readLock();
         try {
@@ -234,9 +214,6 @@ public class Worker implements Runnable {
                 case PING:
                     ping((MessagePing) message);
                     break;
-                case PONG:
-                    pong((MessagePong) message);
-                    break;
                 case NODE_FAILED:
                     Lock.readUnlock();
                     locked = false;
@@ -263,9 +240,9 @@ public class Worker implements Runnable {
             BroadcastedMessage broadcastedMessage = (BroadcastedMessage) message;
             if (data.broadcastCache.isProcessed(broadcastedMessage)) {
 //                LogUtils.log(data.physicalId, "" + message.getMessageId() + " was already processed");
-               // LogUtils.setEnabled(true);
-                // LogUtils.log(data.physicalId, "Will replay event: " + message.getType() + ", msgId=" + message.getMessageId());
-                broadcast(broadcastedMessage);
+//                LogUtils.setEnabled(true);
+//                LogUtils.log(data.physicalId, "Will replay event: " + message.getType() + ", msgId=" + message.getMessageId());
+                networker.broadcast(broadcastedMessage);
                 return true;
             } else {
                 // mstodo verify if it is ok for node 0
@@ -276,7 +253,7 @@ public class Worker implements Runnable {
     }
 
     private void nodeRemoved(MessageNodeRemoved message) {
-        LogUtils.setEnabled(true);
+//        LogUtils.setEnabled(true);
         // LogUtils.log("[" + data.physicalId + "] in node removed");
         Lock.writeLock();
         // LogUtils.log("[" + data.physicalId + "] after lock ");
@@ -285,56 +262,62 @@ public class Worker implements Runnable {
             // LogUtils.log(data.physicalId, "GOT NODE REMOVED: " + failedNodeId);
             data.removePhysicalNode(failedNodeId);
             getWaitForHandler().nodeFailed(failedNodeId);
+            getFutureHandler().nodeFailed(failedNodeId);
 
-            if (data.physicalId == message.getNewCommunicationNode()) {
-//                LogUtils.setEnabled(true);
-//                 LogUtils.log(data.physicalId, "############will attach " + message.getNewCommunicationLeft() + ", " +
-//                        message.getNewCommunicationRight());
-                data.internalGlobalGroup.updateCommunicationTree(message.getNewCommunicationLeft(),
-                        message.getNewCommunicationRight());
+            int myNodeId = data.physicalId;
+//            LogUtils.setEnabled(true);
+            for (SetChild update : message.getCommunicationUpdates()) {
+                if (update.getParent().equals(myNodeId)) {
+//                    LogUtils.log(data.physicalId, "############will attach " + update.getChild() + " on the " + update.getDirection());
+                    data.internalGlobalGroup.updateCommunicationTree(update);
+                    data.internalGlobalGroup.printCommunicationTree(); // mstodo remove
+                    // mstodo sth is wrong for 19 replacing 2
 //                 LogUtils.log(data.physicalId, "attached");
-                replayBroadcast();
+                    replayBroadcast();
+                }
+                if (update.isNewChild(myNodeId)) {
+//                    LogUtils.log(data.physicalId, "############will attach " + update.getParent() + " as parent");
+                    data.internalGlobalGroup.setPhysicalParent(update.getParent());
+                }
             }
+//            LogUtils.log(myNodeId, "Finished removal");
+        } catch (RuntimeException rex) {
+//            LogUtils.log(data.physicalId, rex.getMessage());  // mstodo remove
+            StackTraceElement traceTop = rex.getStackTrace()[0];
+//            LogUtils.log(data.physicalId, traceTop.getFileName() + "#" + traceTop.getMethodName() + ":" + traceTop.getLineNumber());  // mstodo remove
         } finally {
+//            LogUtils.log(data.physicalId, "Will write unlock");
             Lock.writeUnlock();
+//            LogUtils.log(data.physicalId, "write unlocked");
         }
     }
 
     private void replayBroadcast() {
+//        System.out.println("replay broadcast invoked");
         List<BroadcastedMessage> list = data.broadcastCache.getList();
 //        LogUtils.setEnabled(true);
 //         LogUtils.log(data.physicalId, "replaying events after prev parent failure. ");
-        for (BroadcastedMessage message : list) {
-//             LogUtils.log(data.physicalId, "event[" + message.getType() + "] : " + message.getMessageId());
-            broadcast(message);
-        }
-    }
 
-    private void broadcast(BroadcastedMessage message) {
-        InternalGroup group = data.internalGroupsById.get(message.getGroupId());
-        try {
-            broadcast(group, message);
-        } catch (NodeFailedException nfe) {
-            nfe.printStackTrace();
-            // do nothing, the message will be replayed when the node failure is handled
+        for (BroadcastedMessage message : list) {
+//            System.out.println("replaying message: " + message);
+//            LogUtils.log(getPhysicalNodeId(), "replaying message: " + message);
+//             LogUtils.log(data.physicalId, "event[" + message.getType() + "] : " + message.getMessageId());
+            networker.broadcast(message);
         }
     }
 
     private void nodeFailed(MessageNodeFailed message) {
         FaultTolerancePolicy policy = data.activityMonitor.getFaultTolerancePolicy();
+        System.err.println("got message node failed for node: " + message.getFailedNodePhysicalId()); // mstodo
         policy.handleNodeFailure(message.getFailedNodePhysicalId());
     }
 
-    private void pong(MessagePong message) {
-        int physicalId = InternalPCJ.getWorkerData().getPhysicalId(message.getSocket());
-        data.activityMonitor.pong(physicalId);
-    }
-
     private void ping(MessagePing message) {
-        try {
-            networker.send(message.getSocket(), pong);
-        } catch (IOException e) {
-            System.err.println("Exception in sending pong message. Computation might have been finished");
+        Integer physicalId = InternalPCJ.getWorkerData().getPhysicalId(message.getSocket());
+        if (physicalId == null) {
+            System.err.println("Got ping message from non-existent node. Socket: " + message.getSocket());
+        } else {
+            data.activityMonitor.pingFromChild(physicalId);
         }
     }
 
@@ -376,7 +359,7 @@ public class Worker implements Runnable {
                 int[] messageIds = new int[data.physicalNodesCount];
                 int[] ports = new int[data.physicalNodesCount];
 
-                Integer[] virtualIds = data.virtualNodes.keySet().toArray(new Integer[0]);
+                Integer[] virtualIds = data.virtualNodes.keySet().toArray(new Integer[data.virtualNodes.size()]);
                 Arrays.sort(virtualIds);
 
                 /* process all virtualIds in ascending order */
@@ -385,7 +368,7 @@ public class Worker implements Runnable {
                     int oldPhysicalId = data.virtualNodes.remove(virtualId);
 
                     /* if that physicalId isn't mapped... */
-                    if (mapping.containsKey(oldPhysicalId) == false) {
+                    if (!mapping.containsKey(oldPhysicalId)) {
                         /* map old-physicalId with new-physicalId (0, 1, 2, ...) */
                         mapping.put(oldPhysicalId, physicalId);
 
@@ -491,7 +474,7 @@ public class Worker implements Runnable {
     private void helloInform(MessageHelloInform message) throws IOException {
         int physicalId = message.getPhysicalId();
         InternalGroup globalGroup = data.internalGlobalGroup;
-        broadcast(globalGroup, message);
+        networker.broadcast(globalGroup, message);
 
         /* add information about new-node */
         for (int id : message.getNodeIds()) {
@@ -580,7 +563,7 @@ public class Worker implements Runnable {
      */
     private void helloGo(MessageHelloGo message) {
         InternalGroup globalGroup = data.internalGlobalGroup;
-        broadcast(globalGroup, message);
+        networker.broadcast(globalGroup, message);
 
         WaitObject sync = data.internalGlobalGroup.getSyncObject();
         sync.signalAll();
@@ -606,7 +589,7 @@ public class Worker implements Runnable {
     private void finishCompleted(MessageFinishCompleted message) {
 
         InternalGroup globalGroup = data.internalGlobalGroup;
-        broadcast(globalGroup, message);
+        networker.broadcast(globalGroup, message);
         try {
             Thread.sleep(2000l);
         } catch (InterruptedException e) {
@@ -626,6 +609,7 @@ public class Worker implements Runnable {
     }
 
     private Set<Integer> messageIds = new HashSet<>();
+
     /**
      * @see MessageTypes#SYNC_GO
      */
@@ -640,7 +624,7 @@ public class Worker implements Runnable {
         messageIds.add(message.getMessageId());
         // LogUtils.log(data.physicalId, "JKIAgot sync go with id: " + message.getMessageId());
         InternalGroup group = data.internalGroupsById.get(message.getGroupId());
-        broadcast(message);
+        networker.broadcast(message);
         // LogUtils.log(getWorkerData().physicalId, "JKIAbroadcast sent");
 
         WaitObject sync = group.getSyncObject();
@@ -808,7 +792,7 @@ public class Worker implements Runnable {
             }
         }
 
-        broadcast(group, message);
+        networker.broadcast(group, message);
 
         group.add(groupNodeId, globalNodeId, physicalNodeId);
 
@@ -964,7 +948,7 @@ public class Worker implements Runnable {
         Deserializer deserializer = data.localData.get(message.getReceiverGlobalNodeId()).getDeserializer();
         deserializer.deserialize(message.getVariableValue(), attachment);
         if (attachment instanceof FutureObject) {
-            InternalPCJ.getFutureHandler().unregisterFutureObject((FutureObject) attachment);
+            getFutureHandler().unregisterFutureObject((FutureObject) attachment);
         }
     }
 
@@ -989,7 +973,7 @@ public class Worker implements Runnable {
      */
     private void valueBroadcast(MessageValueBroadcast message) {
         InternalGroup group = data.internalGroupsById.get(message.getGroupId());
-        broadcast(message);
+        networker.broadcast(message);
 
         for (int id : group.getLocalIds()) {
             int nodeId = group.getNode(id);

@@ -10,3 +10,5 @@ CHOSEN=${sorted[3]}
 
 echo "CHOSEN NODE: $CHOSEN"
 kill $CHOSEN
+
+ps aux | grep $CHOSEN

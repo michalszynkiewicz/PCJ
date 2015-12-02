@@ -1,7 +1,11 @@
 package org.pcj.internal.message;
 
+import org.pcj.internal.faulttolerance.SetChild;
 import org.pcj.internal.network.MessageInputStream;
 import org.pcj.internal.network.MessageOutputStream;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Author: Michal Szynkiewicz, michal.l.szynkiewicz@gmail.com
@@ -11,9 +15,7 @@ import org.pcj.internal.network.MessageOutputStream;
 
 public class MessageNodeRemoved extends Message {
     int failedNodePhysicalId;
-    private int newCommunicationNode;
-    private Integer newCommunicationLeft;
-    private Integer newCommunicationRight;
+    private List<SetChild> communicationUpdates = new ArrayList<>();
 
     public MessageNodeRemoved() {
         super(MessageTypes.NODE_REMOVED);
@@ -28,25 +30,27 @@ public class MessageNodeRemoved extends Message {
     void writeObjects(MessageOutputStream bbos) {
         bbos.writeInt(failedNodePhysicalId);
 
-        bbos.writeInt(newCommunicationNode);
-        bbos.writeInt(newCommunicationLeft == null ? -1 : newCommunicationLeft);
-        bbos.writeInt(newCommunicationRight == null ? -1 : newCommunicationRight);
+        bbos.writeInt(communicationUpdates.size());
+        for (SetChild update : communicationUpdates) {
+            update.writeObjects(bbos);
+        }
     }
 
     @Override
     void readObjects(MessageInputStream bbis) {
         failedNodePhysicalId = bbis.readInt();
 
-        newCommunicationNode = bbis.readInt();
-        newCommunicationLeft = bbis.readInt();
-        newCommunicationRight = bbis.readInt();
+        int updatesSize = bbis.readInt();
 
-        if (newCommunicationLeft == -1) {
-            newCommunicationLeft = null;
+        for (int i = 0; i < updatesSize; i++) {
+            SetChild update = new SetChild();
+            update.readObjects(bbis);
+            communicationUpdates.add(update);
         }
-        if (newCommunicationRight == -1) {
-            newCommunicationRight = null;
-        }
+    }
+
+    public List<SetChild> getCommunicationUpdates() {
+        return communicationUpdates;
     }
 
     @Override
@@ -58,29 +62,8 @@ public class MessageNodeRemoved extends Message {
         return failedNodePhysicalId;
     }
 
-
-    public void setNewCommunicationNode(int newCommunicationNode) {
-        this.newCommunicationNode = newCommunicationNode;
-    }
-
-    public int getNewCommunicationNode() {
-        return newCommunicationNode;
-    }
-
-    public void setNewCommunicationLeft(Integer newCommunicationLeft) {
-        this.newCommunicationLeft = newCommunicationLeft;
-    }
-
-    public void setNewCommunicationRight(Integer newCommunicationRight) {
-        this.newCommunicationRight = newCommunicationRight;
-    }
-
-    public Integer getNewCommunicationLeft() {
-        return newCommunicationLeft;
-    }
-
-    public Integer getNewCommunicationRight() {
-        return newCommunicationRight;
+    public void setCommunicationUpdates(List<SetChild> updates) {
+        this.communicationUpdates = updates;
     }
 }
 
