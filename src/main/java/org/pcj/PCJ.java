@@ -191,8 +191,14 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
         ((Group) PcjThread.threadGlobalGroup()).barrier();
     }
 
+//    /**
+//     * Synchronizes all nodes used in calculations.
+//     */
+//    public static void barrierIfNoFailSinceLastBarrier() {
+//        ((Group) PcjThread.threadGlobalGroup()).barrierIfNoFailSinceLastBarrier();
+//    }
+
     public static void barrier(int node) {
-        Lock.readLock();
         try {                      // mstodo move out lock
             ((Group) PcjThread.threadGlobalGroup()).barrier(node);
         } finally {
@@ -481,5 +487,9 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
 
     public static Set<Integer> getFailedThreadIds() {
         return InternalPCJ.getWorkerData().getFailedThreadIds();
+    }
+
+    public static Set<Integer> getFailedNodeIds() {
+        return InternalPCJ.getWorkerData().getFailedNodeIds();
     }
 }

@@ -8,5 +8,5 @@ package org.pcj.internal.faulttolerance;
 public interface FaultTolerancePolicy {
     void handleNodeFailure(int physicalNodeId);
 
-    void reportError(int nodeId);
+    void reportError(int nodeId, boolean waitForReconfiguration);
 }

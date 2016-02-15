@@ -56,10 +56,16 @@ public class CommunicationNode {
 
     public void setLeft(CommunicationNode left) {
         this.left = left;
+        if (left != null) {
+            left.setParent(this);
+        }
     }
 
     public void setRight(CommunicationNode right) {
         this.right = right;
+        if (right != null) {
+            right.setParent(this);
+        }
     }
 
     public void setParent(CommunicationNode parent) {
@@ -99,6 +105,12 @@ public class CommunicationNode {
                 ", parent=" + nullSafeId(parent) +
                 ", id=" + id +
                 '}';
+    }
+
+    public String treeAsString(String prefix) {
+        return id +
+                (left == null ? "" : ("\n" + prefix + "LEFT:" + left.treeAsString(prefix + "\t"))) +
+                (right == null ? "" : ("\n" + prefix + "RIGHT:" + right.treeAsString(prefix + "\t")));
     }
 
     public static Integer nullSafeId(CommunicationNode node) {

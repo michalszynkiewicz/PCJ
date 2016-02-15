@@ -11,10 +11,10 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class Lock {
     private static final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
-    static ThreadLocal<Integer> localLockCount;
-    static ThreadLocal<Integer> localWriteLockCount = new ThreadLocal<>();
-    static AtomicInteger lockCount = new AtomicInteger(0);
-    static AtomicInteger writeLockCount = new AtomicInteger(0);
+    private static ThreadLocal<Integer> localLockCount;
+    private static ThreadLocal<Integer> localWriteLockCount = new ThreadLocal<>();
+    private static AtomicInteger lockCount = new AtomicInteger(0);
+    private static AtomicInteger writeLockCount = new AtomicInteger(0);
 
     public static void readLock() {
 //        System.out.print("will read lock...\t");
@@ -40,11 +40,14 @@ public class Lock {
     }
 
     public static void writeLock() {
-//        Thread.dumpStack();
+//        System.out.println("############################will write lock");
 //        System.out.print("Will write-lock read lock count: : " + lockCount.get() +
 //                " this thread read lock count: " + localWriteLockCount.get());
 //        System.out.println("\twrite lock count: " + writeLockCount.get());
         readWriteLock.writeLock().lock();
+//        System.out.println("##################################################");
+//        Thread.dumpStack();
+//        System.out.println("##################################################");
 //        System.out.println("in the lock");
 
     }
@@ -55,5 +58,18 @@ public class Lock {
 //        System.out.println("Unlock: " + localWriteLocks);
 //        System.out.println("write lock count: " + writeLockCount.decrementAndGet());
         readWriteLock.writeLock().unlock();
+//        System.out.println("****************************************************");
+//        System.out.println("UNLOCKED FROM");
+//        Thread.dumpStack();
+//        System.out.println("****************************************************");                                                /*mstodo remove logging*/
+    }
+
+    public static void printLockState() {
+        System.out.println("Write locked: " + readWriteLock.isWriteLocked());
+        boolean writeLockable = readWriteLock.writeLock().tryLock();
+        System.out.println("Write lockable: " + writeLockable);
+        if (writeLockable) {
+            readWriteLock.writeLock().unlock();
+        }
     }
 }

@@ -18,10 +18,11 @@ public class LogUtils {
     }
 
     public static void log(int physicalId, String message){
-        log("[" + physicalId + "] " + message);
+        if (enabled) log("[" + physicalId + "] " + message);
     }
 
     public static void log(String message){
+//        System.out.println("should log " + message);
         if (enabled) {
             try {
                 FileWriter fileWriter = new FileWriter("/tmp/pcj-ft-log", true);

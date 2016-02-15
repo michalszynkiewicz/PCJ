@@ -174,16 +174,20 @@ public class InternalGroup {
         return ids;
     }
 
+    int indexOf(int physicalId) {
+        return physicalIds.indexOf(physicalId);
+    }
+
     boolean physicalSync(int physicalId) {
         int position = physicalIds.indexOf(physicalId);
-        System.err.print("barrier for: " + physicalId + " translated to bitmask position: " + position);
-        System.err.print("\tbbitmask be4: " + physicalSync);
+//        System.err.print("barrier for: " + physicalId + " translated to bitmask position: " + position);
+        // LogUtils.log("\tbbitmask be4: " + physicalSync);
 //        if (physicalSync.isSet(position)) {
 //            LogUtils.log("PHYSICAL SYNC ALREADY SET FOR POSITION: " + position);
 //        }
         physicalSync.set(position);
 
-        System.err.println("\tbbitmask after: " + physicalSync);
+        // LogUtils.log("\tbbitmask after: " + physicalSync);
         return physicalSync.isSet();
     }
 
@@ -334,19 +338,66 @@ public class InternalGroup {
                     Lock.readUnlock();
                     unlocked = true;
                 }
-                // LogUtils.log(myNodeId, "barrier] will await");
+//                LogUtils.log(myNodeId, "barrier] will await");
                 syncObject.await();
+//                LogUtils.log(myNodeId, "barrier] after await");
             } catch (InterruptedException ex) {
                 throw new RuntimeException(ex);
             }
             InternalPCJ.getBarrierHandler().resetBarrier();
+            // LogUtils.log(myNodeId, "barrier] after resetBarrier");
             syncObject.unlock();
+            // LogUtils.log(myNodeId, "barrier] after unlock");
         } finally {
             if (!unlocked) {
+                // LogUtils.log(myNodeId, "barrier] will finally unlock");
                 Lock.readUnlock();
+                // LogUtils.log(myNodeId, "barrier] finally unlocked");
             }
         }
     }
+
+
+//    protected void barrierIfNoFailSinceLastBarrier(int myNodeId) {       // mstodo it seems to be not the place to  handle it
+//        Lock.readLock();
+//        boolean unlocked = false;
+////        LogUtils.log(myNodeId, "barrier] lock"); // todo virtual node in log
+//
+//        try {
+//            syncObject.lock();
+//            InternalPCJ.getBarrierHandler().setGroupUnderBarrier(groupId);
+//            try {
+//                localSync.set(myNodeId);
+////                LogUtils.log(myNodeId, "barrier] set localSync");
+//                if (localSync.isSet(localSyncMask)) {
+//                    // LogUtils.log(myNodeId, "barrier] localSync is set");
+//                    Lock.readUnlock();
+//                    unlocked = true;
+//                    try {
+//                        // LogUtils.log(myNodeId, "barrier] sending syncMessage");
+//                        InternalPCJ.getNetworker().send(getPhysicalMaster(), syncMessage); // goes to node 0 for "normal" barrier
+//                    } catch (IOException e) {
+//                        throw new RuntimeException("Node 0 failed!");
+//                    }
+//                    localSync.clear();
+//                }
+//                if (!unlocked) {
+//                    Lock.readUnlock();
+//                    unlocked = true;
+//                }
+//                // LogUtils.log(myNodeId, "barrier] will await");
+//                syncObject.await();
+//            } catch (InterruptedException ex) {
+//                throw new RuntimeException(ex);
+//            }
+//            InternalPCJ.getBarrierHandler().resetBarrier();
+//            syncObject.unlock();
+//        } finally {
+//            if (!unlocked) {
+//                Lock.readUnlock();
+//            }
+//        }
+//    }
 
     /**
      * Synchronize current node and node with specified group
@@ -419,7 +470,7 @@ public class InternalGroup {
             return futureObject;
         } catch (IOException ex) {
             FaultTolerancePolicy faultTolerancePolicy = InternalPCJ.getWorkerData().getFaultTolerancePolicy();
-            faultTolerancePolicy.reportError(nodeId);
+            faultTolerancePolicy.reportError(nodeId, true);
             throw new NodeFailedException(ex);
         }
     }
@@ -445,7 +496,7 @@ public class InternalGroup {
             InternalPCJ.getNetworker().send(nodeId, msg);
         } catch (IOException ex) {
             FaultTolerancePolicy faultTolerancePolicy = InternalPCJ.getWorkerData().getFaultTolerancePolicy();
-            faultTolerancePolicy.reportError(nodeId);
+            faultTolerancePolicy.reportError(nodeId, true);
             throw new NodeFailedException(ex);
         }
     }
@@ -483,7 +534,6 @@ public class InternalGroup {
 //            LogUtils.log(InternalPCJ.getWorkerData().physicalId, "No physical node with id: " + physicalNodeId + " found" + "\tphysical node ids: " + physicalIds);
         } else {
             physicalIds.remove(removedNodeIdx);
-
 
             List<Integer> groupIdsToRemove = new ArrayList<>();
             for (Map.Entry<Integer, Integer> nodeEntry : nodes.entrySet()) {

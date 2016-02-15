@@ -172,14 +172,14 @@ public class Networker {        // mstodo: access rights!
 
     public void broadcast(SocketChannel left, SocketChannel right, Message message) {
         if ((Configuration.DEBUG & 2) == 2) {
-            if ((Configuration.DEBUG & 4) == 4) {
-                System.err.println("" + worker.getData().physicalId + " broadcast: " + message + " to " + left + " and " + right);
-            } else {
-                System.err.println("" + worker.getData().physicalId + " broadcast: " + message.getType() + " to " + left + " and " + right);
-            }
+           if ((Configuration.DEBUG & 4) == 4) {
+              System.err.println("" + worker.getData().physicalId + " broadcast: " + message + " to " + left + " and " + right);
+           } else {
+              System.err.println("" + worker.getData().physicalId + " broadcast: " + message.getType() + " to " + left + " and " + right);
+           }
         }
-        try {
-            ByteBuffer mbuf = null;
+       IOException exception = null;
+       ByteBuffer mbuf = null;
 
 //            if (message instanceof BroadcastedMessage) {
 //                 LogUtils.log(InternalPCJ.getWorkerData().physicalId,
@@ -187,34 +187,43 @@ public class Networker {        // mstodo: access rights!
 //                workerData.broadcastCache.add((BroadcastedMessage) message);
 //            }
 
-            if (left != null) {
-                if (left instanceof LoopbackSocketChannel) {
-                    worker.enqueueMessage(left, message);
-                } else {
-                    if (mbuf == null) {
-                        mbuf = prepareByteBuffer(message);
-                    }
-                    selectorProc.send(left, mbuf.duplicate());
+       try {
+          if (left != null) {
+             if (left instanceof LoopbackSocketChannel) {
+                worker.enqueueMessage(left, message);
+             } else {
+                if (mbuf == null) {
+                   mbuf = prepareByteBuffer(message);
                 }
-            }
-            if (right != null && right != left) {
-                if (right instanceof LoopbackSocketChannel) {
-                    worker.enqueueMessage(right, message);
-                } else {
-                    if (mbuf == null) {
-                        mbuf = prepareByteBuffer(message);
-                    }
-                    selectorProc.send(right, mbuf.duplicate());
+                selectorProc.send(left, mbuf.duplicate());
+             }
+          }
+       } catch (IOException e) {
+          exception = e;
+       }
+       try {
+          if (right != null && right != left) {
+             if (right instanceof LoopbackSocketChannel) {
+                worker.enqueueMessage(right, message);
+             } else {
+                if (mbuf == null) {
+                   mbuf = prepareByteBuffer(message);
                 }
-            }
+                selectorProc.send(right, mbuf.duplicate());
+             }
+          }
 //            for (SocketChannel child : left) {
 //                if (child != null) {
 //                    selectorProc.send(child, mbuf.duplicate());
 //                }
 //            }
-        } catch (IOException ex) {
-            throw new NodeFailedException(ex);
-        }
+       } catch (IOException ex) {
+          exception = ex;
+       }
+       if (exception != null) {
+          System.err.println("error broadcasting message: " + message);  // mstodo remove/replace with better exception
+          throw new NodeFailedException(exception);
+       }
     }
 
     void send(SocketChannel socket, Message message) throws IOException {

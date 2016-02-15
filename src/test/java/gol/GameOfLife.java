@@ -1,3 +1,5 @@
+package gol;
+
 import org.pcj.PCJ;
 import org.pcj.StartPoint;
 import org.pcj.Storage;

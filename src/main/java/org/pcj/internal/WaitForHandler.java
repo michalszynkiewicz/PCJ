@@ -21,11 +21,15 @@ public class WaitForHandler {
     private List<Integer> failedNodes = new ArrayList<>();
 
     public void add(Field field) {
-        fieldsToAwake.add(field);
+        synchronized (field) {
+            fieldsToAwake.add(field);
+        }
     }
 
     public void remove(Field field) {
-        fieldsToAwake.remove(field);
+        synchronized (field) {
+            fieldsToAwake.remove(field);
+        }
     }
 
     public void nodeFailed(int failedNodeId) {

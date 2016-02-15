@@ -124,4 +124,8 @@ final public class Group extends org.pcj.internal.InternalGroup {
     public void log(String text) {
         super.log(myNodeId, text);
     }
+
+//    public void barrierIfNoFailSinceLastBarrier() {
+//        super.barrierIfNoFailSinceLastBarrier(myNodeId);
+//    }
 }

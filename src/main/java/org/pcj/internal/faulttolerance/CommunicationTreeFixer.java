@@ -80,7 +80,7 @@ public class CommunicationTreeFixer {
 
     private static void replaceWith(CommunicationNode replaced, CommunicationNode parent, CommunicationNode replacement,
                                     List<SetChild> resultList) {
-        if (parent.getLeft() == replaced) {  // mstodo null pointer here!!!!!
+        if (parent.getLeft() == replaced) {
             parent.setLeft(replacement);
             resultList.add(
                     new SetChild(parent.getId(), nullSafeId(replacement), LEFT)

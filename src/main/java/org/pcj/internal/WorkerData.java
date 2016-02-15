@@ -59,6 +59,7 @@ public final class WorkerData {
 
     final LazyActivityMonitor activityMonitor;
     final Set<Integer> failedThreadIds = new HashSet<>();
+    private Set<Integer> failedNodeIds = new HashSet<>();
     final BroadcastCache broadcastCache;
 
     public WorkerData(int[] localIds, ConcurrentMap<Integer, PcjThreadLocalData> localData, InternalGroup globalGroup) {
@@ -164,6 +165,15 @@ public final class WorkerData {
 
     public Set<Integer> getFailedThreadIds() {
         return Collections.unmodifiableSet(failedThreadIds);
+    }
+
+    public Set<Integer> getFailedNodeIds() {
+        return Collections.unmodifiableSet(failedNodeIds);
+    }
+
+    public void addFailedNode(Integer nodeId) {
+        failedThreadIds.addAll(getVirtualNodes(nodeId));
+        failedNodeIds.add(nodeId);
     }
 
     public List<Integer> getVirtualNodes(int physicalNodeId) {

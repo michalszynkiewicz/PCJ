@@ -4,6 +4,7 @@
 package org.pcj.internal;
 
 import org.pcj.Group;
+import org.pcj.internal.faulttolerance.NodeFailureWaiter;
 import org.pcj.internal.message.MessageFinished;
 import org.pcj.internal.message.MessageGroupJoinQuery;
 import org.pcj.internal.message.MessageGroupJoinRequest;
@@ -20,9 +21,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.channels.SocketChannel;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -42,6 +41,7 @@ public abstract class InternalPCJ {
     private static Node0Data node0Data;
     private static BarrierHandler barrierHandler;
     private static WaitForHandler waitForHandler;
+    private static NodeFailureWaiter nodeFailureWaiter;
     private static FutureHandler futureHandler;
 
     // Suppress default constructor for noninstantiability
@@ -125,6 +125,7 @@ public abstract class InternalPCJ {
         barrierHandler = new BarrierHandler();
         waitForHandler = new WaitForHandler();
         futureHandler = new FutureHandler();
+        nodeFailureWaiter = new NodeFailureWaiter();
 
         try {
             for (int i = 0; i < localIds.length; ++i) {
@@ -179,7 +180,7 @@ public abstract class InternalPCJ {
                 } catch (UnknownHostException ex) {
                     localHostname = "<" + ex.getLocalizedMessage() + ">";
                 }
-                timer.schedule(Configuration.WAIT_TIME * 1000, localHostname + Arrays.toString(localIds) + ": Waiting too log for connection. Exiting!");
+                timer.schedule(Configuration.WAIT_TIME * 1000, localHostname + Arrays.toString(localIds) + ": Waiting too long for connection. Exiting!");
             }
 
             networker = new Networker(worker);
@@ -359,6 +360,10 @@ public abstract class InternalPCJ {
 
     public static WaitForHandler getWaitForHandler() {
         return waitForHandler;
+    }
+
+    public static NodeFailureWaiter getNodeFailureWaiter() {
+        return nodeFailureWaiter;
     }
 
     public static Networker getNetworker() {

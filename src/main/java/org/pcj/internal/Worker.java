@@ -246,6 +246,7 @@ public class Worker implements Runnable {
                 return true;
             } else {
                 // mstodo verify if it is ok for node 0
+                // LogUtils.log(getPhysicalNodeId(), "added to broadcastCache: " + broadcastedMessage);
                 data.broadcastCache.add(broadcastedMessage);
             }
         }
@@ -253,6 +254,7 @@ public class Worker implements Runnable {
     }
 
     private void nodeRemoved(MessageNodeRemoved message) {
+        // LogUtils.setEnabled(true);
 //        LogUtils.setEnabled(true);
         // LogUtils.log("[" + data.physicalId + "] in node removed");
         Lock.writeLock();
@@ -265,13 +267,11 @@ public class Worker implements Runnable {
             getFutureHandler().nodeFailed(failedNodeId);
 
             int myNodeId = data.physicalId;
-//            LogUtils.setEnabled(true);
             for (SetChild update : message.getCommunicationUpdates()) {
                 if (update.getParent().equals(myNodeId)) {
 //                    LogUtils.log(data.physicalId, "############will attach " + update.getChild() + " on the " + update.getDirection());
                     data.internalGlobalGroup.updateCommunicationTree(update);
-                    data.internalGlobalGroup.printCommunicationTree(); // mstodo remove
-                    // mstodo sth is wrong for 19 replacing 2
+//                    data.internalGlobalGroup.printCommunicationTree(); // mstodo remove
 //                 LogUtils.log(data.physicalId, "attached");
                     replayBroadcast();
                 }
@@ -280,6 +280,8 @@ public class Worker implements Runnable {
                     data.internalGlobalGroup.setPhysicalParent(update.getParent());
                 }
             }
+            data.addFailedNode(failedNodeId);
+            getNodeFailureWaiter().nodeFailed(failedNodeId);
 //            LogUtils.log(myNodeId, "Finished removal");
         } catch (RuntimeException rex) {
 //            LogUtils.log(data.physicalId, rex.getMessage());  // mstodo remove
@@ -298,17 +300,27 @@ public class Worker implements Runnable {
 //        LogUtils.setEnabled(true);
 //         LogUtils.log(data.physicalId, "replaying events after prev parent failure. ");
 
+        MessageSyncGo lastSyncGo = null; // mstodo undo
         for (BroadcastedMessage message : list) {
 //            System.out.println("replaying message: " + message);
 //            LogUtils.log(getPhysicalNodeId(), "replaying message: " + message);
 //             LogUtils.log(data.physicalId, "event[" + message.getType() + "] : " + message.getMessageId());
-            networker.broadcast(message);
+            if (message instanceof MessageSyncGo) {
+                lastSyncGo = (MessageSyncGo) message;
+            } else {
+                networker.broadcast(message);
+            }
+        }
+
+        if (lastSyncGo != null) {
+            // LogUtils.log(getPhysicalNodeId(), "will replay: " + lastSyncGo);
+            networker.broadcast(lastSyncGo);
         }
     }
 
     private void nodeFailed(MessageNodeFailed message) {
         FaultTolerancePolicy policy = data.activityMonitor.getFaultTolerancePolicy();
-        System.err.println("got message node failed for node: " + message.getFailedNodePhysicalId()); // mstodo
+        System.err.println("got message node failed for node: " + message.getFailedNodePhysicalId()); // mstodo keeps being repeated in the log
         policy.handleNodeFailure(message.getFailedNodePhysicalId());
     }
 
@@ -604,25 +616,29 @@ public class Worker implements Runnable {
      * @see MessageTypes#SYNC_WAIT
      */
     private void syncWait(MessageSyncWait message) throws IOException {
-        int physicalId = data.getPhysicalId(message.getSocket());
-        barrierHandler.markCompleteOnPhysicalNode(message.getGroupId(), physicalId);
+        Integer physicalId = data.getPhysicalId(message.getSocket());
+        if (physicalId != null) {
+            barrierHandler.markCompleteOnPhysicalNode(message.getGroupId(), physicalId);
+        }
     }
 
-    private Set<Integer> messageIds = new HashSet<>();
+    private final Set<Integer> syncMessageIds = new HashSet<>(); // mstodo rely on usual repeating prevention mechanism
 
     /**
      * @see MessageTypes#SYNC_GO
      */
     private void syncGo(MessageSyncGo message) {
         // mstodo fix it!!!
-        if (messageIds.contains(message.getMessageId())) {
+        if (syncMessageIds.contains(message.getMessageId())) {
 //            LogUtils.log(data.physicalId, "got already processed sync go!!!!: " + message.getMessageId());
             return;
+        } else {
+            // LogUtils.log(data.physicalId, "got sync go: " + message.getMessageId());
         }
-        // mstodo use failed thread ids
+        // mstodo use failed node ids
 
-        messageIds.add(message.getMessageId());
-        // LogUtils.log(data.physicalId, "JKIAgot sync go with id: " + message.getMessageId());
+        syncMessageIds.add(message.getMessageId());
+         // LogUtils.log(data.physicalId, "JKIAgot sync go with id: " + message.getMessageId());
         InternalGroup group = data.internalGroupsById.get(message.getGroupId());
         networker.broadcast(message);
         // LogUtils.log(getWorkerData().physicalId, "JKIAbroadcast sent");

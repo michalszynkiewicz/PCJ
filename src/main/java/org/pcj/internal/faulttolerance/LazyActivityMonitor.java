@@ -17,11 +17,11 @@ import static org.pcj.internal.InternalPCJ.getWorkerData;
 
 /**
  * Author: Michal Szynkiewicz, michal.l.szynkiewicz@gmail.com
- * Date: 9/7/15                                                            // mstodo lock
+ * Date: 9/7/15
  * Time: 4:25 PM
  */
 public class LazyActivityMonitor implements Runnable {
-    private Thread monitoringThread = new Thread(this);
+    private Thread monitoringThread = new Thread(this, "LazyActivityMonitorThread");
 
     private MessagePing messagePing = new MessagePing();
     private Map<Integer, Long> lastPingTimes = new HashMap<>();
@@ -31,6 +31,7 @@ public class LazyActivityMonitor implements Runnable {
     public LazyActivityMonitor(FaultTolerancePolicy faultTolerancePolicy) {
         this.faultTolerancePolicy = faultTolerancePolicy;
         monitoringThread.setDaemon(true);
+        monitoringThread.setPriority(Thread.MAX_PRIORITY);
     }
 
     public void start() {
@@ -97,14 +98,16 @@ public class LazyActivityMonitor implements Runnable {
             lastPingTime = currentTimeMillis();
             lastPingTimes.put(nodeId, lastPingTime); // new observed node
         }
-        if (currentTimeMillis() - lastPingTime > Configuration.NODE_TIMEOUT * 1000L) {
+        long sinceLastPing = currentTimeMillis() - lastPingTime;
+        if (sinceLastPing > Configuration.NODE_TIMEOUT * 1000L) {
+            System.out.println("node: " + nodeId + " timed out after: " + sinceLastPing);
 //            LogUtils.log(getWorkerData().getPhysicalId(), "Child node timed out: " + nodeId);
             reportError(nodeId);
         }
     }
 
     private void reportError(int nodeId) {
-        faultTolerancePolicy.reportError(nodeId);
+        faultTolerancePolicy.reportError(nodeId, false);
     }
 
     private boolean sleep() {

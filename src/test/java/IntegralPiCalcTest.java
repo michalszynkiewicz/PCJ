@@ -16,9 +16,11 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
 
     public static final Work FINISH_WORK = new Work(true);
 
-//    private static final long n = 100_000_000_000l;    // mstodo
-    private static final long n = 20_000_000_000l;
+    private static final int fails = Integer.valueOf(System.getProperty("fails", "0"));
+    private static final long n = 100_000_000_000l;    // mstodo
+//    private static final long n = 20_000_000_000l;
     private static final double weight = 1.0 / (double) n;
+    private static final double FAIL_POINT = 10000;
 
     // all nodes data:
     @Shared
@@ -52,8 +54,15 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
         PCJ.log("will work " + new Date());
 
         double sum = 0.0;
+
         for (double i = task.start; i < task.end; i++) {
             sum += f((i + 0.5) * weight);
+            if ((int)i == 10000 && PCJ.getPhysicalNodeId() == 17 && fails > 1) {
+                System.exit(12);
+            }
+            if ((int)i == 1000 && PCJ.getPhysicalNodeId() == 2 && fails > 0) {
+                System.exit(12);
+            }
         }
         PCJ.putLocal("sum", sum * weight);
         PCJ.log("will barrier " + new Date());
@@ -151,7 +160,7 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
         time2 -= time;
 
         if (PCJ.myId() == 0) {
-            System.out.printf("PI: %f10 time: %f5\n", pi, time2 * 1.0E-9);
+            System.out.printf("######PI: %f10 time: %f5\n", pi, time2 * 1.0E-9);
         }
     }
 

@@ -3,6 +3,8 @@ package org.pcj.internal.utils;
 import org.junit.Test;
 
 public class BitMaskTest {
+
+    /*mstodo add test to cover setting last when one is removed (do it on group/fail handler level)*/
     @Test
     public void shouldSucceedToRemoveIdx() {
         BitMask mask = new BitMask(5);

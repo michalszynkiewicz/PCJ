@@ -11,7 +11,7 @@ import static java.lang.System.getProperty;
  * Date: 11/18/14
  * Time: 11:30 PM
  */
-public class BarrierTest extends Storage implements StartPoint {
+public class BarrierTestNonFT extends Storage implements StartPoint {
     private static String[] nodes = getProperty("nodes").split(",");
     private static int fails = Integer.valueOf(getProperty("fails"));
 
@@ -32,19 +32,14 @@ public class BarrierTest extends Storage implements StartPoint {
 //        }
         Integer barrierCount = Integer.valueOf(getProperty("barrierCount"));
         for (int i = 0; i < barrierCount; i++) {
-//            if (i == 4998 && PCJ.getPhysicalNodeId() == 0) {
-//                LogUtils.setEnabled(true);
-//            }
 //            LogUtils.log(PCJ.getPhysicalNodeId(), "-   will do barrier number: " + i);
             PCJ.barrier();
-//            System.out.print(i + ",");
-//            Lock.printLockState();
-//            LogUtils.log(PCJ.getPhysicalNodeId(), "+   after barrier number: " + i);
-            if (i == 5500 && PCJ.getPhysicalNodeId() == 17 && fails > 1) {
-                System.exit(12);
+//            LogUtils.log(PCJ.g    etPhysicalNodeId(), "+   after barrier number: " + i);
+            if (i == 5000 && PCJ.getPhysicalNodeId() == 17) {
+                // do nothing
             }
-            if (i == 5000 && PCJ.getPhysicalNodeId() == 2 && fails > 0) {
-                System.exit(12);
+            if (i == 5000 && PCJ.getPhysicalNodeId() == 2) {
+                // do nothing
             }
         }
 //        PCJ.log("After all barriers");
@@ -64,6 +59,6 @@ public class BarrierTest extends Storage implements StartPoint {
 
     public static void main(String[] args) {
         System.out.println(ManagementFactory.getRuntimeMXBean().getName());
-        PCJ.deploy(BarrierTest.class, BarrierTest.class, nodes);
+        PCJ.deploy(BarrierTestNonFT.class, BarrierTestNonFT.class, nodes);
     }
 }
