@@ -11,6 +11,9 @@ LIB_BINARY='PCJ-4.0.0.SNAPSHOT-bin'
 #rm build/tmp/dist/*.class
 
 cp build/libs/${LIB_BINARY}.jar build/tmp/dist
+cp build/libs/${LIB_BINARY}.jar build/libs/PCJ-4.0.0.SNAPSHOT2-bin.jar
+scp build/libs/PCJ-4.0.0.SNAPSHOT2-bin.jar plgmich4l@hpc.icm.edu.pl:
+
 
 for TEST_CLASS in BarrierTest IntegralPiCalcTest PiCalculationTest
 do

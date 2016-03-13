@@ -17,10 +17,8 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
     public static final Work FINISH_WORK = new Work(true);
 
     private static final int fails = Integer.valueOf(System.getProperty("fails", "0"));
-    private static final long n = 100_000_000_000l;    // mstodo
-//    private static final long n = 20_000_000_000l;
+    private static final long n = 100_000_000_000L;
     private static final double weight = 1.0 / (double) n;
-    private static final double FAIL_POINT = 10000;
 
     // all nodes data:
     @Shared
@@ -55,13 +53,19 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
 
         double sum = 0.0;
 
-        for (double i = task.start; i < task.end; i++) {
-            sum += f((i + 0.5) * weight);
-            if ((int)i == 10000 && PCJ.getPhysicalNodeId() == 17 && fails > 1) {
-                System.exit(12);
+        if (fails > 0 && PCJ.getPhysicalNodeId() == 2) {
+            for (double i = task.start; i < task.end; i++) {
+                sum += f((i + 0.5) * weight);
+                if ((int)(i - task.start) == 100000) {
+                    System.exit(12);
+                }
             }
-            if ((int)i == 1000 && PCJ.getPhysicalNodeId() == 2 && fails > 0) {
-                System.exit(12);
+        } else if (fails > 1 && PCJ.getPhysicalNodeId() == 17) {
+            System.exit(12);
+        } else {
+            PCJ.log("start: " + task.start + ", end: " + task.end + "physNodeId: " + PCJ.getPhysicalNodeId());
+            for (double i = task.start; i < task.end; i++) {
+                sum += f((i + 0.5) * weight);
             }
         }
         PCJ.putLocal("sum", sum * weight);

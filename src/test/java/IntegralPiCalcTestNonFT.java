@@ -15,10 +15,8 @@ public class IntegralPiCalcTestNonFT extends Storage implements StartPoint {
 
    public static final Work FINISH_WORK = new Work(true);
 
-   private static final long n = 100_000_000_000l;    // mstodo
-   //    private static final long n = 20_000_000_000l;
+   private static final long n = 100_000_000_000L;
    private static final double weight = 1.0 / (double) n;
-   private static final double FAIL_POINT = 10000;
 
    // all nodes data:
    @Shared
@@ -55,12 +53,6 @@ public class IntegralPiCalcTestNonFT extends Storage implements StartPoint {
 
       for (double i = task.start; i < task.end; i++) {
          sum += f((i + 0.5) * weight);
-         if ((long) i == FAIL_POINT && PCJ.getPhysicalNodeId() == 17) {
-            // do nothing - just to keep the performance impact of checks
-         }
-         if ((long) i == FAIL_POINT && PCJ.getPhysicalNodeId() == 2) {
-            // do nothing - just to keep the performance impact of checks
-         }
       }
       PCJ.putLocal("sum", sum * weight);
 //      PCJ.log("will barrier " + new Date());

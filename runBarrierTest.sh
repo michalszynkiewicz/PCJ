@@ -3,9 +3,9 @@
 
 #TEST_CLASS=WaitForOnNode0Test
 #TEST_CLASS=BarrierTest
-#TEST_CLASS=IntegralPiCalcTest
+TEST_CLASS=IntegralPiCalcTest
 #TEST_CLASS=NonFTPi
-TEST_CLASS=PiCalculationTest
+#TEST_CLASS=PiCalculationTest
 LIB_BINARY='PCJ-4.0.0.SNAPSHOT-bin.jar'
 #HOSTS=("192.168.0.108" "192.168.0.107")
 HOSTS=("192.168.0.100" "192.168.0.101")
