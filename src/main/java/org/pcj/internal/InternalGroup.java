@@ -56,9 +56,9 @@ public class InternalGroup {
     /**
      * sync
      */
-    final private BitMask localSync;
-    final private BitMask localSyncMask;
-    final private BitMask physicalSync;
+    private BitMask localSync;
+    private BitMask localSyncMask;
+    private BitMask physicalSync;
     final private WaitObject syncObject;
     /**
      * Physical Parent, Left, Right
