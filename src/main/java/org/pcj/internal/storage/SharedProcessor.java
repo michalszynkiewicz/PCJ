@@ -75,13 +75,10 @@ public class SharedProcessor extends javax.annotation.processing.AbstractProcess
         }
         return false;
     }
-
+    
     private void process(Element e) {
         String className = e.getEnclosingElement().toString();
-        String sharedName = e.getAnnotation(Shared.class).value();
-        if (sharedName.isEmpty()) {
-            sharedName = e.toString();
-        }
+        String sharedName = e.toString();
 
         Set<String> classFields;
         if (sharedFields.containsKey(className) == false) {

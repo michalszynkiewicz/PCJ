@@ -18,21 +18,60 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SocketChannel;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.pcj.internal.message.Message;
+import org.pcj.internal.message.MessageFinishCompleted;
+import org.pcj.internal.message.MessageFinished;
+import org.pcj.internal.message.MessageGroupJoinAnswer;
+import org.pcj.internal.message.MessageGroupJoinBonjour;
+import org.pcj.internal.message.MessageGroupJoinInform;
+import org.pcj.internal.message.MessageGroupJoinQuery;
+import org.pcj.internal.message.MessageGroupJoinRequest;
+import org.pcj.internal.message.MessageGroupJoinResponse;
+import org.pcj.internal.message.MessageHello;
+import org.pcj.internal.message.MessageHelloBonjour;
+import org.pcj.internal.message.MessageHelloCompleted;
+import org.pcj.internal.message.MessageHelloGo;
+import org.pcj.internal.message.MessageHelloInform;
+import org.pcj.internal.message.MessageHelloResponse;
+import org.pcj.internal.message.MessageLog;
+import org.pcj.internal.message.MessageThreadPairSync;
+import org.pcj.internal.message.MessageThreadsSyncGo;
+import org.pcj.internal.message.MessageThreadsSyncWait;
+import org.pcj.internal.message.MessageSyncGo;
+import org.pcj.internal.message.MessageSyncWait;
+import org.pcj.internal.network.SocketData;
+import org.pcj.internal.message.MessageTypes;
+import org.pcj.internal.message.MessageValueAsyncGetRequest;
+import org.pcj.internal.message.MessageValueAsyncGetResponse;
+import org.pcj.internal.message.MessageValueBroadcast;
+import org.pcj.internal.message.MessageValueCompareAndSetRequest;
+import org.pcj.internal.message.MessageValueCompareAndSetResponse;
+import org.pcj.internal.message.MessageValuePut;
+import org.pcj.internal.network.LoopbackSocketChannel;
+import org.pcj.internal.utils.BitMask;
+import org.pcj.internal.utils.CloneObject;
+import org.pcj.internal.utils.Configuration;
+import org.pcj.internal.utils.Utilities;
+import org.pcj.internal.utils.WaitObject;
 
 import static org.pcj.internal.InternalPCJ.*;
 
 /**
  * This class processes incoming messages.
- * <p/>
+ * 
  * At present this class can be used only in sequential manner.
- *
+ * 
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
 public class Worker implements Runnable {
@@ -93,9 +132,9 @@ public class Worker implements Runnable {
     @Override
     public void run() {
         try {
-            for (; ; ) {
+            for (;;) {
                 try {
-                    for (; ; ) {
+                    for (;;) {
                         processMessage(requestQueue.take());
                     }
                 } catch (IOException ex) {
@@ -109,6 +148,24 @@ public class Worker implements Runnable {
 
     WorkerData getData() {
         return data;
+    }
+
+    private void broadcast(InternalGroup group, Message message) {
+//        System.err.println("broadcast:" + message + " to " + group.getGroupName());
+        Integer leftChildrenIndex = group.getPhysicalLeft();
+        Integer rightChildrenIndex = group.getPhysicalRight();
+
+        SocketChannel left = null;
+        if (leftChildrenIndex != null) {
+            left = data.physicalNodes.get(group.getPhysicalLeft());
+        }
+
+        SocketChannel right = null;
+        if (rightChildrenIndex != null) {
+            right = data.physicalNodes.get(group.getPhysicalRight());
+        }
+
+        networker.broadcast(left, right, message);
     }
 
     private void processMessage(Message message) throws IOException {
@@ -166,14 +223,14 @@ public class Worker implements Runnable {
                 case SYNC_GO:
                     syncGo((MessageSyncGo) message);
                     break;
-                case NODES_SYNC_WAIT:
-                    nodesSyncWait((MessageNodesSyncWait) message);
+                case THREADS_SYNC_WAIT:
+                    nodesSyncWait((MessageThreadsSyncWait) message);
                     break;
-                case NODES_SYNC_GO:
-                    nodesSyncGo((MessageNodesSyncGo) message);
+                case THREADS_SYNC_GO:
+                    nodesSyncGo((MessageThreadsSyncGo) message);
                     break;
-                case NODE_SYNC:
-                    nodeSync((MessageNodeSync) message);
+                case THREAD_PAIR_SYNC:
+                    nodeSync((MessageThreadPairSync) message);
                     break;
                 case GROUP_JOIN_QUERY:
                     groupJoinQuery((MessageGroupJoinQuery) message);
@@ -196,17 +253,17 @@ public class Worker implements Runnable {
                 case VALUE_ASYNC_GET_REQUEST:
                     valueAsyncGetRequest((MessageValueAsyncGetRequest) message);
                     break;
-                case VALUE_ASYNC_GET_REQUEST_INDEXES:
-                    valueAsyncGetRequestIndexes((MessageValueAsyncGetRequestIndexes) message);
-                    break;
                 case VALUE_ASYNC_GET_RESPONSE:
                     valueAsyncGetResponse((MessageValueAsyncGetResponse) message);
                     break;
+                case VALUE_COMPARE_AND_SET_REQUEST:
+                    valueCompareAndSetRequest((MessageValueCompareAndSetRequest) message);
+                    break;
+                case VALUE_COMPARE_AND_SET_RESPONSE:
+                    valueCompareAndSetResponse((MessageValueCompareAndSetResponse) message);
+                    break;
                 case VALUE_PUT:
                     valuePut((MessageValuePut) message);
-                    break;
-                case VALUE_PUT_INDEXES:
-                    valuePutIndexes((MessageValuePutIndexes) message);
                     break;
                 case VALUE_BROADCAST:
                     valueBroadcast((MessageValueBroadcast) message);
@@ -486,7 +543,7 @@ public class Worker implements Runnable {
     private void helloInform(MessageHelloInform message) throws IOException {
         int physicalId = message.getPhysicalId();
         InternalGroup globalGroup = data.internalGlobalGroup;
-        networker.broadcast(globalGroup, message);
+        broadcast(globalGroup, message);
 
         /* add information about new-node */
         for (int id : message.getNodeIds()) {
@@ -575,7 +632,7 @@ public class Worker implements Runnable {
      */
     private void helloGo(MessageHelloGo message) {
         InternalGroup globalGroup = data.internalGlobalGroup;
-        networker.broadcast(globalGroup, message);
+        broadcast(globalGroup, message);
 
         WaitObject sync = data.internalGlobalGroup.getSyncObject();
         sync.signalAll();
@@ -585,28 +642,19 @@ public class Worker implements Runnable {
      * @see MessageTypes#FINISHED
      */
     private void finished(MessageFinished message) throws IOException {
-        data.physicalNodesCount--;
-//        System.out.println("GOT MESSAGE FINISHED for node: " + data.getPhysicalId(message.getSocket()) + " . NODES LEFT: " + data.physicalNodesCount);
-        if (data.physicalNodesCount == 0) {
-//            System.out.println("NO PHYSICAL NODES LEFT, WILL STOP");
+        if (--data.physicalNodesCount == 0) {
             InternalGroup globalGroup = data.internalGlobalGroup;
 
             MessageFinishCompleted reply = new MessageFinishCompleted();
             reply.setInReplyTo(message.getMessageId());
             networker.send(globalGroup, reply);
-//            System.out.println("SENT FINISH COMPLETE");
         }
     }
 
     private void finishCompleted(MessageFinishCompleted message) {
-
         InternalGroup globalGroup = data.internalGlobalGroup;
-        networker.broadcast(globalGroup, message);
-        try {
-            Thread.sleep(2000l);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        broadcast(globalGroup, message);
+
         synchronized (data.finishObject) {
             data.finishObject.notifyAll();
         }
@@ -640,8 +688,7 @@ public class Worker implements Runnable {
         syncMessageIds.add(message.getMessageId());
          // LogUtils.log(data.physicalId, "JKIAgot sync go with id: " + message.getMessageId());
         InternalGroup group = data.internalGroupsById.get(message.getGroupId());
-        networker.broadcast(message);
-        // LogUtils.log(getWorkerData().physicalId, "JKIAbroadcast sent");
+        broadcast(group, message);
 
         WaitObject sync = group.getSyncObject();
         sync.signalAll();
@@ -808,7 +855,7 @@ public class Worker implements Runnable {
             }
         }
 
-        networker.broadcast(group, message);
+        broadcast(group, message);
 
         group.add(groupNodeId, globalNodeId, physicalNodeId);
 
@@ -862,7 +909,7 @@ public class Worker implements Runnable {
         }
     }
 
-    private void nodesSyncWait(MessageNodesSyncWait message) throws IOException {
+    private void nodesSyncWait(MessageThreadsSyncWait message) throws IOException {
         int physicalId = data.getPhysicalId(message.getSocket());
         int[] nodes = message.getNodesGlobalIds();
         NodesSyncData nsd = new NodesSyncData(-1, nodes);
@@ -874,7 +921,7 @@ public class Worker implements Runnable {
 
         synchronized (nsd) {
             if (nsd.physicalSync(physicalId)) {
-                MessageNodesSyncGo msg = new MessageNodesSyncGo();
+                MessageThreadsSyncGo msg = new MessageThreadsSyncGo();
                 msg.setNodesGlobalIds(nodes);
 
                 networker.send(data.physicalNodes.get(nsd.getPhysicalIds().get(0)), msg);
@@ -882,9 +929,8 @@ public class Worker implements Runnable {
         }
     }
 
-    private void nodesSyncGo(MessageNodesSyncGo message) {
+    private void nodesSyncGo(MessageThreadsSyncGo message) {
         throw new IllegalStateException("This method should not be used");
-//
 //        int[] nodes = message.getNodesGlobalIds();
 //        NodesSyncData nsd = new NodesSyncData(nodes);
 //        nsd = data.nodesSyncData.remove(nsd);
@@ -908,9 +954,9 @@ public class Worker implements Runnable {
     }
 
     /**
-     * @see MessageTypes#NODE_SYNC
+     * @see MessageTypes#THREAD_PAIR_SYNC
      */
-    private void nodeSync(MessageNodeSync message) {
+    private void nodeSync(MessageThreadPairSync message) {
         final Map<PcjThreadPair, PcjThreadPair> syncNode = data.syncNodePair;
         PcjThreadPair pair = new PcjThreadPair(
                 message.getReceiverGlobalNodeId(),
@@ -932,20 +978,6 @@ public class Worker implements Runnable {
      */
     private void valueAsyncGetRequest(MessageValueAsyncGetRequest message) throws IOException {
         Object value = data.localData.get(message.getReceiverGlobalNodeId()).getStorage().
-                get(message.getVariableName());
-
-        MessageValueAsyncGetResponse reply = new MessageValueAsyncGetResponse();
-        reply.setInReplyTo(message.getMessageId());
-        reply.setReceiverGlobalNodeId(message.getSenderGlobalNodeId());
-        reply.setVariableValue(CloneObject.serialize(value));
-        networker.send(message.getSocket(), reply);
-    }
-
-    /**
-     * @see MessageTypes#VALUE_ASYNC_GET_REQUEST_INDEXES
-     */
-    private void valueAsyncGetRequestIndexes(MessageValueAsyncGetRequestIndexes message) throws IOException {
-        Object value = data.localData.get(message.getReceiverGlobalNodeId()).getStorage().
                 get(message.getVariableName(), message.getIndexes());
 
         MessageValueAsyncGetResponse reply = new MessageValueAsyncGetResponse();
@@ -961,25 +993,46 @@ public class Worker implements Runnable {
     private void valueAsyncGetResponse(MessageValueAsyncGetResponse message) {
         int inReplyTo = message.getInReplyTo();
         ResponseAttachment attachment = (ResponseAttachment) data.attachmentMap.remove(inReplyTo);
-        Deserializer deserializer = data.localData.get(message.getReceiverGlobalNodeId()).getDeserializer();
-        deserializer.deserialize(message.getVariableValue(), attachment);
+        data.localData.get(message.getReceiverGlobalNodeId()).getDeserializer()
+                .deserialize(message.getVariableValue(), attachment);
         if (attachment instanceof FutureObject) {
             getFutureHandler().unregisterFutureObject((FutureObject) attachment);
         }
     }
 
     /**
-     * @see MessageTypes#VALUE_PUT
+     * @see MessageTypes#VALUE_COMPARE_AND_SET_REQUEST
      */
-    private void valuePut(MessageValuePut message) {
-        data.localData.get(message.getReceiverGlobalNodeId()).getDeserializer()
-                .deserialize(message.getVariableValue(), message.getVariableName());
+    private void valueCompareAndSetRequest(MessageValueCompareAndSetRequest message) throws IOException {
+        Object expectedValue = data.localData.get(message.getReceiverGlobalNodeId()).
+                deserializeObject(message.getExpectedValue());
+        Object newValue = data.localData.get(message.getReceiverGlobalNodeId()).
+                deserializeObject(message.getNewValue());
+        Object value = data.localData.get(message.getReceiverGlobalNodeId()).getStorage().
+                cas(message.getVariableName(), expectedValue, newValue, message.getIndexes());
+
+        MessageValueCompareAndSetResponse reply = new MessageValueCompareAndSetResponse();
+        reply.setInReplyTo(message.getMessageId());
+        reply.setReceiverGlobalNodeId(message.getSenderGlobalNodeId());
+        reply.setVariableValue(CloneObject.serialize(value));
+        networker.send(message.getSocket(), reply);
     }
 
     /**
-     * @see MessageTypes#VALUE_PUT_INDEXES
+     * @see MessageTypes#VALUE_COMPARE_AND_SET_RESPONSE
      */
-    private void valuePutIndexes(MessageValuePutIndexes message) {
+    private void valueCompareAndSetResponse(MessageValueCompareAndSetResponse message) {
+        int inReplyTo = message.getInReplyTo();
+        ResponseAttachment attachment = (ResponseAttachment) data.attachmentMap.remove(inReplyTo);
+        data.localData.get(message.getReceiverGlobalNodeId()).getDeserializer()
+                .deserialize(message.getVariableValue(), attachment);
+    }
+
+
+    /**
+     * @see MessageTypes#VALUE_PUT
+     */
+    private void valuePut(MessageValuePut message) {
         data.localData.get(message.getReceiverGlobalNodeId()).getDeserializer()
                 .deserialize(message.getVariableValue(), message.getVariableName(), message.getIndexes());
     }
@@ -989,7 +1042,7 @@ public class Worker implements Runnable {
      */
     private void valueBroadcast(MessageValueBroadcast message) {
         InternalGroup group = data.internalGroupsById.get(message.getGroupId());
-        networker.broadcast(message);
+        broadcast(group, message);
 
         for (int id : group.getLocalIds()) {
             int nodeId = group.getNode(id);

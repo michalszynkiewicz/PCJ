@@ -16,13 +16,11 @@ import java.util.Set;
 
 /**
  * Main PCJ class with static methods.
- * <p>
+ *
  * Static methods provide way to use library.
  *
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
-
-// todo: fix locking
 final public class PCJ extends org.pcj.internal.InternalPCJ {
 
     // Suppress default constructor for noninstantiability
@@ -31,37 +29,36 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
     }
 
     /**
-     * Deploys and starts PCJ calculations on nodes using specified StartPoint
-     * and Storage class. Array <tt>nodes</tt> contains list of hostnames.
-     * Hostnames can be specified many times, so more than one instance of PCJ
-     * will be run on node. Empty hostnames means current JVM.
-     * <p>
-     * Hostnames can take port (after colon ':'), eg. ["localhost:8000",
-     * "localhost:8001", "localhost", "host2:8001", "host2"]. Default port is
-     * 8091 and can be modified using <tt>pcj.port</tt> system property value.
+     * Deploys and starts PCJ calculations on nodes using specified StartPoint and Storage class.
+     * Array <tt>nodes</tt>
+     * contains list of hostnames. Hostnames can be specified many times, so more than one instance
+     * of PCJ will be run on node. Empty hostnames means current JVM.
+     *
+     * Hostnames can take port (after colon ':'), eg. ["localhost:8000", "localhost:8001",
+     * "localhost", "host2:8001", "host2"]. Default port is 8091 and can be modified using
+     * <tt>pcj.port</tt> system property value.
      *
      * @param startPoint start point class
      * @param storage    storage class
      * @param nodes      array of nodes
      */
     public static void deploy(Class<? extends InternalStartPoint> startPoint,
-                              Class<? extends InternalStorage> storage,
-                              String[] nodes) {
+            Class<? extends InternalStorage> storage,
+            String[] nodes) {
         NodesFile nodesFile = new NodesFile(nodes);
         InternalPCJ.deploy(startPoint, storage, nodesFile);
     }
 
     /**
-     * Deploys and starts PCJ calculations on nodes using specified StartPoint
-     * and Storage class.
+     * Deploys and starts PCJ calculations on nodes using specified StartPoint and Storage class.
      *
      * @param startPoint    start point class
      * @param storage       storage class
      * @param nodesFilename file with descriptions of nodes
      */
     public static void deploy(Class<? extends InternalStartPoint> startPoint,
-                              Class<? extends InternalStorage> storage,
-                              String nodesFilename) {
+            Class<? extends InternalStorage> storage,
+            String nodesFilename) {
         try {
             NodesFile nodesFile = new NodesFile(nodesFilename);
             InternalPCJ.deploy(startPoint, storage, nodesFile);
@@ -71,9 +68,8 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
     }
 
     /**
-     * Deploys and starts PCJ calculations on nodes using specified StartPoint
-     * and Storage class. Descriptions of nodes are read from default nodefile
-     * according to the system settings:
+     * Deploys and starts PCJ calculations on nodes using specified StartPoint and Storage class.
+     * Descriptions of nodes are read from default nodefile according to the system settings:
      * <ol><li>pcj.nodefile - JVM property</li>
      * <li>NODEFILE - system property</li>
      * <li>LOADL_HOSTFILE - system property</li>
@@ -84,38 +80,36 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @param storage    storage class
      */
     public static void deploy(Class<? extends InternalStartPoint> startPoint,
-                              Class<? extends InternalStorage> storage) {
+            Class<? extends InternalStorage> storage) {
         deploy(startPoint, storage, Configuration.NODES_FILENAME);
     }
 
     /**
-     * Starts PCJ calculations on local node using specified StartPoint and
-     * Storage class. Array <tt>nodes</tt> contains list of all hostnames used
-     * in calculations.
+     * Starts PCJ calculations on local node using specified StartPoint and Storage class. Array
+     * <tt>nodes</tt> contains list of all hostnames used in calculations.
      *
      * @param startPoint start point class
      * @param storage    storage class
      * @param nodes      array of nodes
      */
     public static void start(Class<? extends InternalStartPoint> startPoint,
-                             Class<? extends InternalStorage> storage,
-                             String[] nodes) {
+            Class<? extends InternalStorage> storage,
+            String[] nodes) {
         NodesFile nodesFile = new NodesFile(nodes);
         InternalPCJ.start(startPoint, storage, nodesFile);
     }
 
     /**
-     * Starts PCJ calculations on local node using specified StartPoint and
-     * Storage class. Descriptions of all nodes used in calculations are read
-     * from supplied file.
+     * Starts PCJ calculations on local node using specified StartPoint and Storage class.
+     * Descriptions of all nodes used in calculations are read from supplied file.
      *
      * @param startPoint    start point class
      * @param storage       storage class
      * @param nodesFilename file with descriptions of nodes
      */
     public static void start(Class<? extends InternalStartPoint> startPoint,
-                             Class<? extends InternalStorage> storage,
-                             String nodesFilename) {
+            Class<? extends InternalStorage> storage,
+            String nodesFilename) {
         try {
             NodesFile nodesFile = new NodesFile(nodesFilename);
             InternalPCJ.start(startPoint, storage, nodesFile);
@@ -125,9 +119,9 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
     }
 
     /**
-     * Starts PCJ calculations on local node using specified StartPoint and
-     * Storage class. Descriptions of all nodes used in calculations are read
-     * from default nodefile according to the system settings:
+     * Starts PCJ calculations on local node using specified StartPoint and Storage class.
+     * Descriptions of all nodes used in calculations are read from default nodefile according to
+     * the system settings:
      * <ol><li>pcj.nodefile - JVM property</li>
      * <li>NODEFILE - system property</li>
      * <li>LOADL_HOSTFILE - system property</li>
@@ -138,7 +132,7 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @param storage    storage class
      */
     public static void start(Class<? extends InternalStartPoint> startPoint,
-                             Class<? extends InternalStorage> storage) {
+            Class<? extends InternalStorage> storage) {
         start(startPoint, storage, Configuration.NODES_FILENAME);
     }
 
@@ -146,7 +140,6 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
 //    public static <X extends Storage> X getStorage() {
 //        return (X) PcjThread.threadStorage();
 //    }
-
     /**
      * Returns global node id.
      *
@@ -158,7 +151,7 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
 
     /**
      * Returns physical node id (internal value for distinguishing nodes).
-     *
+     * 
      * @return physical node id
      */
     public static int getPhysicalNodeId() {
@@ -169,7 +162,7 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
             Lock.readUnlock();
         }
     }
-
+    
     /**
      * Returns global number of nodes used in calculations.
      *
@@ -190,13 +183,6 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
     public static void barrier() {
         ((Group) PcjThread.threadGlobalGroup()).barrier();
     }
-
-//    /**
-//     * Synchronizes all nodes used in calculations.
-//     */
-//    public static void barrierIfNoFailSinceLastBarrier() {
-//        ((Group) PcjThread.threadGlobalGroup()).barrierIfNoFailSinceLastBarrier();
-//    }
 
     public static void barrier(int node) {
         try {                      // mstodo move out lock
@@ -221,15 +207,14 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
     }
 
     /**
-     * Causes the current thread to wait until the variable was <i>touched</i>.
-     * Resets the state after <i>touch</i>. The waitFor(variable) method has the
-     * same effect as:
+     * Causes the current thread to wait until the variable was <i>touched</i>. Resets the state
+     * after <i>touch</i>. The waitFor(variable) method has the same effect as:
      * <pre><code>waitFor(variable, 1)</code></pre>
      *
      * @param variable name of variable
      */
-    public static void waitFor(String variable) {
-        PcjThread.threadStorage().waitFor(variable);
+    public static int waitFor(String variable) {
+        return PcjThread.threadStorage().waitFor(variable);
     }
 
     /**
@@ -239,14 +224,15 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @param variable name of variable
      * @param count    number of <i>touches</i>
      */
-    public static void waitFor(String variable, int count) {
-        PcjThread.threadStorage().waitFor(variable, count);
+    public static int waitFor(String variable, int count) {
+        return PcjThread.threadStorage().waitFor(variable, count);
     }
 
     /**
      * Gets the value from current thread Storage.
      *
      * @param variable name of variable
+     *
      * @return value of variable
      */
     public static <T> T getLocal(String variable) {
@@ -258,6 +244,7 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      *
      * @param variable name of array variable
      * @param indexes  indexes of array
+     *
      * @return value of variable
      */
     public static <T> T getLocal(String variable, int... indexes) {
@@ -274,6 +261,7 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      *
      * @param nodeId   global node id
      * @param variable name of array variable
+     *
      * @return FutureObject that will contain received data
      */
     public static <T> FutureObject<T> getFutureObject(int nodeId, String variable) {
@@ -291,6 +279,7 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @param nodeId   global node id
      * @param variable name of array variable
      * @param indexes  indexes of array
+     *
      * @return FutureObject that will contain received data
      */
     public static <T> FutureObject<T> getFutureObject(int nodeId, String variable, int... indexes) {
@@ -322,7 +311,6 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
             Lock.readUnlock();
         }
         return futureObject.get();
-
     }
 
     /**
@@ -330,8 +318,8 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      *
      * @param variable name of variable
      * @param newValue new value of variable
-     * @throws ClassCastException when the value cannot be cast to the type of
-     *                            variable in Storage
+     *
+     * @throws ClassCastException when the value cannot be cast to the type of variable in Storage
      */
     public static void putLocal(String variable, Object newValue) throws ClassCastException {
         Lock.readLock();
@@ -348,8 +336,8 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @param variable name of array variable
      * @param newValue new value of variable
      * @param indexes  indexes of array
-     * @throws ClassCastException when the value cannot be cast to the type of
-     *                            variable in Storage
+     *
+     * @throws ClassCastException when the value cannot be cast to the type of variable in Storage
      */
     public static void putLocal(String variable, Object newValue, int... indexes) throws ClassCastException {
         Lock.readLock();
@@ -366,8 +354,8 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @param nodeId   other node global node id
      * @param variable name of variable
      * @param newValue new value of variable
-     * @throws ClassCastException when the value cannot be cast to the type of
-     *                            variable in Storage
+     *
+     * @throws ClassCastException when the value cannot be cast to the type of variable in Storage
      */
     public static <T> void put(int nodeId, String variable, T newValue) throws ClassCastException {
         Lock.readLock();
@@ -389,8 +377,8 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * @param variable name of array variable
      * @param newValue new value of variable
      * @param indexes  indexes of array
-     * @throws ClassCastException when the value cannot be cast to the type of
-     *                            variable in Storage
+     *
+     * @throws ClassCastException when the value cannot be cast to the type of variable in Storage
      */
     public static <T> void put(int nodeId, String variable, T newValue, int... indexes) throws ClassCastException {
         Lock.readLock();
@@ -406,12 +394,28 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
     }
 
     /**
+     * Puts the newValue to other thread Storage if current value of variable is the same as
+     * expectedValue. Otherwise do nothing.
+     *
+     * @param nodeId        other node global node id
+     * @param variable      name of array variable
+     * @param expectedValue expected value
+     * @param newValue      new value of variable
+     * @param indexes       indexes of array
+     *
+     * @return FutureObject that will contain previously stored data
+     */                                 // mstodo locking!
+    public static <T> FutureObject<T> cas(int nodeId, String variable, T expectedValue, T newValue, int... indexes) {
+        return ((Group) PcjThread.threadGlobalGroup()).cas(nodeId, variable, expectedValue, newValue, indexes);
+    }
+
+    /**
      * Broadcast the value to all threads and inserts it into Storage
      *
      * @param variable name of variable
      * @param newValue new value of variable
-     * @throws ClassCastException when the value cannot be cast to the type of
-     *                            variable in Storage
+     *
+     * @throws ClassCastException when the value cannot be cast to the type of variable in Storage
      */
     public static void broadcast(String variable, Object newValue) throws ClassCastException {
         Lock.readLock();
@@ -444,6 +448,7 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * Returns group by name
      *
      * @param name name of the group
+     *
      * @return group by name
      */
     public static Group getGroup(String name) {
@@ -459,6 +464,7 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
      * Joins the current thread to the group
      *
      * @param name name of the group
+     *
      * @return group to which thread joined
      */
     public static Group join(String name) {

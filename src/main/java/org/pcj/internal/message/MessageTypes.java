@@ -190,50 +190,53 @@ public enum MessageTypes {
     },
     /**
      * <b>Currently not used!</b>
-     * 
-     * after sending NODES_SYNC_WAIT Server collects it on globalNodeIds. When
-     * all nodes from that `array` sent that message, Server sends NODES_SYNC_GO
      *
-     * @param obj[0] global nodes ids (<tt>int[]</tt>)
+ after sending THREADS_SYNC_WAIT Server collects it on globalNodeIds. When
+     * all nodes from that `array` sent that message, Server sends
+     * THREADS_SYNC_GO
      *
-     * @see MessageTypes#NODES_SYNC_GO
+     * @param obj[0] global threads ids (<tt>int[]</tt>)
+     *
+     * @see MessageTypes#THREADS_SYNC_GO
      */
     @Deprecated
-    NODES_SYNC_WAIT(22) {
-        @Override
-        MessageNodesSyncWait createMessage() {
-            return new MessageNodesSyncWait();
-        }
-    },
+    THREADS_SYNC_WAIT(22) {
+                @Override
+                MessageThreadsSyncWait createMessage() {
+                    return new MessageThreadsSyncWait();
+                }
+            },
     /**
      * <b>Currently not used!</b>
-     * 
+     *
      * message to all nodes (implicity broadcast) to continue calculations
      *
-     * @param obj[0] global nodes ids (<tt>int[]</tt>)
+     * @param obj[0] global threads ids (<tt>int[]</tt>)
      *
-     * @see MessageTypes#NODES_SYNC_WAIT
+     * @see MessageTypes#THREADS_SYNC_WAIT
      */
     @Deprecated
-    NODES_SYNC_GO(23) {
-        @Override
-        MessageNodesSyncGo createMessage() {
-            return new MessageNodesSyncGo();
-        }
-    },
+    THREADS_SYNC_GO(23) {
+                @Override
+                MessageThreadsSyncGo createMessage() {
+                    return new MessageThreadsSyncGo();
+                }
+            },
     /**
-     * message to node about waiting in calculations, when received when waiting
-     * - continue calculations
+     * message to thread about waiting in calculations, when received when
+     * waiting - continue calculations
      *
-     * @param obj[0] global node id of node that sends message (<tt>int</tt>)
-     * @param obj[1] global node id of node that receives message (<tt>int</tt>)
+     * @param obj[0] global thread id of thread that sends message
+     * (<tt>int</tt>)
+     * @param obj[1] global thread id of thread that receives message
+     * (<tt>int</tt>)
      */
-    NODE_SYNC(24) {
-        @Override
-        MessageNodeSync createMessage() {
-            return new MessageNodeSync();
-        }
-    },
+    THREAD_PAIR_SYNC(24) {
+                @Override
+                MessageThreadPairSync createMessage() {
+                    return new MessageThreadPairSync();
+                }
+            },
     /**
      * Question about groupId and master physicalId of group
      *
@@ -242,11 +245,11 @@ public enum MessageTypes {
      * @see MessageTypes#GROUP_JOIN_ANSWER
      */
     GROUP_JOIN_QUERY(30) {
-        @Override
-        MessageGroupJoinQuery createMessage() {
-            return new MessageGroupJoinQuery();
-        }
-    },
+                @Override
+                MessageGroupJoinQuery createMessage() {
+                    return new MessageGroupJoinQuery();
+                }
+            },
     /**
      * Answer from Server with groupId and master global physicalId
      *
@@ -255,105 +258,90 @@ public enum MessageTypes {
      * @param obj[2] master physicalId (<tt>int</tt>)
      */
     GROUP_JOIN_ANSWER(31) {
-        @Override
-        MessageGroupJoinAnswer createMessage() {
-            return new MessageGroupJoinAnswer();
-        }
-    },
+                @Override
+                MessageGroupJoinAnswer createMessage() {
+                    return new MessageGroupJoinAnswer();
+                }
+            },
     /**
-     * message from node to the group master with request to join into the
+     * message from thread to the group master with request to join into the
      * desired group
      *
      * @param obj[0] groupId (<tt>int</tt>)
-     * @param obj[1] global nodeId (<tt>int</tt>)
+     * @param obj[1] global threadId (<tt>int</tt>)
      *
      * @see MessageTypes#GROUP_JOIN_RESPONSE
      * @see MessageTypes#GROUP_JOIN_INFORM
      */
     GROUP_JOIN_REQUEST(32) {
-        @Override
-        MessageGroupJoinRequest createMessage() {
-            return new MessageGroupJoinRequest();
-        }
-    },
+                @Override
+                MessageGroupJoinRequest createMessage() {
+                    return new MessageGroupJoinRequest();
+                }
+            },
     /**
-     * message from group master to the node with groupNodeId
+     * message from group master to the node with groupThreadId
      *
      * @param obj[0] groupId (<tt>int</tt>)
-     * @param obj[1] global nodeId (<tt>int</tt>)
-     * @param obj[2] group nodeId (<tt>int</tt>)
+     * @param obj[1] global threadId (<tt>int</tt>)
+     * @param obj[2] group threadId (<tt>int</tt>)
      * @param obj[3] parent physicalId (<tt>int</tt>)
      *
      * @see MessageTypes#GROUP_JOIN_REQUEST
      */
     GROUP_JOIN_RESPONSE(33) {
-        @Override
-        MessageGroupJoinResponse createMessage() {
-            return new MessageGroupJoinResponse();
-        }
-    },
+                @Override
+                MessageGroupJoinResponse createMessage() {
+                    return new MessageGroupJoinResponse();
+                }
+            },
     /**
      * message to all nodes in group (using BROADCAST) with information about
-     * new node in group
+     * new thread in group
      *
      * @param obj[0] groupId (<tt>int</tt>)
-     * @param obj[1] new-Node global nodeId (<tt>int</tt>)
-     * @param obj[2] new-Node group nodeId (<tt>int</tt>)
-     * @param obj[3] new-Node parent physicalId (<tt>int</tt>)
+     * @param obj[1] new-thread global threadId (<tt>int</tt>)
+     * @param obj[2] new-thread group threadId (<tt>int</tt>)
+     * @param obj[3] new-thread parent physicalId (<tt>int</tt>)
      *
      * @see MessageTypes#GROUP_JOIN_BONJOUR
      */
     GROUP_JOIN_INFORM(34) {
-        @Override
-        MessageGroupJoinInform createMessage() {
-            return new MessageGroupJoinInform();
-        }
-    },
+                @Override
+                MessageGroupJoinInform createMessage() {
+                    return new MessageGroupJoinInform();
+                }
+            },
     /**
-     * message from all nodes in group to new-Node
+     * message from all nodes in group to new-thread
      *
      * @param obj[0] groupId (<tt>int</tt>)
-     * @param obj[1] new-Node group nodeId (<tt>int</tt>)
-     * @param obj[2] old-Node global nodeIds (<tt>int[]</tt>)
-     * @param obj[3] old-Node group nodeIds (<tt>int[]</tt>)
+     * @param obj[1] new-thread group threadId (<tt>int</tt>)
+     * @param obj[2] old-thread global threadIds (<tt>int[]</tt>)
+     * @param obj[3] old-thread group threadIds (<tt>int[]</tt>)
      *
      * @see MessageTypes#GROUP_JOIN_INFORM
      */
     GROUP_JOIN_BONJOUR(35) {
-        @Override
-        MessageGroupJoinBonjour createMessage() {
-            return new MessageGroupJoinBonjour();
-        }
-    },
+                @Override
+                MessageGroupJoinBonjour createMessage() {
+                    return new MessageGroupJoinBonjour();
+                }
+            },
     /**
-     * message from node to node asking about Storage value
+     * message from one thread to another asking about Storage value
      *
-     * @param obj[0] globalNodeId of sender node (<tt>int</tt>)
-     * @param obj[1] globalNodeId of receiver node (<tt>int</tt>)
-     * @param obj[2] variableName (<tt>String</tt>)
-     *
-     * @see MessageTypes#VALUE_ASYNC_GET_RESPONSE
-     */
-    VALUE_ASYNC_GET_REQUEST(42) {
-        @Override
-        MessageValueAsyncGetRequest createMessage() {
-            return new MessageValueAsyncGetRequest();
-        }
-    },
-    /**
-     * message from node to node asking about Storage value
-     *
-     * @param obj[0] globalNodeId of sender node (<tt>int</tt>)
-     * @param obj[1] globalNodeId of receiver node (<tt>int</tt>)
+     * @param obj[0] globalThreadId of sender thread (<tt>int</tt>)
+     * @param obj[1] globalThreadId of receiver thread (<tt>int</tt>)
      * @param obj[2] indexes (<tt>int[]</tt>)
      * @param obj[3] variableName (<tt>String</tt>)
      *
      * @see MessageTypes#VALUE_ASYNC_GET_RESPONSE
      */
-    VALUE_ASYNC_GET_REQUEST_INDEXES(45) {
+    VALUE_ASYNC_GET_REQUEST(45) {
         @Override
-        MessageValueAsyncGetRequestIndexes createMessage() {
-            return new MessageValueAsyncGetRequestIndexes();
+        MessageValueAsyncGetRequest createMessage() {
+            return new MessageValueAsyncGetRequest();
         }
     },
     /**
@@ -366,31 +354,15 @@ public enum MessageTypes {
      * @see MessageTypes#VALUE_ASYNC_GET_REQUEST
      */
     VALUE_ASYNC_GET_RESPONSE(43) {
-        @Override
-        MessageValueAsyncGetResponse createMessage() {
-            return new MessageValueAsyncGetResponse();
-        }
-    },
+                @Override
+                MessageValueAsyncGetResponse createMessage() {
+                    return new MessageValueAsyncGetResponse();
+                }
+            },
     /**
-     * message from node to node with variable value to put
+     * message from one thread to another thread with variable value to put
      *
-     * @param obj[0] globalNodeId of remote node (<tt>int</tt>)
-     * @param obj[1] variableName (<tt>String</tt>)
-     * @param obj[2] variableValue (<tt>byte[]</tt> - serialized object data)
-     *
-     * @see MessageTypes#VALUE_GET_REQUEST
-     * @see MessageTypes#VALUE_BROADCAST
-     */
-    VALUE_PUT(50) {
-        @Override
-        MessageValuePut createMessage() {
-            return new MessageValuePut();
-        }
-    },
-    /**
-     * message from node to node with variable value to put
-     *
-     * @param obj[0] globalNodeId of remote node (<tt>int</tt>)
+     * @param obj[0] globalThreadId of remote thread (<tt>int</tt>)
      * @param obj[1] variableName (<tt>String</tt>)
      * @param obj[2] indexes (<tt>int[]</tt>)
      * @param obj[3] variableValue (<tt>byte[]</tt> - serialized object data)
@@ -398,14 +370,31 @@ public enum MessageTypes {
      * @see MessageTypes#VALUE_GET_REQUEST
      * @see MessageTypes#VALUE_BROADCAST
      */
-    VALUE_PUT_INDEXES(52) {
+    VALUE_PUT(52) {
         @Override
-        MessageValuePutIndexes createMessage() {
-            return new MessageValuePutIndexes();
+        MessageValuePut createMessage() {
+            return new MessageValuePut();
         }
     },
     /**
-     * message from node to all nodes (broadcast) with variable value to put
+     * message from one thread to another thread with variable value to put
+     * @param obj[0] globalThreadId of remote thread (<tt>int</tt>)
+     * @param obj[1] variableName (<tt>String</tt>)
+     * @param obj[2] indexes (<tt>int[]</tt>)
+     * @param obj[3] variableValue (<tt>byte[]</tt> - serialized object data)
+     *
+     * @see MessageTypes#VALUE_GET_REQUEST
+     * @see MessageTypes#VALUE_BROADCAST
+     */
+    VALUE_PUT(52) {
+                @Override
+                MessageValuePut createMessage() {
+                    return new MessageValuePut();
+                }
+            },
+    /**
+     * message from one thread to all threads (broadcast) with variable value to
+     * put
      *
      * @param obj[0] groupId (<tt>int</tt>)
      * @param obj[1] variableName (<tt>String</tt>)
@@ -414,23 +403,58 @@ public enum MessageTypes {
      * @see MessageTypes#VALUE_PUT
      */
     VALUE_BROADCAST(51) {
-        @Override
-        MessageValueBroadcast createMessage() {
-            return new MessageValueBroadcast();
-        }
-    },
-    PING(61) {
+                @Override
+                MessageValueBroadcast createMessage() {
+                    return new MessageValueBroadcast();
+                }
+            },
+    /**
+     * message from one thread to other thread asking to perform CAS
+     * (Compare-And-Set) operation. This operation is atomic. It checks if
+     * stored value is equal to expected value, and if so, change value to new
+     * value. It returns (previously) stored value.
+     *
+     * @param obj[0] globalThreadId of sender thread (<tt>int</tt>)
+     * @param obj[1] globalThreadId of receiver thread (<tt>int</tt>)
+     * @param obj[2] variableName (<tt>String</tt>)
+     * @param obj[3] indexes (<tt>int[]</tt>)
+     * @param obj[4] expectedValue (<tt>byte[]</tt> - serialized object data)
+     * @param obj[5] newValue (<tt>byte[]</tt> - serialized object data)
+     *
+     * @see MessageTypes#VALUE_COMPARE_AND_SET_RESPONSE
+     */
+    VALUE_COMPARE_AND_SET_REQUEST(60) {
+                @Override
+                MessageValueCompareAndSetRequest createMessage() {
+                    return new MessageValueCompareAndSetRequest();
+                }
+            },
+    /**
+     * response of the CAS (Compare-And-Set) operation
+     *
+     * @param obj[0] globalThreadId of receiving thread (<tt>int</tt>)
+     * @param obj[1] variableValue (<tt>byte[]</tt> - serialized object data)
+     *
+     * @see MessageTypes#VALUE_COMPARE_AND_SET_REQUEST
+     */
+    VALUE_COMPARE_AND_SET_RESPONSE(62) {
+                @Override
+                MessageValueCompareAndSetResponse createMessage() {
+                    return new MessageValueCompareAndSetResponse();
+                }
+            },
+    PING(71) {
         @Override
         MessagePing createMessage() {
             return new MessagePing();
         }
     },
-    NODE_FAILED(63) {
+    NODE_FAILED(73) {
         MessageNodeFailed createMessage() {
             return new MessageNodeFailed();
         }
     },
-    NODE_REMOVED(64) {
+    NODE_REMOVED(74) {
         MessageNodeRemoved createMessage() {
             return new MessageNodeRemoved();
         }

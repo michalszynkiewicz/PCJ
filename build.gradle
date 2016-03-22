@@ -5,14 +5,15 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'org.ajoberstar:gradle-git:+'
+        classpath 'org.ajoberstar:gradle-git:1.2.0'
+        classpath 'org.eclipse.jgit:org.eclipse.jgit:4.0.1.201506240215-r'
     }
 }
 
 apply plugin: 'java'
 apply plugin: 'eclipse'
 
-ext.versionNumber = "4.0.0"
+ext.versionNumber = "4.1.0"
 ext.buildNumber = "SNAPSHOT"
 ext.repoId = org.ajoberstar.grgit.Grgit.open(project.file('.')).head().abbreviatedId
 
@@ -26,39 +27,40 @@ dependencies {
 }
 
 compileJava {
-    //options.compilerArgs = ["-profile", "compact3"]
-    options.compilerArgs = ["-source", "1.8", "-target", "1.8"]
-    sourceCompatibility = '1.8'
+    options.compilerArgs = [
+		"-source", "1.8",
+		"-target", "1.8",
+		"-profile", "compact3",
+		"-Xlint:unchecked"
+	]
 }
 
 task info {
     println "PCJ -- Parallel Computing in Java build script"
 }
 
-task javadoc(overwrite: true, type: Javadoc) {
+task javadoc(overwrite:true, type: Javadoc) {
     failOnError = false
     source = sourceSets.main.allJava
 }
 
-task javadocJar(type: Jar, dependsOn: javadoc) {
-    from javadoc.destinationDir
-}
+task javadocJar(type: Jar, dependsOn: javadoc) { 
+    from javadoc.destinationDir 
+} 
 
 task release {
     //outputs.upToDateWhen { false }
     release.dependsOn(jar, javadocJar)
 }
 
-build.dependsOn(javadocJar)
-
-gradle.taskGraph.whenReady { taskGraph ->
-    if (taskGraph.hasTask(release)) {
+gradle.taskGraph.whenReady {taskGraph ->
+    if (taskGraph.hasTask(release)) {  
         def versionFile = file('version.properties')
         if (versionFile.canRead()) {
             def Properties properties = new Properties()
 
             properties.load(new FileInputStream(versionFile))
-
+            
             if (properties['buildNumber'] == null) {
                 properties['buildNumber'] = 0
             }
@@ -76,7 +78,6 @@ gradle.taskGraph.whenReady { taskGraph ->
         version = "$versionNumber.$buildNumber"
         classifier = 'javadoc'
     }
-
 }
 
 jar {
@@ -86,7 +87,7 @@ jar {
                 'Implementation-Vendor': System.getProperty('user.name'),
                 'Implementation-Title': date,
                 'Sealed': true,
-                //                'Profile': 'compact3',
+//                'Profile': 'compact3',
         )
         attributes(['Sealed': false], 'org/pcj/')
     }
@@ -97,3 +98,25 @@ def getDate() {
     def formattedDate = date.format('yyyy-MM-dd HH:mm:ss.SSS z')
     return formattedDate
 }
+
+
+
+// Code needed for running Main classes from Task Packages in NetBeans
+def createJavaExec = { String taskName ->
+    project.task (taskName, dependsOn: project.testClasses, type: JavaExec) {
+        def definedMainClass = project.hasProperty('mainClass') ? project.mainClass : ''
+        if (definedMainClass == null) definedMainClass = ''
+        definedMainClass = definedMainClass.toString()
+
+        main = definedMainClass
+        classpath = project.sourceSets.test.runtimeClasspath
+        standardInput = System.in
+        //jvmArgs = ["-Xmx3g","-Xms3g"]
+        maxHeapSize="2g"
+
+    }
+}
+
+createJavaExec('run')
+//createJavaExec('debug')
+//debug.debug = true

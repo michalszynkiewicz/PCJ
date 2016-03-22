@@ -16,9 +16,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
- * Main Runnable class for process all incoming data from
- * network in nonblocking way using
- * {@link java.nio.channels.Selector}.
+ * Main Runnable class for process all incoming data from network in nonblocking
+ * way using {@link java.nio.channels.Selector}.
  *
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
@@ -157,7 +156,7 @@ public class SelectorProc implements Runnable {
         }
     }
 
-    private void connected(SocketChannel socket) {
+    public void connected(SocketChannel socket) {
         synchronized (writeData) {
             connected.add(socket);
             writeData.put(socket, new ConcurrentLinkedQueue<ByteBuffer>());
@@ -181,22 +180,21 @@ public class SelectorProc implements Runnable {
 
     private void finishConnecting(SelectionKey key) throws IOException {
         SocketChannel socketChannel = (SocketChannel) key.channel();
+        socketChannel.finishConnect();
 
-        try {
-            socketChannel.configureBlocking(false);
-            socketChannel.setOption(StandardSocketOptions.TCP_NODELAY, true);
-            socketChannel.setOption(StandardSocketOptions.SO_KEEPALIVE, true);
-            socketChannel.setOption(StandardSocketOptions.SO_REUSEADDR, true);
-            socketChannel.finishConnect();
-        } catch (IOException ex) {
-            ex.printStackTrace(System.err);
-            key.cancel();
-            synchronized (socketChannel) {
-                socketChannel.notifyAll();
-            }
-            return;
-        }
-
+//        try {
+//            socketChannel.configureBlocking(false);
+//            socketChannel.setOption(StandardSocketOptions.TCP_NODELAY, true);
+//            socketChannel.setOption(StandardSocketOptions.SO_KEEPALIVE, true);
+//            socketChannel.setOption(StandardSocketOptions.SO_REUSEADDR, true);
+//        } catch (IOException ex) {
+//            ex.printStackTrace(System.err);
+//            key.cancel();
+//            synchronized (socketChannel) {
+//                socketChannel.notifyAll();
+//            }
+//            return;
+//        }
         connected(socketChannel);
 
         key.interestOps(SelectionKey.OP_READ);

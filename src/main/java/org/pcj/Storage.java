@@ -11,6 +11,7 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * External class with methods do handle shared variables.
@@ -20,16 +21,14 @@ import java.util.Map;
 public abstract class Storage implements org.pcj.internal.storage.InternalStorage {
 
     private transient final Map<String, Field> sharedFields = new HashMap<>();
-    private transient final Map<String, Integer> monitorFields = new HashMap<>();
+    private transient final Map<String, AtomicInteger> monitorFields = new HashMap<>();
     private transient WaitForHandler waitForHandler;
 
     protected Storage() {
         for (Field field : this.getClass().getDeclaredFields()) {
             if (field.isAnnotationPresent(Shared.class)) {
-                String key = field.getAnnotation(Shared.class).value();
-                if (key.isEmpty()) {
-                    key = field.getName();
-                }
+                String key = field.getName();
+
                 if (sharedFields.containsKey(key)) {
                     throw new ArrayStoreException("Duplicate key value (" + key + ")");
                 }
@@ -108,7 +107,7 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
      * Storage
      *
      * @param variable name of variable stored in Storage
-     * @param value    to check
+     * @param value to check
      * @return true if the value can be assigned to the
      * variable
      */
@@ -117,22 +116,19 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
         return isAssignableFrom(variable, value.getClass(), indexes);
     }
 
-    @Override
-    public void setWaitForHandler(WaitForHandler waitForHandler) {
-        this.waitForHandler = waitForHandler;
-    }
-
     /**
      * Returns variable from Storages
      *
      * @param variable name of Shared variable
-     * @param indexes  (optional) indexes into the array
+     * @param indexes (optional) indexes into the array
+     *
      * @return value of variable[indexes] or variable if
      * indexes omitted
-     * @throws ClassCastException             there is more indexes than
-     *                                        variable dimension
+     *
+     * @throws ClassCastException there is more indexes than
+     * variable dimension
      * @throws ArrayIndexOutOfBoundsException one of indexes
-     *                                        is out of bound
+     * is out of bound
      */
     @Override
     @SuppressWarnings("unchecked")
@@ -165,12 +161,13 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
      *
      * @param variable name of Shared variable
      * @param newValue new value of variable
-     * @param indexes  (optional) indexes into the array
-     * @throws ClassCastException             there is more indexes than
-     *                                        variable dimension or value cannot be assigned to the
-     *                                        variable
+     * @param indexes (optional) indexes into the array
+     *
+     * @throws ClassCastException there is more indexes than
+     * variable dimension or value cannot be assigned to the
+     * variable
      * @throws ArrayIndexOutOfBoundsException one of indexes
-     *                                        is out of bound
+     * is out of bound
      */
     @Override
     final public void put(String variable, Object newValue, int... indexes) throws ArrayIndexOutOfBoundsException, ClassCastException {
@@ -247,17 +244,13 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
         final Field field = getField(variable);
         synchronized (field) {
             int v;
-            waitForHandler.add(field);
             while ((v = monitorFields.get(variable)) < count) {
                 try {
                     field.wait();
                 } catch (InterruptedException ex) {
                     ex.printStackTrace(System.err);
                 }
-                waitForHandler.throwOnNodeFailure();
-
             }
-            waitForHandler.remove(field);
             monitorFields.put(variable, v - count);
         }
     }

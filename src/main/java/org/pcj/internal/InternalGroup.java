@@ -11,14 +11,29 @@ import org.pcj.internal.message.*;
 import org.pcj.internal.utils.*;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.pcj.internal.message.MessageLog;
+import org.pcj.internal.message.MessageThreadPairSync;
+import org.pcj.internal.message.MessageSyncWait;
+import org.pcj.internal.message.MessageValueAsyncGetRequest;
+import org.pcj.internal.message.MessageValueBroadcast;
+import org.pcj.internal.message.MessageValueCompareAndSetRequest;
+import org.pcj.internal.message.MessageValuePut;
+import org.pcj.internal.utils.BitMask;
+import org.pcj.internal.utils.CloneObject;
+import org.pcj.internal.utils.CommunicationTree;
+import org.pcj.internal.utils.WaitObject;
 
 /**
- * Internal (with common ClassLoader) representation of Group.
- * It contains common data for groups.
+ * Internal (with common ClassLoader) representation of Group. It contains
+ * common data for groups.
  *
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
@@ -35,16 +50,15 @@ public class InternalGroup {
      */
     final private ArrayList<Integer> localIds;
     /**
-     * list of remote computers ids in this group (for
-     * broadcast)
+     * list of remote computers ids in this group (for broadcast)
      */
     final private List<Integer> physicalIds;
     /**
      * sync
      */
-    private BitMask localSync;
-    private BitMask localSyncMask;
-    private BitMask physicalSync;
+    final private BitMask localSync;
+    final private BitMask localSyncMask;
+    final private BitMask physicalSync;
     final private WaitObject syncObject;
     /**
      * Physical Parent, Left, Right
@@ -95,9 +109,8 @@ public class InternalGroup {
     }
 
     /**
-     * Used while joining. joinBitmaskMap stores information
-     * about nodes that received information about new node
-     * (current) and send bonjour message.
+     * Used while joining. joinBitmaskMap stores information about nodes that
+     * received information about new node (current) and send bonjour message.
      *
      * @param groupNodeId
      * @return
@@ -143,11 +156,11 @@ public class InternalGroup {
     }
 
     /**
-     * adds info about new node in group, or nothing if
-     * groupNodeId exists in group
+     * adds info about new node in group, or nothing if groupNodeId exists in
+     * group
      *
-     * @param groupNodeId          groupNodeId of adding node
-     * @param globalNodeId         globalNodeId of adding node
+     * @param groupNodeId groupNodeId of adding node
+     * @param globalNodeId globalNodeId of adding node
      * @param remotePhysicalNodeId physicalId of adding node
      */
     synchronized void add(int groupNodeId, int globalNodeId, int remotePhysicalNodeId) {
@@ -174,20 +187,13 @@ public class InternalGroup {
         return ids;
     }
 
-    int indexOf(int physicalId) {
+    int indexOf(int physicalId) {    // mstodo where used?
         return physicalIds.indexOf(physicalId);
     }
 
     boolean physicalSync(int physicalId) {
         int position = physicalIds.indexOf(physicalId);
-//        System.err.print("barrier for: " + physicalId + " translated to bitmask position: " + position);
-        // LogUtils.log("\tbbitmask be4: " + physicalSync);
-//        if (physicalSync.isSet(position)) {
-//            LogUtils.log("PHYSICAL SYNC ALREADY SET FOR POSITION: " + position);
-//        }
         physicalSync.set(position);
-
-        // LogUtils.log("\tbbitmask after: " + physicalSync);
         return physicalSync.isSet();
     }
 
@@ -284,8 +290,8 @@ public class InternalGroup {
      * Gets global node id from group node id
      *
      * @param nodeId group node id
-     * @return global node id or -1 if group doesn't have
-     * specified group node id
+     * @return global node id or -1 if group doesn't have specified group node
+     * id
      */
     int getNode(int nodeId) {
         if (nodes.containsKey(nodeId)) {
@@ -400,8 +406,7 @@ public class InternalGroup {
 //    }
 
     /**
-     * Synchronize current node and node with specified group
-     * nodeId
+     * Synchronize current node and node with specified group nodeId
      *
      * @param nodeId group node id
      */
@@ -416,7 +421,7 @@ public class InternalGroup {
         myNodeId = nodes.get(myNodeId);
 
         try {
-            MessageNodeSync msg = new MessageNodeSync();
+            MessageThreadPairSync msg = new MessageThreadPairSync();
             msg.setSenderGlobalNodeId(myNodeId);
             msg.setReceiverGlobalNodeId(nodeId);
 
@@ -449,19 +454,11 @@ public class InternalGroup {
         }
         nodeId = nodes.get(nodeId);
 
-        Message msg;
-        if (indexes.length == 0) {
-            msg = new MessageValueAsyncGetRequest();
-            ((MessageValueAsyncGetRequest) msg).setSenderGlobalNodeId(myNodeId);
-            ((MessageValueAsyncGetRequest) msg).setReceiverGlobalNodeId(nodeId);
-            ((MessageValueAsyncGetRequest) msg).setVariableName(variable);
-        } else {
-            msg = new MessageValueAsyncGetRequestIndexes();
-            ((MessageValueAsyncGetRequestIndexes) msg).setSenderGlobalNodeId(myNodeId);
-            ((MessageValueAsyncGetRequestIndexes) msg).setReceiverGlobalNodeId(nodeId);
-            ((MessageValueAsyncGetRequestIndexes) msg).setIndexes(indexes);
-            ((MessageValueAsyncGetRequestIndexes) msg).setVariableName(variable);
-        }
+        MessageValueAsyncGetRequest msg = new MessageValueAsyncGetRequest();
+        msg.setSenderGlobalNodeId(myNodeId);
+        msg.setReceiverGlobalNodeId(nodeId);
+        msg.setIndexes(indexes);
+        msg.setVariableName(variable);
 
         InternalPCJ.getWorkerData().attachmentMap.put(msg.getMessageId(), futureObject);
         try {
@@ -478,25 +475,37 @@ public class InternalGroup {
     protected void put(int nodeId, String variable, Object newValue, int... indexes) {
         nodeId = nodes.get(nodeId);
 
-        Message msg;
-        if (indexes.length == 0) {
-            msg = new MessageValuePut();
-            ((MessageValuePut) msg).setReceiverGlobalNodeId(nodeId);
-            ((MessageValuePut) msg).setVariableName(variable);
-            ((MessageValuePut) msg).setVariableValue(CloneObject.serialize(newValue));
-        } else {
-            msg = new MessageValuePutIndexes();
-            ((MessageValuePutIndexes) msg).setReceiverGlobalNodeId(nodeId);
-            ((MessageValuePutIndexes) msg).setVariableName(variable);
-            ((MessageValuePutIndexes) msg).setIndexes(indexes);
-            ((MessageValuePutIndexes) msg).setVariableValue(CloneObject.serialize(newValue));
-        }
+        MessageValuePut msg = new MessageValuePut();
+        msg.setReceiverGlobalNodeId(nodeId);
+        msg.setVariableName(variable);
+        msg.setIndexes(indexes);
+        msg.setVariableValue(CloneObject.serialize(newValue));
 
         try {
             InternalPCJ.getNetworker().send(nodeId, msg);
         } catch (IOException ex) {
             FaultTolerancePolicy faultTolerancePolicy = InternalPCJ.getWorkerData().getFaultTolerancePolicy();
             faultTolerancePolicy.reportError(nodeId, true);
+            throw new NodeFailedException(ex);
+        }
+    }
+
+    protected <T> InternalFutureObject<T> cas(InternalFutureObject<T> futureObject, int myNodeId, int nodeId, String variable, T expectedValue, T newValue, int... indexes) {
+        nodeId = nodes.get(nodeId);
+
+        MessageValueCompareAndSetRequest msg = new MessageValueCompareAndSetRequest();
+        msg.setSenderGlobalNodeId(myNodeId);
+        msg.setReceiverGlobalNodeId(nodeId);
+        msg.setIndexes(indexes);
+        msg.setVariableName(variable);
+        msg.setExpectedValue(CloneObject.serialize(expectedValue));
+        msg.setNewValue(CloneObject.serialize(newValue));
+
+        InternalPCJ.getWorkerData().attachmentMap.put(msg.getMessageId(), futureObject);
+        try {
+            InternalPCJ.getNetworker().send(nodeId, msg);
+            return futureObject;
+        } catch (IOException ex) {
             throw new NodeFailedException(ex);
         }
     }
@@ -569,4 +578,3 @@ public class InternalGroup {
         System.out.println(physicalCommunication.toString());
     }
 }
-

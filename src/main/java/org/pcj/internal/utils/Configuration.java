@@ -3,20 +3,23 @@
  */
 package org.pcj.internal.utils;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 /**
  * Configuration for PCJ.
- * 
- * <p>Configuration reads System properties.
+ *
+ * <p>
+ * Configuration reads System properties.
  *
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
 final public class Configuration {
 
     /**
-     * pcj.debug (int) default: 0 1 - print processed message
-     * 2 - print sent and broadcasted message 4 - print
-     * details of processed, sent and broadcasted message (if
-     * not 1 nor 2)
+     * pcj.debug (int) default: 0 1 - print processed message 2 - print sent and broadcasted message
+     * 4 - print details of processed, sent and broadcasted message (if not 1 nor 2)
      */
     final public static int DEBUG;
     /**
@@ -40,23 +43,7 @@ final public class Configuration {
      */
     final public static int BUFFER_SIZE;
     /**
-     * pcj.redirect.out (boolean, 1=true, otherwise false)
-     * default: 1
-     */
-    final public static boolean REDIRECT_OUT;
-    /**
-     * pcj.redirect.err (boolean, 1=true, otherwise false)
-     * default: 1
-     */
-    final public static boolean REDIRECT_ERR;
-    /**
-     * pcj.redirect.node0 (boolean, 1, true, otherwise false)
-     * default: 0
-     */
-    final public static boolean REDIRECT_NODE0;
-    /**
-     * pcj.nodefile (String) otherwise: NODEFILE,
-     * LOADL_HOSTFILE, PBS_NODEFILE or nodes.file
+     * pcj.nodefile (String) otherwise: NODEFILE, LOADL_HOSTFILE, PBS_NODEFILE or nodes.file
      */
     final public static String NODES_FILENAME;
 
@@ -77,9 +64,6 @@ final public class Configuration {
         WAIT_TIME = getPropertyInt("pcj.waittime", 60);
         DEFAULT_PORT = getPropertyInt("pcj.port", 8091);
         BUFFER_SIZE = getPropertyInt("pcj.buffersize", 256 * 1024);
-        REDIRECT_OUT = getPropertyInt("pcj.redirect.out", 1) == 1;
-        REDIRECT_ERR = getPropertyInt("pcj.redirect.err", 1) == 1;
-        REDIRECT_NODE0 = getPropertyInt("pcj.redirect.node0", 0) == 1; // mstodo rollback
         NODE_TIMEOUT = getPropertyInt("pcj.node.timeout", 5);
         NODE_PING_INTERVAL = getPropertyInt("pcj.node.ping", 500);
         NODES_FILENAME = getNodesFilename();
@@ -109,5 +93,21 @@ final public class Configuration {
             nodeFileName = "nodes.file";
         }
         return nodeFileName;
+    }
+
+    private static List<String> getSystemPackagesList() {
+        String sysPackages = System.getProperty("pcj.syspackages");
+        if (sysPackages == null) {
+            return Collections.emptyList();
+        }
+        List<String> packages = new ArrayList<>();
+        for (String p : sysPackages.split(",")) {
+            p = p.trim();
+            if (p.endsWith(".") == false && p.equals(p.toLowerCase())) {
+                p = p + ".";
+            }
+            packages.add(p);
+        }
+        return Collections.unmodifiableList(packages);
     }
 }

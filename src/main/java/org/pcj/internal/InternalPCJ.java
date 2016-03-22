@@ -3,6 +3,21 @@
  */
 package org.pcj.internal;
 
+import org.pcj.internal.utils.Version;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.UnknownHostException;
+import java.nio.channels.SocketChannel;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import org.pcj.Group;
 import org.pcj.internal.faulttolerance.NodeFailureWaiter;
 import org.pcj.internal.message.MessageFinished;
@@ -11,23 +26,17 @@ import org.pcj.internal.message.MessageGroupJoinRequest;
 import org.pcj.internal.message.MessageHello;
 import org.pcj.internal.network.LoopbackSocketChannel;
 import org.pcj.internal.storage.InternalStorage;
-import org.pcj.internal.utils.*;
-
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.nio.channels.SocketChannel;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import org.pcj.internal.utils.BitMask;
+import org.pcj.internal.utils.Configuration;
+import org.pcj.internal.utils.ExitTimer;
+import org.pcj.internal.utils.NetworkUtils;
+import org.pcj.internal.utils.NodeInfo;
+import org.pcj.internal.utils.NodesFile;
+import org.pcj.internal.utils.Utilities;
+import org.pcj.internal.utils.WaitObject;
 
 /**
- * Internal (with common ClassLoader) class for external PCJ
- * class.
+ * Internal (with common ClassLoader) class for external PCJ class.
  *
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
@@ -131,7 +140,7 @@ public abstract class InternalPCJ {
             for (int i = 0; i < localIds.length; ++i) {
                 int localId = localIds[i];
 
-                ClassLoader classLoader = new PcjClassLoader();
+                ClassLoader classLoader = InternalPCJ.class.getClassLoader();
 
                 InternalStartPoint lStartPoint;
 
@@ -180,7 +189,7 @@ public abstract class InternalPCJ {
                 } catch (UnknownHostException ex) {
                     localHostname = "<" + ex.getLocalizedMessage() + ">";
                 }
-                timer.schedule(Configuration.WAIT_TIME * 1000, localHostname + Arrays.toString(localIds) + ": Waiting too long for connection. Exiting!");
+                timer.schedule(Configuration.WAIT_TIME * 1000, localHostname + Arrays.toString(localIds) + ": Waiting too log for connection. Exiting!");
             }
 
             networker = new Networker(worker);
@@ -208,7 +217,6 @@ public abstract class InternalPCJ {
         workerData.activityMonitor.start();
 
         try {
-            disableStandardOutput(isNode0);
             startNodeThreads(localIds, nodeThreads);
 
             waitForLocalThreads(localIds, nodeThreads);
@@ -241,10 +249,10 @@ public abstract class InternalPCJ {
                                                      int i, int localId, ClassLoader classLoader, InternalStartPoint lStartPoint,
                                                      InternalStorage lStorage, Map<Integer, InternalGroup> groups,
                                                      Map<String, InternalGroup> groupsByName) {
-        PcjThreadLocalData data = new PcjThreadLocalData(classLoader, lStorage, groups, groupsByName);
+        PcjThreadLocalData data = new PcjThreadLocalData(lStorage, groups, groupsByName);
         localData.put(localId, data);
+
         nodeThreads[i] = new PcjThread(localId, lStartPoint, data);
-        nodeThreads[i].setContextClassLoader(classLoader);
     }
 
     private static void createGlobalGroup(InternalGroup globalGroup, int localId, ClassLoader classLoader,
@@ -292,9 +300,14 @@ public abstract class InternalPCJ {
     }
 
     private static void bindToSocket(NodeInfo localNode) {
+
         for (int attempt = 0; attempt <= Configuration.RETRY_COUNT; ++attempt) {
             try {
-                networker.bind(null, localNode.getPort());
+                for (NetworkInterface networkInterface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+                    for (InetAddress inetAddress : Collections.list(networkInterface.getInetAddresses())) {
+                        networker.bind(inetAddress, localNode.getPort());
+                    }
+                }
                 break;
             } catch (IOException ex) {
                 Utilities.sleep(Configuration.RETRY_DELAY * 100);
@@ -318,24 +331,6 @@ public abstract class InternalPCJ {
     /* run InternalPCJ Threads */
         for (int i = 0; i < localIds.length; ++i) {
             nodeThreads[i].start();
-        }
-    }
-
-    private static void disableStandardOutput(boolean isNode0) {
-        if (isNode0 == false || Configuration.REDIRECT_NODE0 == true) {
-            try {
-                FileOutputStream stdOutStream = new FileOutputStream("/tmp/pcj-out");
-                FileOutputStream stdErrStream = new FileOutputStream("/tmp/pcj-err");
-                if (Configuration.REDIRECT_OUT) {
-                    System.setOut(new PrintStream(stdOutStream));
-                }
-                if (Configuration.REDIRECT_ERR) {
-                    System.setErr(new PrintStream(stdErrStream));
-                }
-            } catch (Exception any) {
-                any.printStackTrace();
-                System.exit(14);
-            }
         }
     }
 
