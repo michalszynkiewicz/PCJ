@@ -1,47 +1,23 @@
 package gol;
 
-import org.pcj.PCJ;
-import org.pcj.Shared;
-import org.pcj.StartPoint;
-import org.pcj.Storage;
+import org.pcj.*;
 import org.pcj.internal.faulttolerance.NodeFailedException;
 
 import java.io.*;
-import java.lang.reflect.Field;
 import java.util.Arrays;
-import java.util.Map;
 
 /**
- * N   NORTH border
- * ---------------------------------------------------------------------....
- * |        .        .        .        .       .        .       .       |
- * |        .        .        .        .       .        .       .       |    height
- * |....................................................................|....
- * |        .        .        .        .       .        .       .       |
- * M         |        .        .        .        .       .        .       .       |  EAST border
- * WEST      |....................................................................|
- * border    |        .        .        .        .       .        .       .       |
- * |        .        .        .        .       .        .       .       |
- * |....................................................................|
- * |        .        .        .        .       .        .       .       |
- * |        .        .        .        .       .        .       .       |
- * ----------------------------------------------------------------------
- * SOUTH border                     .       .
- * width
- * <p/>
- * <p/>
  * Author: Michal Szynkiewicz, michal.l.szynkiewicz@gmail.com
  * Date: 1/5/16
  * Time: 9:03 PM
  */
 public class GameOfLifeFT2 extends Storage implements StartPoint {
-    public static final int RIGHT = 0, LEFT = 1, BOTTOM = 2, TOP = 3;
+    public static final String RIGHT = "right", LEFT = "left", BOTTOM = "bottom", TOP = "top";
     public static final int MAX_STEP = 100;
-    public static final int BOTTOM_RIGHT = 0, BOTTOM_LEFT = 1, TOP_RIGHT = 2, TOP_LEFT = 3;
-
-    //    public static final int MAX_STEP = 30;
-    public static final String INCOMING_CORNERS = "incomingCorners";
-    public static final String INCOMING_BORDERS = "incomingBorders";
+    public static final String BOTTOM_RIGHT = "bottomRight";
+    public static final String BOTTOM_LEFT = "bottomLeft";
+    public static final String TOP_RIGHT = "topRight";
+    public static final String TOP_LEFT = "topLeft";
 
     private int step = 0;
     private int prevStep = 1;
@@ -49,105 +25,80 @@ public class GameOfLifeFT2 extends Storage implements StartPoint {
 
     private int board[][][];
     private int height, width;
+    private int rowNum = 2, colNum = 2;
     private int row, col; // position
 
-    private File logFile;
+    @Shared
+    private int top[][] = new int[2][];
+    @Shared
+    private int bottom[][] = new int[2][];
+    @Shared
+    private int right[][] = new int[2][];
+    @Shared
+    private int left[][] = new int[2][];
 
     @Shared
-    private int incomingBorders[][] = new int[4][];           // mstodo zastąpić barierę przez incoming borders [2][4][]
-    private int incomingBordersWrk[][] = new int[4][];           // mstodo zastąpić barierę przez incoming borders [2][4][]
+    private int[] bottomRight = new int[2];
     @Shared
-    private int incomingCorners[] = new int[]{0, 0, 0, 0};
-    private int incomingCornersWrk[] = new int[]{0, 0, 0, 0};
+    private int[] bottomLeft = new int[2];
+    @Shared
+    private int[] topRight = new int[2];
+    @Shared
+    private int[] topLeft = new int[2];
 
     @Shared
     private Backup[] backups = new Backup[2];
 
     private void initBoard() {
         board = new int[2][height][width];
-        if (col == 0) {
-            createLightweightSpaceShip(10, 10);
-        }
+        createLightweightSpaceShip(10, 18);
     }
 
     private void createLightweightSpaceShip(int iPos, int jPos) {
         System.out.println("initializing spaceship for step: " + stepParity);
-        board[stepParity][iPos][jPos] = 1;
-        board[stepParity][iPos][jPos + 3] = 1;
-        board[stepParity][iPos + 1][jPos + 4] = 1;
-        board[stepParity][iPos + 2][jPos + 4] = 1;
-        board[stepParity][iPos + 3][jPos + 4] = 1;
-        board[stepParity][iPos + 3][jPos + 3] = 1;
-        board[stepParity][iPos + 3][jPos + 2] = 1;
-        board[stepParity][iPos + 3][jPos + 1] = 1;
-        board[stepParity][iPos + 2][jPos] = 1;
+        if (row > 0) {
+            return;
+        }
+
+        if (col == 0) {
+            board[stepParity][iPos][jPos] = 1;
+            board[stepParity][iPos + 3][jPos] = 1;
+            board[stepParity][iPos + 4][jPos + 1] = 1;
+        }
+
+        if (col == 1) {
+            jPos = -2;
+            board[stepParity][iPos + 4][jPos + 2] = 1;
+            board[stepParity][iPos + 4][jPos + 3] = 1;
+            board[stepParity][iPos + 3][jPos + 3] = 1;
+            board[stepParity][iPos + 2][jPos + 3] = 1;
+            board[stepParity][iPos + 1][jPos + 3] = 1;
+            board[stepParity][iPos][jPos + 2] = 1;
+        }
     }
 
     private void init() {
-        try {
-            logFile = File.createTempFile("pcj-gol-ft2", "log" + PCJ.myId());
-        } catch (IOException e) {
-            System.exit(0);
-        }
         // mstodo change/calculate sizes
         height = 20;
         width = 20;
-        row = 0;
-        col = PCJ.myId();
+        col = PCJ.myId() % 2;
+        row = PCJ.myId() / 2;
 
-        for (int i = 0; i < 2; i++) {
-            incomingBordersWrk[i] = new int[height]; // mstodo differentiate widht/height based on row/col
-        }
-        for (int i = 2; i < 4; i++) {
-            incomingBordersWrk[i] = new int[width]; // mstodo differentiate widht/height based on row/col
+        for (int step = 0; step < 2; step++) {
+            top[step] = new int[width];
+            bottom[step] = new int[width];
+            left[step] = new int[height];
+            right[step] = new int[height];
         }
 
-        log("before initBoard");
+//        PCJ.logCustom("before initBoard");
         initBoard();
-    }
-
-    private void assertResult() {
-        if (PCJ.myId() > 0) {
-            assertAllZeroes();
-        } else {
-            assertLightweightSpaceShip(10, 10);
-        }
-        log("all assertions passed");
-    }
-
-    private void assertEquals(int board[][], int i, int j, int exp) {
-        if (board[i][j] != exp) {
-            log("invalid value. Expected: " + exp + ", found: " + board[i][j] + " on pos: " + i + ", " + j + "\n");
-            System.exit(3);
-        }
-    }
-
-    private void assertLightweightSpaceShip(int iPos, int jPos) { // mstodo assert the rest are zeroes
-        int place = stepParity;
-        assertAllZeroes();
-        assertEquals(board[place], iPos, jPos, 1);
-        assertEquals(board[place], iPos + 3, jPos, 1);
-        assertEquals(board[place], iPos + 4, jPos + 1, 1);
-        assertEquals(board[place], iPos + 4, jPos + 2, 1);
-        assertEquals(board[place], iPos + 4, jPos + 3, 1);
-        assertEquals(board[place], iPos + 3, jPos + 3, 1);
-        assertEquals(board[place], iPos + 2, jPos + 3, 1);
-        assertEquals(board[place], iPos + 1, jPos + 3, 1);
-        assertEquals(board[place], iPos, jPos + 2, 1);
-    }
-
-    private void assertAllZeroes() {
-        for (int i = 0; i < height; i++) {
-            for (int j = 0; j < width; j++) {
-                assertEquals(board[stepParity], i, j, 0);
-            }
-        }
     }
 
     @Override
     public void main() throws Throwable {
         init();
-        log("after init");
+//        PCJ.logCustom("after init");
 
         try {
             while (step < MAX_STEP) {
@@ -167,23 +118,12 @@ public class GameOfLifeFT2 extends Storage implements StartPoint {
         } catch (Exception any) {
             StringWriter out = new StringWriter();
             any.printStackTrace(new PrintWriter(out));
-            log(out.toString());
+//            PCJ.logCustom(out.toString());
             System.exit(123);
         }
 
         print();
-
-    }
-
-    private void log(String message) {
-        try {
-            FileWriter fw = new FileWriter(logFile, true);
-            fw.append(message);
-
-            fw.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+//        PCJ.flushCustomLog("/tmp/gol/log" + PCJ.myId());
     }
 
     private void step() {
@@ -200,98 +140,82 @@ public class GameOfLifeFT2 extends Storage implements StartPoint {
     }
 
     private void print() {
-        log("\n\n@@ [" + step + "\n@@ " + PCJ.myId() + " --------------------------\n@@");
-        for (int i = 10; i < 20; i++) {
+        PCJ.logCustom("\n\n@@ [" + step + "\n@@ " + PCJ.myId() + " --------------------------\n@@");
+        for (int i = 0; i < 20; i++) {
             for (int j = 0; j < 20; j++) {
-                log("" + (board[stepParity][i][j] == 1 ? '*' : ' '));
+                PCJ.logCustom("" + (board[stepParity][i][j] == 1 ? '*' : ' '));
             }
-            log("\n@@");
+            PCJ.logCustom("\n@@");
         }
-        log("\n\n");
+        PCJ.logCustom("\n\n");
     }
-
-//    private void print() {
-//        int i0 = -1, j0 = -1;
-//        OUTER:
-//        for (int i = 0; i < height; i++) {
-//            for (int j = 0; j < width; j++) {
-//                if (board[stepParity][i][j] == 1) {
-//                    i0 = i;
-//                    System.out.print("i0 found for j: " + j);
-//                    break OUTER;
-//                }
-//            }
-//        }
-//        OUTER:
-//        for (int j = 0; j < width; j++) {
-//            for (int i = 0; i < height; i++) {
-//                if (board[stepParity][i][j] == 1) {
-//                    j0 = j;
-//                    System.out.println("\tj0 found for i: " + i);
-//                    break OUTER;
-//                }
-//            }
-//        }
-//        if (i0 != -1 && j0 != -1) printFrom(i0, j0);
-//    }
-//
-//
-//    // prints 10x10 piece of the board chars
-//    private void printFrom(int i0, int j0) {
-//        log("\n\n[" + step + "]STARTING FROM: " + i0 + ", " + j0 + "\n@@ " +PCJ.myId() + " --------------------------\n@@");
-//        for (int i = i0; i < i0 + 10 && i < 20; i++) {
-//            for (int j = j0; j < j0 + 10 && j < 20; j++) {
-//                log("" + (board[stepParity][i][j] == 1 ? '*' : ' '));
-//            }
-//            log("\n@@");
-//        }
-//        log("\n\n");
-//    }
 
     private void share() {
         int[][] b = board[prevStep];
-        share(nodeIdForRowAndColumn(row, col - 1), INCOMING_BORDERS, column(b, 0), RIGHT);
-        share(nodeIdForRowAndColumn(row, col + 1), INCOMING_BORDERS, column(b, width - 1), LEFT);
-        share(nodeIdForRowAndColumn(row - 1, col), INCOMING_BORDERS, b[0], BOTTOM);
-        share(nodeIdForRowAndColumn(row + 1, col), INCOMING_BORDERS, b[height - 1], TOP);
+        share(nodeIdForRowAndColumn(row, col - 1), RIGHT, column(b, 0), prevStep);
+        share(nodeIdForRowAndColumn(row, col + 1), LEFT, column(b, width - 1), prevStep);
+        share(nodeIdForRowAndColumn(row - 1, col), BOTTOM, b[0], prevStep);
+        share(nodeIdForRowAndColumn(row + 1, col), TOP, b[height - 1], prevStep);
 
-        share(nodeIdForRowAndColumn(row - 1, col - 1), INCOMING_CORNERS, b[0][0], BOTTOM_RIGHT);
-        share(nodeIdForRowAndColumn(row - 1, col + 1), INCOMING_CORNERS, b[0][width - 1], BOTTOM_LEFT);
-        share(nodeIdForRowAndColumn(row + 1, col - 1), INCOMING_CORNERS, b[height - 1][0], TOP_RIGHT);
-        share(nodeIdForRowAndColumn(row + 1, col + 1), INCOMING_CORNERS, b[height - 1][width - 1], TOP_LEFT);
+        share(nodeIdForRowAndColumn(row - 1, col - 1), BOTTOM_RIGHT, b[0][0], prevStep);
+        share(nodeIdForRowAndColumn(row - 1, col + 1), BOTTOM_LEFT, b[0][width - 1], prevStep);
+        share(nodeIdForRowAndColumn(row + 1, col - 1), TOP_RIGHT, b[height - 1][0], prevStep);
+        share(nodeIdForRowAndColumn(row + 1, col + 1), TOP_LEFT, b[height - 1][width - 1], prevStep);
+        PCJ.barrier(); // mstodo remove
     }
 
     private void waitForBorders() {
-        log("[" + PCJ.myId() + "] mod count: " + modCount()+  " INCOMING BORDERS: \n");
-        int incomingBordersCount = col == 0 || col == 3 ? 1 : 2;// mstodo
-        PCJ.waitFor(INCOMING_BORDERS, incomingBordersCount);
-        PCJ.waitFor("incomingCorners", 0);
-        for (int i = 0; i < 4; i++) {
-            log(" @" + i + "@ :" + Arrays.toString(incomingBorders[i]) + "\n");
+        PCJ.logCustom("[" + PCJ.myId() + "] INCOMING BORDERS: \n");
+        if (col > 0) {
+            PCJ.logCustom("for left");
+            PCJ.waitFor(LEFT);
+            PCJ.logCustom("(" + System.nanoTime() + " @LEFT@ :" + Arrays.toString(left[prevStep]) + "\n");
         }
-        for (int i=0; i<incomingBorders.length; i++) {
-            if (incomingBorders[i] != null) {
-                incomingBordersWrk[i] = incomingBorders[i].clone();
-            }
+        if (col < colNum - 1) {
+            PCJ.logCustom("for right");
+            PCJ.waitFor(RIGHT);
+            PCJ.logCustom("(" + System.nanoTime() + ") @RIGHT@ :" + Arrays.toString(right[prevStep]) + "\n");
         }
-        incomingCornersWrk = incomingCorners.clone();
-        PCJ.barrier();
-    }
+        if (row < rowNum - 1) {
+            PCJ.logCustom("for bottom");
+            PCJ.waitFor(BOTTOM);
+            PCJ.logCustom("(" + System.nanoTime() + ") @BOTTOM@ :" + Arrays.toString(bottom[prevStep]) + "\n");
+        }
 
-    private int modCount() {
-        try {
-            Field monitorFields = this.getClass().getSuperclass().getDeclaredField("monitorFields");
-            monitorFields.setAccessible(true);
-            Map<String, Integer> o = (Map<String, Integer>) monitorFields.get(this);
-            return o.get(INCOMING_BORDERS);
-        } catch (IllegalAccessException | NoSuchFieldException e) {
-            e.printStackTrace();
-            return -1;
+        if (row > 0) {
+            PCJ.logCustom("for top");
+            PCJ.waitFor(TOP);
+            PCJ.logCustom("(" + System.nanoTime() + ") @TOP@ :" + Arrays.toString(top[prevStep]) + "\n");
         }
+
+        // CORNERS:
+
+        if (col > 0 && row < rowNum - 1) {
+            PCJ.logCustom("for BOTTOM_LEFT");
+            PCJ.waitFor(BOTTOM_LEFT);
+            PCJ.logCustom(" @BOTTOM_LEFT@ :" + topLeft[prevStep] + "\n");
+        }
+        if (col < colNum - 1 && row < rowNum - 1) {
+            PCJ.logCustom("for bottom right");
+            PCJ.waitFor(BOTTOM_RIGHT);
+            PCJ.logCustom(" @RIGHT@ :" + bottomRight[prevStep] + "\n");
+        }
+
+        if (col > 0 && row > 0) {
+            PCJ.logCustom("for bottom left");
+            PCJ.waitFor(TOP_LEFT);
+            PCJ.logCustom(" @TOP_LEFT@ :" + topLeft[prevStep] + "\n");
+        }
+        if (col < colNum - 1 && row > 0) {
+            PCJ.logCustom("for top right");
+            PCJ.waitFor(TOP_RIGHT);
+            PCJ.logCustom(" @RIGHT@ :" + topRight[prevStep] + "\n");
+        }
+
     }
 
     private Integer nodeIdForRowAndColumn(int row, int col) {
-        return row != 0 || col < 0 || col >= PCJ.threadCount() ? null : col; // mstodo the table is 4*1000 * 1000, for now assuming no failures
+        return (row < 0 || row >= rowNum || col < 0 || col >= colNum) ? null : row * colNum + (col % colNum);
     }
 
     private int[] column(int[][] array, int idx) {
@@ -302,18 +226,18 @@ public class GameOfLifeFT2 extends Storage implements StartPoint {
         return result;
     }
 
-    private void share(Integer nodeId, String variableName, Serializable value, int index) {
+    private void share(Integer nodeId, String variableName, Serializable value, int... indexes) {
         int[] array = valueToArray(value);
         boolean nonZeros = false;
         if (Arrays.stream(array).anyMatch(i -> i != 0)) {
-            log("[" + PCJ.myId() + "] COMING: " + Arrays.toString(array) + " for variable: " + variableName + " at pos: " + index);
             nonZeros = true;
         }
+        PCJ.logCustom("\n(" + System.nanoTime() + " COMING -> " + nodeId + ": " + Arrays.toString(array) + " for variable: " + variableName + " at pos: " + Arrays.toString(indexes));
         if (nodeId != null) {
-            PCJ.put(nodeId, variableName, value, index);
-            if (nonZeros) log("shared\t INTO: " + nodeId);
+            PCJ.put(nodeId, variableName, value, indexes);
+            if (nonZeros) PCJ.logCustom("shared\t INTO: " + nodeId + "\n");
         } else {
-            if (nonZeros) log("skipped\n");
+            if (nonZeros) PCJ.logCustom("skipped\n");
         }
     }
 
@@ -335,26 +259,26 @@ public class GameOfLifeFT2 extends Storage implements StartPoint {
     private void calculateCorners() {
         // TOP_LEFT
         int[][] prevBoard = board[prevStep];
-        int sum = sum(incomingBordersWrk[TOP], 0, 1) + sum(incomingBordersWrk[LEFT], 0, 1)
-                + incomingCornersWrk[TOP_LEFT]
+        int sum = sum(top[prevStep], 0, 1) + sum(left[prevStep], 0, 1)
+                + topLeft[prevStep]
                 + sum(prevBoard[1], 0, 1) + prevBoard[0][1];
         setCell(0, 0, sum);
 
         // TOP_RIGHT
-        sum = sum(incomingBordersWrk[TOP], width - 2, width - 1) + sum(incomingBordersWrk[RIGHT], 0, 1)
-                + incomingCornersWrk[TOP_RIGHT]
+        sum = sum(top[prevStep], width - 2, width - 1) + sum(right[prevStep], 0, 1)
+                + topRight[prevStep]
                 + sum(prevBoard[1], width - 2, width - 1) + prevBoard[0][width - 2];
         setCell(0, width - 1, sum);
 
         // BOTTOM_LEFT
-        sum = sum(incomingBordersWrk[BOTTOM], 0, 1) + sum(incomingBordersWrk[LEFT], 0, 1)
-                + incomingCornersWrk[BOTTOM_LEFT]
+        sum = sum(bottom[prevStep], 0, 1) + sum(left[prevStep], height - 2, height - 1)
+                + bottomLeft[prevStep]
                 + sum(prevBoard[height - 2], 0, 1) + prevBoard[height - 1][1];
         setCell(height - 1, 0, sum);
 
         // BOTTOM_RIGHT
-        sum = sum(incomingBordersWrk[BOTTOM], width - 2, width - 1) + sum(incomingBordersWrk[RIGHT], 0, 1)
-                + incomingCornersWrk[BOTTOM_RIGHT]
+        sum = sum(bottom[prevStep], width - 2, width - 1) + sum(right[prevStep], height - 2, height - 1)
+                + bottomRight[prevStep]
                 + sum(prevBoard[height - 2], width - 2, width - 1) + prevBoard[height - 1][width - 2];
         setCell(height - 1, width - 1, sum);
     }
@@ -362,8 +286,8 @@ public class GameOfLifeFT2 extends Storage implements StartPoint {
     private void calculateBorders() {
         calcTopBorder();
         calcBottomBorder();
-        setCellsWithOuterColumn(1, 0, incomingBordersWrk[LEFT]);
-        setCellsWithOuterColumn(width - 2, width - 1, incomingBordersWrk[RIGHT]);
+        setCellsWithOuterColumn(1, 0, left[prevStep]);
+        setCellsWithOuterColumn(width - 2, width - 1, right[prevStep]);
     }
 
     private void setCellsWithOuterColumn(int internalNeighborColIdx, int currentCol, int outerColumn[]) {
@@ -383,13 +307,13 @@ public class GameOfLifeFT2 extends Storage implements StartPoint {
     private void calcBottomBorder() {
         int[] top = board[prevStep()][height - 2]; // mstodo check if height >= 2, similar checks!
         int[] current = board[prevStep()][height - 1];
-        setCellsForRows(height - 1, top, current, incomingBordersWrk[BOTTOM]);
+        setCellsForRows(height - 1, top, current, bottom[prevStep]);
     }
 
     private void calcTopBorder() {
-        int[] current = board[prevStep()][0];
-        int[] below = board[prevStep()][1];
-        setCellsForRows(0, incomingBordersWrk[TOP], current, below);
+        int[] current = board[prevStep][0];
+        int[] below = board[prevStep][1];
+        setCellsForRows(0, top[prevStep], current, below);
     }
 
     private void setForNeighbors(int i) {
@@ -428,7 +352,7 @@ public class GameOfLifeFT2 extends Storage implements StartPoint {
         }
 
         if (PCJ.myId() == 1 && i == 13 && j == 0) {
-            log("OBSERVED: " + liveNeighbors + "\t set value: " + value + "\n");
+            PCJ.logCustom("OBSERVED: " + liveNeighbors + "\t set value: " + value + "\n");
         }
 
         board[stepParity][i][j] = value;

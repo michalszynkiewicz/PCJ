@@ -491,6 +491,20 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
         }
     }
 
+    // mstodo remove
+    public static void logCustom(String message) {
+        CustomLog.log(message);
+    }
+
+    public static void logCustom(String message, Object value) {
+        CustomLog.log(message, value);
+    }
+
+    public static void flushCustomLog(String fileName) {
+        CustomLog.write(fileName);
+    }
+    // mstodo end remove
+
     public static Set<Integer> getFailedThreadIds() {
         return InternalPCJ.getWorkerData().getFailedThreadIds();
     }

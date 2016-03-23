@@ -25,49 +25,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.pcj.internal.message.Message;
-import org.pcj.internal.message.MessageFinishCompleted;
-import org.pcj.internal.message.MessageFinished;
-import org.pcj.internal.message.MessageGroupJoinAnswer;
-import org.pcj.internal.message.MessageGroupJoinBonjour;
-import org.pcj.internal.message.MessageGroupJoinInform;
-import org.pcj.internal.message.MessageGroupJoinQuery;
-import org.pcj.internal.message.MessageGroupJoinRequest;
-import org.pcj.internal.message.MessageGroupJoinResponse;
-import org.pcj.internal.message.MessageHello;
-import org.pcj.internal.message.MessageHelloBonjour;
-import org.pcj.internal.message.MessageHelloCompleted;
-import org.pcj.internal.message.MessageHelloGo;
-import org.pcj.internal.message.MessageHelloInform;
-import org.pcj.internal.message.MessageHelloResponse;
-import org.pcj.internal.message.MessageLog;
-import org.pcj.internal.message.MessageThreadPairSync;
-import org.pcj.internal.message.MessageThreadsSyncGo;
-import org.pcj.internal.message.MessageThreadsSyncWait;
-import org.pcj.internal.message.MessageSyncGo;
-import org.pcj.internal.message.MessageSyncWait;
-import org.pcj.internal.network.SocketData;
-import org.pcj.internal.message.MessageTypes;
-import org.pcj.internal.message.MessageValueAsyncGetRequest;
-import org.pcj.internal.message.MessageValueAsyncGetResponse;
-import org.pcj.internal.message.MessageValueBroadcast;
-import org.pcj.internal.message.MessageValueCompareAndSetRequest;
-import org.pcj.internal.message.MessageValueCompareAndSetResponse;
-import org.pcj.internal.message.MessageValuePut;
-import org.pcj.internal.network.LoopbackSocketChannel;
-import org.pcj.internal.utils.BitMask;
-import org.pcj.internal.utils.CloneObject;
-import org.pcj.internal.utils.Configuration;
-import org.pcj.internal.utils.Utilities;
-import org.pcj.internal.utils.WaitObject;
 
 import static org.pcj.internal.InternalPCJ.*;
 
 /**
  * This class processes incoming messages.
- * 
+ * <p/>
  * At present this class can be used only in sequential manner.
- * 
+ *
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
 public class Worker implements Runnable {
@@ -128,9 +93,9 @@ public class Worker implements Runnable {
     @Override
     public void run() {
         try {
-            for (;;) {
+            for (; ; ) {
                 try {
-                    for (;;) {
+                    for (; ; ) {
                         processMessage(requestQueue.take());
                     }
                 } catch (IOException ex) {
@@ -644,6 +609,7 @@ public class Worker implements Runnable {
             MessageFinishCompleted reply = new MessageFinishCompleted();
             reply.setInReplyTo(message.getMessageId());
             networker.send(globalGroup, reply);
+//            System.out.println("SENT FINISH COMPLETE");
         }
     }
 
@@ -927,6 +893,7 @@ public class Worker implements Runnable {
 
     private void nodesSyncGo(MessageThreadsSyncGo message) {
         throw new IllegalStateException("This method should not be used");
+//
 //        int[] nodes = message.getNodesGlobalIds();
 //        NodesSyncData nsd = new NodesSyncData(nodes);
 //        nsd = data.nodesSyncData.remove(nsd);
