@@ -98,7 +98,7 @@ public class GameOfLifeFT2 extends Storage implements StartPoint {
     @Override
     public void main() throws Throwable {
         init();
-//        PCJ.logCustom("after init");
+        PCJ.barrier();
 
         try {
             while (step < MAX_STEP) {
