@@ -14,6 +14,11 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class NodeFailureWaiter {
    private static final Map<Integer, List<Object>> waitObjects = new ConcurrentHashMap<>();
+   private final FaultTolerancePolicy policy;
+
+   public NodeFailureWaiter(FaultTolerancePolicy policy) {
+      this.policy = policy;
+   }
 
    public void waitForFailure(Integer nodeId) {
       if (PCJ.getFailedNodeIds().contains(nodeId)) {
@@ -41,7 +46,7 @@ public class NodeFailureWaiter {
       return waitObject;
    }
 
-   public synchronized void nodeFailed(int failedNodeId) {    /// mstodo the message doesn't come, someone locked and is waiting probably?
+   public synchronized void nodeFailed(int failedNodeId) {
       for (Object waitObject : waitObjects.get(failedNodeId)) {
          synchronized (waitObject) {
             waitObject.notifyAll();

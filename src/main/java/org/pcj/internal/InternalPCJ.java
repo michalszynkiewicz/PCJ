@@ -4,6 +4,7 @@
 package org.pcj.internal;
 
 import org.pcj.Group;
+import org.pcj.internal.faulttolerance.FaultTolerancePolicy;
 import org.pcj.internal.faulttolerance.NodeFailureWaiter;
 import org.pcj.internal.message.MessageFinished;
 import org.pcj.internal.message.MessageGroupJoinQuery;
@@ -132,10 +133,11 @@ public abstract class InternalPCJ {
         localData = new ConcurrentHashMap<>();
         InternalGroup globalGroup = new InternalGroup(0, "");
 
-        barrierHandler = new BarrierHandler();
-        waitForHandler = new WaitForHandler();
-        futureHandler = new FutureHandler();
-        nodeFailureWaiter = new NodeFailureWaiter();
+        FaultTolerancePolicy policy = workerData.activityMonitor.getFaultTolerancePolicy();
+        barrierHandler = new BarrierHandler(policy);
+        waitForHandler = new WaitForHandler(policy);
+        futureHandler = new FutureHandler(policy);
+        nodeFailureWaiter = new NodeFailureWaiter(policy);
 
         try {
             for (int i = 0; i < localIds.length; ++i) {

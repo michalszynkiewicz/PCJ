@@ -9,4 +9,8 @@ public interface FaultTolerancePolicy {
     void handleNodeFailure(int physicalNodeId);
 
     void reportError(int nodeId, boolean waitForReconfiguration);
+
+    void onFailure(Runnable r);
+
+    void onFailure(int nodeId, Runnable r);
 }

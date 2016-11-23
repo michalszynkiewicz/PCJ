@@ -4,6 +4,10 @@ import org.pcj.internal.network.MessageInputStream;
 import org.pcj.internal.network.MessageOutputStream;
 
 /**
+ * Message sent to node0 when a node failure was discovered
+ *
+ * (used to propagate failure)
+ *
  * Author: Michal Szynkiewicz, michal.l.szynkiewicz@gmail.com
  * Date: 1/26/15
  * Time: 10:28 PM

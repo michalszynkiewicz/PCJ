@@ -4,6 +4,7 @@
 package org.pcj;
 
 import org.pcj.internal.WaitForHandler;
+import org.pcj.internal.faulttolerance.Lock;
 
 import java.io.Serializable;
 import java.lang.reflect.Array;
@@ -311,7 +312,7 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
      *
      */
     @Override
-    final public int waitFor(String variable, int count) {
+    public final int waitFor(String variable, int count) {
         if (count < 0) {
             throw new IllegalArgumentException(String.format("Value count is less than zero (%d)", count));
         }
@@ -324,14 +325,20 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
         int v;
         do {
             synchronized (field) {
-                waitForHandler.add(field);
+                Lock.readLock();
+                try {
+                    waitForHandler.failOnNewFailure();
+                } finally {
+                    waitForHandler.add(field);
+                }
+                Lock.readUnlock();
                 while ((v = atomic.get()) < count) {
                     try {
                         field.wait();
                     } catch (InterruptedException ex) {
                         ex.printStackTrace(System.err);
                     }
-                    waitForHandler.throwOnNodeFailure();
+                    waitForHandler.failOnNewFailure();
                 }
             }
         } while (atomic.compareAndSet(v, v - count) == false);

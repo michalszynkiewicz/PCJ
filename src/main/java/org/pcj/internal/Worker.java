@@ -331,13 +331,11 @@ public class Worker implements Runnable {
         return false;
     }
 
-    private void nodeRemoved(MessageNodeRemoved message) {
+    private void nodeRemoved(MessageNodeRemoved message) {   // mstodo move to policy!
         System.out.println("processing node removed!!!");
         // LogUtils.setEnabled(true);
 //        LogUtils.setEnabled(true);
-         LogUtils.log("[" + data.physicalId + "] in node removed");
         Lock.writeLock();
-         LogUtils.log("[" + data.physicalId + "] after lock ");
         try {
             int failedNodeId = message.getFailedNodePhysicalId();
             System.out.println("GOT NODE REMOVED: " + failedNodeId);

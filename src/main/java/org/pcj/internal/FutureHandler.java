@@ -1,5 +1,6 @@
 package org.pcj.internal;
 
+import org.pcj.internal.faulttolerance.FaultTolerancePolicy;
 import org.pcj.internal.faulttolerance.NodeFailedException;
 
 import java.util.ArrayList;
@@ -16,6 +17,11 @@ public class FutureHandler {
 
     private final Map<Integer, List<InternalFutureObject<?>>> futures = new HashMap<>();
     private final Map<InternalFutureObject<?>, Integer> futuresReverse = new HashMap<>();  // not to scan whole futures map when unregistering
+    private final FaultTolerancePolicy policy;
+
+    public FutureHandler(FaultTolerancePolicy policy) {
+        this.policy = policy;
+    }
 
     public synchronized void registerFutureObject(InternalFutureObject<?> internalFutureObject, int nodeId) {
         List<InternalFutureObject<?>> internalFutureObjects = getFutureObjects(nodeId);

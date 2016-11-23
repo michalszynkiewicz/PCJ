@@ -1,5 +1,6 @@
 package org.pcj.internal;
 
+import org.pcj.internal.faulttolerance.FaultTolerancePolicy;
 import org.pcj.internal.message.MessageSyncGo;
 import org.pcj.internal.utils.BitMask;
 
@@ -16,7 +17,12 @@ import static org.pcj.internal.InternalPCJ.getWorkerData;
  */
 public class BarrierHandler {
 
+    private final FaultTolerancePolicy policy;
     private Integer groupId;
+
+    public BarrierHandler(FaultTolerancePolicy policy) {
+        this.policy = policy;
+    }
 
     public void setGroupUnderBarrier(int groupId) {
         this.groupId = groupId;

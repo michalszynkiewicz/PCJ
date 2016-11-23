@@ -1,11 +1,9 @@
 package org.pcj.internal;
 
-import org.pcj.internal.faulttolerance.NodeFailedException;
+import org.pcj.internal.faulttolerance.FaultTolerancePolicy;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -17,8 +15,12 @@ import java.util.Set;
     // mstodo put/get handling node failure?
 public class WaitForHandler {
 
+    private final FaultTolerancePolicy policy;
     private Set<Field> fieldsToAwake = new HashSet<>();
-    private List<Integer> failedNodes = new ArrayList<>();
+
+    public WaitForHandler(FaultTolerancePolicy policy) {
+        this.policy = policy;
+    }
 
     public void add(Field field) {
         synchronized (field) {
@@ -33,7 +35,6 @@ public class WaitForHandler {
     }
 
     public void nodeFailed(int failedNodeId) {
-        failedNodes.add(failedNodeId); // mstodo translate to thread ids ?
         fieldsToAwake.forEach(f -> {
             synchronized (f) {
                 f.notifyAll();
@@ -41,10 +42,7 @@ public class WaitForHandler {
         });
     }
 
-    public void throwOnNodeFailure() { // mstodo would be good to do something to remove this synchronization
-        if (!failedNodes.isEmpty()) {
-            failedNodes.clear();
-            throw new NodeFailedException(); // mstodo add info which node/threads failed
-        }
+    public void failOnNewFailure() {
+        policy.failOnRemovedNode();
     }
 }

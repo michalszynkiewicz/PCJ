@@ -1,5 +1,7 @@
 package org.pcj.internal.faulttolerance;
 
+import java.util.Set;
+
 /**
  * Author: Michal Szynkiewicz, michal.l.szynkiewicz@gmail.com
  * Date: 2/1/15
@@ -13,5 +15,8 @@ public class NodeFailedException extends RuntimeException {
 
     public NodeFailedException(int physicalNodeId) {
         super("Node failed: " + physicalNodeId);
+    }
+    public NodeFailedException(Set<Integer> physicalNodeIds) {
+        super("Nodes failed: " + physicalNodeIds);
     }
 }
