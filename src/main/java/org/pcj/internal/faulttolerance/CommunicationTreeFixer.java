@@ -80,17 +80,16 @@ public class CommunicationTreeFixer {
 
     private static void replaceWith(CommunicationNode replaced, CommunicationNode parent, CommunicationNode replacement,
                                     List<SetChild> resultList) {
+        SetChild setChild;
         if (parent.getLeft() == replaced) {
             parent.setLeft(replacement);
-            resultList.add(
-                    new SetChild(parent.getId(), nullSafeId(replacement), LEFT)
-            );
+            setChild = new SetChild(parent.getId(), nullSafeId(replacement), LEFT);
         } else {
             parent.setRight(replacement);
-            resultList.add(
-                    new SetChild(parent.getId(), nullSafeId(replacement), RIGHT)
-            );
+            setChild = new SetChild(parent.getId(), nullSafeId(replacement), RIGHT);
         }
+        System.out.println("Created setChild: " + setChild);
+        resultList.add(setChild);
     }
 
 

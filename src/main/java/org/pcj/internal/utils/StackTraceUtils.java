@@ -16,4 +16,12 @@ public class StackTraceUtils {
         }
         System.err.println("");
     }
+
+
+    public static void printStackTrace(StackTraceElement[] elements) {
+        for (StackTraceElement stackTraceElement : elements) {
+            System.err.println(stackTraceElement.toString());
+        }
+        System.err.println("");
+    }
 }

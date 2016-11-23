@@ -1,4 +1,4 @@
-package gol;
+package test.gol;
 
 import org.pcj.PCJ;
 import org.pcj.StartPoint;

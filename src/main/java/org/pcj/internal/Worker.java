@@ -7,10 +7,47 @@ import org.pcj.FutureObject;
 import org.pcj.internal.faulttolerance.FaultTolerancePolicy;
 import org.pcj.internal.faulttolerance.Lock;
 import org.pcj.internal.faulttolerance.SetChild;
-import org.pcj.internal.message.*;
+import org.pcj.internal.message.BroadcastedMessage;
+import org.pcj.internal.message.Message;
+import org.pcj.internal.message.MessageFinishCompleted;
+import org.pcj.internal.message.MessageFinished;
+import org.pcj.internal.message.MessageGroupJoinAnswer;
+import org.pcj.internal.message.MessageGroupJoinBonjour;
+import org.pcj.internal.message.MessageGroupJoinInform;
+import org.pcj.internal.message.MessageGroupJoinQuery;
+import org.pcj.internal.message.MessageGroupJoinRequest;
+import org.pcj.internal.message.MessageGroupJoinResponse;
+import org.pcj.internal.message.MessageHello;
+import org.pcj.internal.message.MessageHelloBonjour;
+import org.pcj.internal.message.MessageHelloCompleted;
+import org.pcj.internal.message.MessageHelloGo;
+import org.pcj.internal.message.MessageHelloInform;
+import org.pcj.internal.message.MessageHelloResponse;
+import org.pcj.internal.message.MessageLog;
+import org.pcj.internal.message.MessageNodeFailed;
+import org.pcj.internal.message.MessageNodeRemoved;
+import org.pcj.internal.message.MessagePing;
+import org.pcj.internal.message.MessageSyncGo;
+import org.pcj.internal.message.MessageSyncWait;
+import org.pcj.internal.message.MessageThreadPairSync;
+import org.pcj.internal.message.MessageThreadsSyncGo;
+import org.pcj.internal.message.MessageThreadsSyncWait;
+import org.pcj.internal.message.MessageTypes;
+import org.pcj.internal.message.MessageValueAsyncGetRequest;
+import org.pcj.internal.message.MessageValueAsyncGetResponse;
+import org.pcj.internal.message.MessageValueBroadcast;
+import org.pcj.internal.message.MessageValueCompareAndSetRequest;
+import org.pcj.internal.message.MessageValueCompareAndSetResponse;
+import org.pcj.internal.message.MessageValuePut;
 import org.pcj.internal.network.LoopbackSocketChannel;
 import org.pcj.internal.network.SocketData;
-import org.pcj.internal.utils.*;
+import org.pcj.internal.utils.BitMask;
+import org.pcj.internal.utils.CloneObject;
+import org.pcj.internal.utils.Configuration;
+import org.pcj.internal.utils.PcjThreadPair;
+import org.pcj.internal.utils.StackTraceUtils;
+import org.pcj.internal.utils.Utilities;
+import org.pcj.internal.utils.WaitObject;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -18,15 +55,23 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SocketChannel;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static org.pcj.internal.InternalPCJ.*;
+import static org.pcj.internal.InternalPCJ.getFutureHandler;
+import static org.pcj.internal.InternalPCJ.getNodeFailureWaiter;
+import static org.pcj.internal.InternalPCJ.getWaitForHandler;
 
 /**
  * This class processes incoming messages.
@@ -92,6 +137,7 @@ public class Worker implements Runnable {
 
     @Override
     public void run() {
+        startPeeker();
         try {
             for (; ; ) {
                 try {
@@ -104,29 +150,46 @@ public class Worker implements Runnable {
             }
         } catch (InterruptedException ex) {
             //ex.printStackTrace(System.err);
+        } catch(Throwable anything) {
+            anything.printStackTrace();
+            throw new RuntimeException(anything);
+        } finally {
+            System.out.println(">> I quit!");
+        }
+    }
+
+    private void startPeeker() {
+        boolean stackPeekerEnabled = false; // todo move to configuration?
+        if (stackPeekerEnabled) {
+            final Thread originator = Thread.currentThread();
+            Thread t = new Thread(() -> {
+                while (true) {
+                    Message peek = requestQueue.peek();
+                    System.out.println("we have " + peek + " at the peek!");
+                    System.out.println("lock state: " + Lock.stateDescription());
+                    if (originator.isAlive()) {
+                        System.out.println("current originator place: ");
+                        StackTraceUtils.printStackTrace(originator.getStackTrace());
+                    } else {
+                        System.err.println("SOMEONE KILLED THE ORIGINATOR!!");
+                    }
+
+                    try {
+                        Thread.sleep(2000L);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();  // TODO: Customise this generated block
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            }
+            );
+//        t.setDaemon(true);
+            t.start();
         }
     }
 
     WorkerData getData() {
         return data;
-    }
-
-    private void broadcast(InternalGroup group, Message message) {
-//        System.err.println("broadcast:" + message + " to " + group.getGroupName());
-        Integer leftChildrenIndex = group.getPhysicalLeft();
-        Integer rightChildrenIndex = group.getPhysicalRight();
-
-        SocketChannel left = null;
-        if (leftChildrenIndex != null) {
-            left = data.physicalNodes.get(group.getPhysicalLeft());
-        }
-
-        SocketChannel right = null;
-        if (rightChildrenIndex != null) {
-            right = data.physicalNodes.get(group.getPhysicalRight());
-        }
-
-        networker.broadcast(left, right, message);
     }
 
     private void processMessage(Message message) throws IOException {
@@ -141,9 +204,6 @@ public class Worker implements Runnable {
             return;
         }
         boolean locked = true;
-//        if (Lock.isWriteLocked()) {
-//            LogUtils.log(data.physicalId, "!!!will wait for write lock!!!");
-//        }
         Lock.readLock();
         try {
             switch (message.getType()) {
@@ -272,16 +332,18 @@ public class Worker implements Runnable {
     }
 
     private void nodeRemoved(MessageNodeRemoved message) {
+        System.out.println("processing node removed!!!");
         // LogUtils.setEnabled(true);
 //        LogUtils.setEnabled(true);
-        // LogUtils.log("[" + data.physicalId + "] in node removed");
+         LogUtils.log("[" + data.physicalId + "] in node removed");
         Lock.writeLock();
-        // LogUtils.log("[" + data.physicalId + "] after lock ");
+         LogUtils.log("[" + data.physicalId + "] after lock ");
         try {
             int failedNodeId = message.getFailedNodePhysicalId();
-            // LogUtils.log(data.physicalId, "GOT NODE REMOVED: " + failedNodeId);
+            System.out.println("GOT NODE REMOVED: " + failedNodeId);
             data.removePhysicalNode(failedNodeId);
             getWaitForHandler().nodeFailed(failedNodeId);
+            System.out.println("will fail future");
             getFutureHandler().nodeFailed(failedNodeId);
 
             int myNodeId = data.physicalId;
@@ -300,15 +362,15 @@ public class Worker implements Runnable {
             }
             data.addFailedNode(failedNodeId);
             getNodeFailureWaiter().nodeFailed(failedNodeId);
-//            LogUtils.log(myNodeId, "Finished removal");
+            LogUtils.log(myNodeId, "Finished removal");
         } catch (RuntimeException rex) {
-//            LogUtils.log(data.physicalId, rex.getMessage());  // mstodo remove
+            LogUtils.log(data.physicalId, rex.getMessage());  // mstodo remove
             StackTraceElement traceTop = rex.getStackTrace()[0];
-//            LogUtils.log(data.physicalId, traceTop.getFileName() + "#" + traceTop.getMethodName() + ":" + traceTop.getLineNumber());  // mstodo remove
+            LogUtils.log(data.physicalId, traceTop.getFileName() + "#" + traceTop.getMethodName() + ":" + traceTop.getLineNumber());  // mstodo remove
         } finally {
-//            LogUtils.log(data.physicalId, "Will write unlock");
+            LogUtils.log(data.physicalId, "Will write unlock");
             Lock.writeUnlock();
-//            LogUtils.log(data.physicalId, "write unlocked");
+            LogUtils.log(data.physicalId, "write unlocked");
         }
     }
 
@@ -504,7 +566,7 @@ public class Worker implements Runnable {
     private void helloInform(MessageHelloInform message) throws IOException {
         int physicalId = message.getPhysicalId();
         InternalGroup globalGroup = data.internalGlobalGroup;
-        broadcast(globalGroup, message);
+        networker.broadcast(globalGroup, message);
 
         /* add information about new-node */
         for (int id : message.getNodeIds()) {
@@ -593,7 +655,7 @@ public class Worker implements Runnable {
      */
     private void helloGo(MessageHelloGo message) {
         InternalGroup globalGroup = data.internalGlobalGroup;
-        broadcast(globalGroup, message);
+        networker.broadcast(globalGroup, message);
 
         WaitObject sync = data.internalGlobalGroup.getSyncObject();
         sync.signalAll();
@@ -615,7 +677,7 @@ public class Worker implements Runnable {
 
     private void finishCompleted(MessageFinishCompleted message) {
         InternalGroup globalGroup = data.internalGlobalGroup;
-        broadcast(globalGroup, message);
+        networker.broadcast(globalGroup, message);
 
         synchronized (data.finishObject) {
             data.finishObject.notifyAll();
@@ -650,7 +712,7 @@ public class Worker implements Runnable {
         syncMessageIds.add(message.getMessageId());
          // LogUtils.log(data.physicalId, "JKIAgot sync go with id: " + message.getMessageId());
         InternalGroup group = data.internalGroupsById.get(message.getGroupId());
-        broadcast(group, message);
+        networker.broadcast(group, message);
 
         WaitObject sync = group.getSyncObject();
         sync.signalAll();
@@ -817,7 +879,7 @@ public class Worker implements Runnable {
             }
         }
 
-        broadcast(group, message);
+        networker.broadcast(group, message);
 
         group.add(groupNodeId, globalNodeId, physicalNodeId);
 
@@ -1005,7 +1067,7 @@ public class Worker implements Runnable {
      */
     private void valueBroadcast(MessageValueBroadcast message) {
         InternalGroup group = data.internalGroupsById.get(message.getGroupId());
-        broadcast(group, message);
+        networker.broadcast(group, message);
 
         for (int id : group.getLocalIds()) {
             int nodeId = group.getNode(id);

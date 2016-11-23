@@ -4,6 +4,7 @@
 package org.pcj.internal.utils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -47,7 +48,8 @@ public class CommunicationTree {
     }
 
     public void removeNode(int removedNodeIdx) {
-        children.remove((Integer)removedNodeIdx);
+        children.removeAll(Collections.singleton(removedNodeIdx));
+        System.out.println("removed" + removedNodeIdx);
     }
 
     @Override

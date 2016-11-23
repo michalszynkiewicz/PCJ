@@ -46,8 +46,14 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
       }
 
       Set<Integer> physicalNodes = getWorkerData().getPhysicalNodes().keySet();   // todo: is synchronization needed?
+      System.out.println("()()()   ");
+      System.out.println("()()()   ");
+      System.out.println("()()()   physical nodes: " + physicalNodes);
+      System.out.println("()()()   ");
+      System.out.println("()()()   ");
       for (Integer node : physicalNodes) {
 //            sending to the failed node will fail
+          System.out.println("sending to " + node +" for failure of: " + failedNodeId);
          if (!node.equals(failedNodeId)) {
             propagateFailure(failedNodeId, node, updates);
          }
@@ -58,7 +64,8 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
 
    @Override
    public void reportError(int nodeId, boolean waitForReconfiguration) {
-      System.err.println("reporting error for nodeId: " + nodeId);
+      System.err.println("reporting error for nodeId: " + nodeId + ", will wait for reconfiguration: " + waitForReconfiguration);
+      Thread.dumpStack();
       System.err.println(asList(Thread.currentThread().getStackTrace()));
       MessageNodeFailed message = new MessageNodeFailed(nodeId);
       try {
@@ -76,6 +83,7 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
       if (waitForReconfiguration) {
          InternalPCJ.getNodeFailureWaiter().waitForFailure(nodeId);   // mstodo sth wrong on node 0 - maybe if both children are dead?
       }
+      System.out.println("Finished reporting error");
    }
 
    private void finishBarrierIfInProgress(int failedNodeId) {

@@ -14,7 +14,7 @@ import static java.lang.System.getProperty;
  * Date: 4/22/15
  * Time: 5:09 PM
  */
-public class PiCalculationTest  extends Storage implements StartPoint {
+public class PiCalculationTest extends Storage implements StartPoint {
     private static String[] nodes = getProperty("nodes").split(",");
     private static final int fails = Integer.valueOf(System.getProperty("fails", "0"));
     public static final Integer POINT_COUNT = Integer.valueOf(System.getProperty("pointCount"));
@@ -26,7 +26,7 @@ public class PiCalculationTest  extends Storage implements StartPoint {
     public static final String COUNT = "count";
 
     private static boolean isInside(double x, double y) {
-        return (x-x0)*(x-x0) + (y-y0)*(y-y0) <= radius * radius;
+        return (x - x0) * (x - x0) + (y - y0) * (y - y0) <= radius * radius;
     }
 
     @Shared
@@ -39,7 +39,7 @@ public class PiCalculationTest  extends Storage implements StartPoint {
         for (int i = 0; i < POINT_COUNT; i++) {
             double x = random.nextDouble(), y = random.nextDouble();
             if (isInside(x, y)) {
-                localCount ++;
+                localCount++;
             }
             if (i == FAIL_POINT && PCJ.getPhysicalNodeId() == 17 && fails > 1) {
                 System.exit(12);
@@ -49,7 +49,9 @@ public class PiCalculationTest  extends Storage implements StartPoint {
             }
         }
         PCJ.putLocal("count", localCount);
+        System.out.println("before barrier"); System.out.flush();
         PCJ.barrier();
+        System.out.println("after barrier"); System.out.flush();
 
         if (PCJ.myId() == 0) {
             long totalPointCount = 0L;
@@ -66,10 +68,10 @@ public class PiCalculationTest  extends Storage implements StartPoint {
         }
         if (PCJ.myId() == 0) {
             long nanos = System.nanoTime() - time;
-            long millis = nanos/(1000*1000);
-            long secs = millis/1000;
-            millis -= secs*1000;
-            nanos -= millis * 1000*1000;
+            long millis = nanos / (1000 * 1000);
+            long secs = millis / 1000;
+            millis -= secs * 1000;
+            nanos -= millis * 1000 * 1000;
             System.out.println("[PiCalculationTest@" + nodes.length + "] ####WORKING TIME: " + secs + "."
                     + String.format("%03d", millis) + "."
                     + String.format("%06d", nanos) + "ns");

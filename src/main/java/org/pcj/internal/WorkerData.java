@@ -131,7 +131,7 @@ public final class WorkerData {
 
     public void removePhysicalNode(int physicalNodeId) {
         // total physical nodes count is decreased elsewhere - via MessageFinished
-//        System.out.println(" REMOVING PHYSICAL NODE: " + physicalNodeId);
+        System.out.println(" REMOVING PHYSICAL NODE: " + physicalNodeId); // mstodo remove
         SocketChannel socketChannel = physicalNodes.get(physicalNodeId);
         System.err.println("removing socketChannel: " + socketChannel + " for ndoe: " + physicalNodeId); // mstodo remove
 
@@ -151,6 +151,7 @@ public final class WorkerData {
 
         for (InternalGroup group : internalGroupsById.values()) {
             group.removePhysicalNode(physicalNodeId, virtualNodesToRemove);
+            System.out.println("### removed " + physicalNodeId + " from " + group);
         }
     }
 

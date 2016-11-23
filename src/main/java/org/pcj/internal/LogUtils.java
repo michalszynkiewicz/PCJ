@@ -21,7 +21,7 @@ public class LogUtils {
         if (enabled) log("[" + physicalId + "] " + message);
     }
 
-    public static void log(String message){
+    public static synchronized void log(String message){
 //        System.out.println("should log " + message);
         if (enabled) {
             try {

@@ -1,7 +1,6 @@
 package org.pcj.internal.faulttolerance;
 
 import org.pcj.internal.InternalGroup;
-import org.pcj.internal.LogUtils;
 import org.pcj.internal.message.MessagePing;
 import org.pcj.internal.utils.Configuration;
 
@@ -36,6 +35,7 @@ public class LazyActivityMonitor implements Runnable {
 
     public void start() {
         initChildren();
+        monitoringThread.setDaemon(true);
         monitoringThread.start();
     }
 
@@ -59,7 +59,7 @@ public class LazyActivityMonitor implements Runnable {
         }
     }
 
-    public synchronized void pingFromChild(int childId) {           // mstodo call it from worker
+    public synchronized void pingFromChild(int childId) {
         lastPingTimes.put(childId, currentTimeMillis());
     }
 
@@ -82,10 +82,14 @@ public class LazyActivityMonitor implements Runnable {
         try {
             InternalGroup globalGroup = getWorkerData().getInternalGlobalGroup();
             List<Integer> observedNodes = new ArrayList<>();
-            Integer left = globalGroup.getPhysicalLeft();
+            Integer left = globalGroup.getPhysicalLeft();           // mstodo why it doesn't get replaced???
             Integer right = globalGroup.getPhysicalRight();
-            if (left != null) observedNodes.add(left);
-            if (right != null) observedNodes.add(right);
+            if (left != null) {
+                observedNodes.add(left);
+            }
+            if (right != null) {
+                observedNodes.add(right);
+            }
             observedNodes.forEach(this::checkForChildFailure);
         } finally {
             Lock.readUnlock();

@@ -51,8 +51,11 @@ public class InternalGroup {
      */
     final private CommunicationTree physicalCommunication;
 
+    private final Set<Integer> removedNodes = new HashSet<>();
+
     //private final InternalGroup g;
     protected InternalGroup(InternalGroup g) {
+        System.out.println(this);
         this.groupId = g.groupId;
         this.groupName = g.groupName;
         this.joinBitmaskMap = g.joinBitmaskMap;
@@ -74,6 +77,7 @@ public class InternalGroup {
     }
 
     protected InternalGroup(int groupId, String groupName) {
+        System.out.println(this);
         this.groupId = groupId;
         this.groupName = groupName;
         this.joinBitmaskMap = new ConcurrentHashMap<>();
@@ -179,8 +183,10 @@ public class InternalGroup {
     }
 
     boolean physicalSync(int physicalId) {
+//        System.out.println("physical sync before: " + physicalSync);
         int position = physicalIds.indexOf(physicalId);
         physicalSync.set(position);
+//        System.out.println("physical sync after: " + physicalSync);
         return physicalSync.isSet();
     }
 
@@ -304,24 +310,25 @@ public class InternalGroup {
     }
 
     protected void barrier(int myNodeId) {
-//        LogUtils.log(myNodeId, "barrier] will do"); // todo virtual node in log
+        LogUtils.log(myNodeId, "barrier] will do"); // todo virtual node in log
         Lock.readLock();
         boolean unlocked = false;
-//        LogUtils.log(myNodeId, "barrier] lock"); // todo virtual node in log
+        LogUtils.log(myNodeId, "barrier] lock"); // todo virtual node in log
 
         try {
             syncObject.lock();
             InternalPCJ.getBarrierHandler().setGroupUnderBarrier(groupId);
             try {
                 localSync.set(myNodeId);
-//                LogUtils.log(myNodeId, "barrier] set localSync");
+//                System.out.println("barrier] set localSync");
                 if (localSync.isSet(localSyncMask)) {
-                    // LogUtils.log(myNodeId, "barrier] localSync is set");
+//                    System.out.println("barrier] localSync is set");
                     Lock.readUnlock();
                     unlocked = true;
                     try {
-                        // LogUtils.log(myNodeId, "barrier] sending syncMessage");
+//                         System.out.println("barrier] sending syncMessage");
                         InternalPCJ.getNetworker().send(getPhysicalMaster(), syncMessage); // goes to node 0 for "normal" barrier
+//                         System.out.println("barrier] syncMessage sent");
                     } catch (IOException e) {
                         throw new RuntimeException("Node 0 failed!");
                     }
@@ -331,21 +338,21 @@ public class InternalGroup {
                     Lock.readUnlock();
                     unlocked = true;
                 }
-//                LogUtils.log(myNodeId, "barrier] will await");
+//                System.out.println("barrier] will await");
                 syncObject.await();
-//                LogUtils.log(myNodeId, "barrier] after await");
+//                System.out.println("barrier] after await");
             } catch (InterruptedException ex) {
                 throw new RuntimeException(ex);
             }
             InternalPCJ.getBarrierHandler().resetBarrier();
-            // LogUtils.log(myNodeId, "barrier] after resetBarrier");
+//             System.out.println("barrier] after resetBarrier");
             syncObject.unlock();
-            // LogUtils.log(myNodeId, "barrier] after unlock");
+//             System.out.println("barrier] after unlock");
         } finally {
             if (!unlocked) {
-                // LogUtils.log(myNodeId, "barrier] will finally unlock");
+//                 System.out.println("barrier] will finally unlock");
                 Lock.readUnlock();
-                // LogUtils.log(myNodeId, "barrier] finally unlocked");
+//                 System.out.println("barrier] finally unlocked");
             }
         }
     }
@@ -449,8 +456,8 @@ public class InternalGroup {
 
         InternalPCJ.getWorkerData().attachmentMap.put(msg.getMessageId(), futureObject);
         try {
-            InternalPCJ.getNetworker().send(nodeId, msg);
             InternalPCJ.getFutureHandler().registerFutureObject(futureObject, nodeId);
+            InternalPCJ.getNetworker().send(nodeId, msg);
             return futureObject;
         } catch (IOException ex) {
             FaultTolerancePolicy faultTolerancePolicy = InternalPCJ.getWorkerData().getFaultTolerancePolicy();
@@ -460,19 +467,22 @@ public class InternalGroup {
     }
 
     protected void put(int nodeId, String variable, Object newValue, int... indexes) {
-        nodeId = nodes.get(nodeId);
+        Integer pNodeId = nodes.get(nodeId);      // mstodo nullpointer :O
 
+        if (pNodeId == null) {
+            throw new NodeFailedException(nodeId);
+        }
         MessageValuePut msg = new MessageValuePut();
-        msg.setReceiverGlobalNodeId(nodeId);
+        msg.setReceiverGlobalNodeId(pNodeId);
         msg.setVariableName(variable);
         msg.setIndexes(indexes);
         msg.setVariableValue(CloneObject.serialize(newValue));
 
         try {
-            InternalPCJ.getNetworker().send(nodeId, msg);
+            InternalPCJ.getNetworker().send(pNodeId, msg);
         } catch (IOException ex) {
             FaultTolerancePolicy faultTolerancePolicy = InternalPCJ.getWorkerData().getFaultTolerancePolicy();
-            faultTolerancePolicy.reportError(nodeId, true);
+            faultTolerancePolicy.reportError(pNodeId, true);
             throw new NodeFailedException(ex);
         }
     }
@@ -524,11 +534,14 @@ public class InternalGroup {
 
     }
 
-    public void removePhysicalNode(int physicalNodeId, Set<Integer> virtualNodes) {
+    public void removePhysicalNode(int physicalNodeId, Set<Integer> virtualNodes) {   // mstodo not invoked on node 0!!!
+        // mstodo on other nodes there's no physicalIds!!
         int removedNodeIdx = physicalIds.indexOf(physicalNodeId);
         if (removedNodeIdx == -1) {
+            System.out.println("Cannot remove from group " + this);
 //            LogUtils.log(InternalPCJ.getWorkerData().physicalId, "No physical node with id: " + physicalNodeId + " found" + "\tphysical node ids: " + physicalIds);
         } else {
+            System.out.println("Removing from group " + this);
             physicalIds.remove(removedNodeIdx);
 
             List<Integer> groupIdsToRemove = new ArrayList<>();
@@ -548,14 +561,43 @@ public class InternalGroup {
             localSyncMask = localSyncMask.without(removedNodeIdx);
             physicalSync = physicalSync.without(removedNodeIdx);
         }
+//
+//
+//        if (!removedNodes.contains(physicalNodeId)) {
+//            int removedNodeIdx = physicalIds.indexOf(physicalNodeId);
+//            if (removedNodeIdx > -1) {
+//                physicalIds.remove(removedNodeIdx);
+//
+//                localSync = localSync.without(removedNodeIdx);     // mstodo what should be removed here???
+//                localSyncMask = localSyncMask.without(removedNodeIdx);
+//                physicalSync = physicalSync.without(removedNodeIdx);
+//            }
+//
+//            physicalCommunication.removeNode(physicalNodeId);
+//
+//            List<Integer> groupIdsToRemove = new ArrayList<>();
+//            for (Map.Entry<Integer, Integer> nodeEntry : nodes.entrySet()) {
+//                if (virtualNodes.contains(nodeEntry.getValue())) {
+//                    groupIdsToRemove.add(nodeEntry.getKey());
+//                }
+//            }
+//
+//            for (Integer groupId : groupIdsToRemove) {
+//                nodes.remove(groupId);
+//            }
+//
+//            removedNodes.add(physicalNodeId);
+//        }
     }
 
     public void updateCommunicationTree(SetChild update) {
         switch (update.getDirection()) {
             case LEFT:
+                System.out.println("new LEFT: " + update.getChild());  // mstodo remove
                 setPhysicalLeft(update.getChild());
                 break;
             case RIGHT:
+                System.out.println("new RIGHT: " + update.getChild());  // mstodo remove
                 setPhysicalRight(update.getChild());
                 break;
         }

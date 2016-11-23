@@ -3,21 +3,6 @@
  */
 package org.pcj.internal;
 
-import org.pcj.internal.utils.Version;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.UnknownHostException;
-import java.nio.channels.SocketChannel;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import org.pcj.Group;
 import org.pcj.internal.faulttolerance.NodeFailureWaiter;
 import org.pcj.internal.message.MessageFinished;
@@ -33,7 +18,23 @@ import org.pcj.internal.utils.NetworkUtils;
 import org.pcj.internal.utils.NodeInfo;
 import org.pcj.internal.utils.NodesFile;
 import org.pcj.internal.utils.Utilities;
+import org.pcj.internal.utils.Version;
 import org.pcj.internal.utils.WaitObject;
+
+import java.io.IOException;
+import java.io.PrintStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.UnknownHostException;
+import java.nio.channels.SocketChannel;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * Internal (with common ClassLoader) class for external PCJ class.

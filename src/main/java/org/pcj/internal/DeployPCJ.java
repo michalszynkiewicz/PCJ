@@ -117,7 +117,8 @@ final public class DeployPCJ {
         for (String jvmArgument : jvmOptions.getInputArguments()) {
             if (jvmArgument.startsWith("-Xdebug")
                     || jvmArgument.startsWith("-Xrunjdwp:transport=")
-                    || jvmArgument.startsWith("-agentpath:")) {
+                    || jvmArgument.startsWith("-agentpath:")
+                    || jvmArgument.startsWith("-agentlib:")) {
                 continue;
             }
             params.add(jvmArgument);

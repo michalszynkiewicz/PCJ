@@ -1,4 +1,4 @@
-package gol;
+package test.gol;
 
 import java.io.Serializable;
 

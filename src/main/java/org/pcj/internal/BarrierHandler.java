@@ -38,7 +38,8 @@ public class BarrierHandler {
                 return;
             }
             synchronized (physicalSync) {
-//                LogUtils.log(getWorkerData().physicalId, "physical sync after node removal: " + physicalSync);
+                System.out.println("physical sync after node removal: " + physicalSync);
+//                LogUtils.log(getWorkerData().physicalId, );
                 if (!physicalSync.isSet(position)) {
                     physicalSync.set(position);
                 }

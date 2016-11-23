@@ -1,4 +1,4 @@
-package gol;
+package test.gol;
 
 /**
  * Author: Michal Szynkiewicz, michal.l.szynkiewicz@gmail.com

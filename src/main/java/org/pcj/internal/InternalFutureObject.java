@@ -14,8 +14,8 @@ import java.util.concurrent.TimeoutException;
  */
 public class InternalFutureObject<T> implements Future<T>, ResponseAttachment {
 
-    final private Object waitObj = new Object();
-    volatile private boolean done;
+    private final Object waitObj = new Object();
+    private volatile boolean done;
     private T response;
     private RuntimeException excpetion;
 
@@ -44,7 +44,12 @@ public class InternalFutureObject<T> implements Future<T>, ResponseAttachment {
 
     public void fail(RuntimeException exception) {
         excpetion = exception;
-        waitObj.notify();
+        System.out.println("Will notify waitObj[" + waitObj.hashCode() + "]"); System.out.flush();
+        synchronized (waitObj) {
+            done = true;
+            waitObj.notify();
+        }
+        System.out.println("notified waitObj[" + waitObj.hashCode() + "]"); System.out.flush();
     }
 
     /**
@@ -65,6 +70,7 @@ public class InternalFutureObject<T> implements Future<T>, ResponseAttachment {
             return;
         }
 
+        System.out.println("will wait on waitObj[" + waitObj.hashCode() + "]");
         synchronized (waitObj) {
             while (!done) {
                 try {
@@ -74,6 +80,8 @@ public class InternalFutureObject<T> implements Future<T>, ResponseAttachment {
                 }
             }
         }
+        System.out.println("finished waiting on waitObj[" + waitObj.hashCode() + "]");
+        System.out.flush();
         if (excpetion != null) {
             throw excpetion;
         }

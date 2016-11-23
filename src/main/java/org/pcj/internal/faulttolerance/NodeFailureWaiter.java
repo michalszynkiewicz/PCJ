@@ -19,7 +19,8 @@ public class NodeFailureWaiter {
       if (PCJ.getFailedNodeIds().contains(nodeId)) {
          return;
       }
-      final Object o = createWaitObject(nodeId);
+      final Object o = getWaitObject(nodeId);
+      Lock.releaseCurrentThreadLocks();
       synchronized (o) {
          try {
             o.wait();
@@ -29,7 +30,7 @@ public class NodeFailureWaiter {
       }
    }
 
-   private synchronized Object createWaitObject(Integer nodeId) {
+   private synchronized Object getWaitObject(Integer nodeId) {
       List<Object> objects = waitObjects.get(nodeId);
       if (objects == null) {
          objects = new ArrayList<>();
@@ -40,7 +41,7 @@ public class NodeFailureWaiter {
       return waitObject;
    }
 
-   public synchronized void nodeFailed(int failedNodeId) {
+   public synchronized void nodeFailed(int failedNodeId) {    /// mstodo the message doesn't come, someone locked and is waiting probably?
       for (Object waitObject : waitObjects.get(failedNodeId)) {
          synchronized (waitObject) {
             waitObject.notifyAll();

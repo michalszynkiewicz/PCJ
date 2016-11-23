@@ -17,8 +17,8 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
     public static final Work FINISH_WORK = new Work(true);
 
     private static final int fails = Integer.valueOf(System.getProperty("fails", "0"));
-    private static final long n = 100_000_000_000L;
-    private static final double weight = 1.0 / (double) n;
+    private static final long pointCount = Long.valueOf(System.getProperty("pointCount", "100_000_000L"));
+    private static final double weight = 1.0 / (double) pointCount;
 
     // all nodes data:
     @Shared
@@ -49,29 +49,23 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
     }
 
     private void work(Task task) {
-        PCJ.log("will work " + new Date());
-
         double sum = 0.0;
 
-        if (fails > 0 && PCJ.getPhysicalNodeId() == 2) {
-            for (double i = task.start; i < task.end; i++) {
+       for (double i = task.start; i < task.end; i++) {
                 sum += f((i + 0.5) * weight);
-                if ((int)(i - task.start) == 100000) {
-                    System.exit(12);
+                if (fails > 0
+                        && PCJ.getPhysicalNodeId() == 2         /*mstodo smarter way before tests to minimize the impact!*/
+                        && i - task.start < (task.end - task.start)/3) {
+                    System.exit(123);
                 }
-            }
-        } else if (fails > 1 && PCJ.getPhysicalNodeId() == 17) {
-            System.exit(12);
-        } else {
-            PCJ.log("start: " + task.start + ", end: " + task.end + "physNodeId: " + PCJ.getPhysicalNodeId());
-            for (double i = task.start; i < task.end; i++) {
-                sum += f((i + 0.5) * weight);
-            }
+                if (fails > 1
+                        && PCJ.getPhysicalNodeId() == 17
+                        && i - task.start < (task.end - task.start)/2) {
+                    System.exit(124);
+                }
         }
         PCJ.putLocal("sum", sum * weight);
-        PCJ.log("will barrier " + new Date());
         PCJ.barrier();
-        PCJ.log("after"  + new Date());
     }
 
 
@@ -81,7 +75,7 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
     private final ArrayList<Task> workToAssign = new ArrayList<>();
 
     private void coordinate() {
-        workToAssign.add(new Task(0, n));
+        workToAssign.add(new Task(0, pointCount));
         List<Integer> activeThreads = range(0, PCJ.threadCount()).boxed().collect(Collectors.toList());
         while (true) {
             splitWork(activeThreads);
@@ -107,9 +101,7 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
             int threadId = activeThreads.get(i);
             Work work = createWork(threadCount, i, task);
             tasksByThreadId.put(threadId, work.task);
-            doIgnoringFailure(() -> {
-                PCJ.put(threadId, "work", work);
-            });
+            doIgnoringFailure(() -> PCJ.put(threadId, "work", work));
         }
     }
 
@@ -135,8 +127,6 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
         threads.forEach(t -> {
                     if (!doIgnoringFailure(() -> pi += cL.get(t).get())) {
                         unfinishedNodes.add(t);
-                    } else {
-                        System.out.printf("### got pi from %d, current result: %f10\n", t, pi);
                     }
                 }
         );

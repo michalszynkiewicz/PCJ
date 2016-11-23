@@ -6,6 +6,7 @@ package org.pcj.internal;
 import org.pcj.internal.faulttolerance.NodeFailedException;
 import org.pcj.internal.message.BroadcastedMessage;
 import org.pcj.internal.message.Message;
+import org.pcj.internal.message.MessageNodeRemoved;
 import org.pcj.internal.network.LoopbackSocketChannel;
 import org.pcj.internal.network.MessageOutputStream;
 import org.pcj.internal.network.SelectorProc;
@@ -175,8 +176,12 @@ public class Networker {        // mstodo: access rights!
         if (rightChildrenIndex != null) {
             right = getWorkerData().physicalNodes.get(rightChildrenIndex);
         }
-
-        broadcast(left, right, message);
+        try {
+            broadcast(left, right, message);    // mstodo verify!
+        } catch (NodeFailedException nfe) {
+            nfe.printStackTrace();         // mstodo add some info about continuing
+            // do nothing, the message will be replayed when the node failure is handled
+        }
     }
 
     public void broadcast(SocketChannel left, SocketChannel right, Message message) {
@@ -244,6 +249,9 @@ public class Networker {        // mstodo: access rights!
             }
         }
         if (socket instanceof LoopbackSocketChannel) {
+            if (message instanceof MessageNodeRemoved) {
+                System.out.println("enqueuing locally");
+            }
             worker.enqueueMessage(socket, message);
         } else {
             ByteBuffer mbuf = prepareByteBuffer(message);

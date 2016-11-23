@@ -1,9 +1,9 @@
-package gol;
+package test.gol;
 
-import gol.BoardSplitter.Split;
 import org.junit.Test;
+import test.gol.BoardSplitter.Split;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Author: Michal Szynkiewicz, michal.l.szynkiewicz@gmail.com
@@ -46,6 +46,7 @@ public class BoardSplitterTest {
         assertThat(split.width).isEqualTo(100);
         assertThat(split.height).isEqualTo(200);
     }
+
     @Test
     public void shouldSplit1000x100By10() {
         Split split = split(1000, 100, 10);

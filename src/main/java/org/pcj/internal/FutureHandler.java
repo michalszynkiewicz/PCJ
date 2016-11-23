@@ -17,9 +17,10 @@ public class FutureHandler {
     private final Map<Integer, List<InternalFutureObject<?>>> futures = new HashMap<>();
     private final Map<InternalFutureObject<?>, Integer> futuresReverse = new HashMap<>();  // not to scan whole futures map when unregistering
 
-    public synchronized void registerFutureObject(InternalFutureObject<?> InternalFutureObject, int nodeId) {
-        List<InternalFutureObject<?>> InternalFutureObjects = getFutureObjects(nodeId);
-        InternalFutureObjects.add(InternalFutureObject);
+    public synchronized void registerFutureObject(InternalFutureObject<?> internalFutureObject, int nodeId) {
+        List<InternalFutureObject<?>> internalFutureObjects = getFutureObjects(nodeId);
+        internalFutureObjects.add(internalFutureObject);
+        futuresReverse.put(internalFutureObject, nodeId);
     }
 
     private List<InternalFutureObject<?>> getFutureObjects(int nodeId) {
@@ -32,17 +33,17 @@ public class FutureHandler {
     }
 
     // mstoodo test if we need synchronization - Lock should handle it
-    public synchronized void unregisterFutureObject(InternalFutureObject<?> InternalFutureObject) {
-        Integer nodeId = futuresReverse.remove(InternalFutureObject);
-        futures.get(nodeId).remove(InternalFutureObject);
+    public synchronized void unregisterFutureObject(InternalFutureObject<?> internalFutureObject) {
+        Integer nodeId = futuresReverse.remove(internalFutureObject);
+        futures.get(nodeId).remove(internalFutureObject);
     }
 
     public void nodeFailed(Integer nodeId) { // mstodo verify physical node id and thread id are not confused here!!!
-        List<InternalFutureObject<?>> InternalFutureObjects = getFutureObjects(nodeId);
-        for (InternalFutureObject<?> InternalFutureObject : InternalFutureObjects) {
+        List<InternalFutureObject<?>> internalFutureObjects = getFutureObjects(nodeId);
+        for (InternalFutureObject<?> InternalFutureObject : internalFutureObjects) {
             InternalFutureObject.fail(new NodeFailedException()); // mstodo add info about failed threads/nodes
         }
-        InternalFutureObjects.clear();
+        internalFutureObjects.clear();
     }
 
 }

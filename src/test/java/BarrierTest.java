@@ -40,10 +40,10 @@ public class BarrierTest extends Storage implements StartPoint {
 //            System.out.print(i + ",");
 //            Lock.printLockState();
 //            LogUtils.log(PCJ.getPhysicalNodeId(), "+   after barrier number: " + i);
-            if (i == 5500 && PCJ.getPhysicalNodeId() == 17 && fails > 1) {
+            if (i == 200 && PCJ.getPhysicalNodeId() == 17 && fails > 1) {
                 System.exit(12);
             }
-            if (i == 5000 && PCJ.getPhysicalNodeId() == 2 && fails > 0) {
+            if (i == 100 && PCJ.getPhysicalNodeId() == 2 && fails > 0) {
                 System.exit(12);
             }
         }

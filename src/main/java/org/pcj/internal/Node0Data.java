@@ -26,4 +26,10 @@ public class Node0Data {
         return CommunicationTreeFixer.remove(tree, node);
     }
 
+    @Override
+    public String toString() {
+        return "Node0Data{" +
+                "tree=" + tree +
+                '}';
+    }
 }
