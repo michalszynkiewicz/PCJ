@@ -3,7 +3,7 @@
  */
 package org.pcj.internal.storage;
 
-import org.pcj.internal.WaitForHandler;
+import org.pcj.internal.faulttolerance.FaultTolerancePolicy;
 
 /**
  * Internal interface describing Storage methods.
@@ -105,5 +105,5 @@ public interface InternalStorage {
      */
     boolean isAssignable(String variable, Object value, int... indexes);
 
-    void setWaitForHandler(WaitForHandler waitForHandler);
+    void setFaultTolerancePolicy(FaultTolerancePolicy waitForHandler);
 }

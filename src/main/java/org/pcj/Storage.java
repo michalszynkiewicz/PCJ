@@ -3,8 +3,7 @@
  */
 package org.pcj;
 
-import org.pcj.internal.WaitForHandler;
-import org.pcj.internal.faulttolerance.Lock;
+import org.pcj.internal.faulttolerance.FaultTolerancePolicy;
 
 import java.io.Serializable;
 import java.lang.reflect.Array;
@@ -12,7 +11,7 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.Semaphore;
 
 /**
  * External class with methods do handle shared variables.
@@ -22,8 +21,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 public abstract class Storage implements org.pcj.internal.storage.InternalStorage {
 
     private transient final Map<String, Field> sharedFields = new HashMap<>();
-    private transient final Map<String, AtomicInteger> monitorFields = new HashMap<>();
-    private transient WaitForHandler waitForHandler;
+
+    private transient final Map<String, Semaphore> semaphores = new HashMap<>();
+    private transient FaultTolerancePolicy policy;
 
     protected Storage() {
         for (Field field : this.getClass().getDeclaredFields()) {
@@ -41,7 +41,7 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
 
                 field.setAccessible(true);
                 sharedFields.put(key, field);
-                monitorFields.put(key, new AtomicInteger(0));
+                semaphores.put(field.getName(), new Semaphore(0));
             }
         }
     }
@@ -201,10 +201,7 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
                 Array.set(array, indexes[indexes.length - 1], newValue);
             }
 
-            monitorFields.get(variable).getAndIncrement();
-            synchronized (field) {
-                field.notifyAll();
-            }
+            semaphores.get(variable).release();
         } catch (IllegalAccessException ex) {
             throw new IllegalArgumentException(ex);
         }
@@ -225,7 +222,7 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
      */
     @SuppressWarnings("unchecked")
     @Override
-    final public <T> T cas(String variable, T expectedValue, T newValue, int... indexes) throws ClassCastException, ArrayIndexOutOfBoundsException {
+    public final <T> T cas(String variable, T expectedValue, T newValue, int... indexes) throws ClassCastException, ArrayIndexOutOfBoundsException {
         if (isAssignable(variable, newValue, indexes) == false) {
             throw new ClassCastException("Cannot cast " + newValue.getClass().getCanonicalName()
                     + " to the type of variable '" + variable + "'");
@@ -242,9 +239,8 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
                         field.set(this, newValue);
                     }
 
-                    monitorFields.get(variable).getAndIncrement();
+                    semaphores.get(variable).release();
 
-                    field.notifyAll();
                     return fieldValue;
                 }
             } else {
@@ -266,9 +262,8 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
                         Array.set(array, indexes[indexes.length - 1], newValue);
                     }
 
-                    monitorFields.get(variable).getAndIncrement();
+                    semaphores.get(variable).release();
 
-                    field.notifyAll();
                     return fieldValue;
                 }
             }
@@ -284,7 +279,7 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
      */
     @Override
     final public void monitor(String variable) {
-        monitorFields.get(variable).set(0);
+        semaphores.get(variable).drainPermits();
     }
 
     /**
@@ -317,38 +312,32 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
             throw new IllegalArgumentException(String.format("Value count is less than zero (%d)", count));
         }
 
+        Thread thread = Thread.currentThread();
+        System.out.println("policy for : " + this + " is " + policy);
+        policy.register(thread);
         final Field field = getField(variable);
-        AtomicInteger atomic = monitorFields.get(variable);
-        if (count == 0) {
-            return atomic.get();
-        }
-        int v;
-        do {
-            synchronized (field) {
-                Lock.readLock();
-                try {
-                    waitForHandler.failOnNewFailure();
-                } finally {
-                    waitForHandler.add(field);
-                }
-                Lock.readUnlock();
-                while ((v = atomic.get()) < count) {
-                    try {
-                        field.wait();
-                    } catch (InterruptedException ex) {
-                        ex.printStackTrace(System.err);
-                    }
-                    waitForHandler.failOnNewFailure();
-                }
-            }
-        } while (atomic.compareAndSet(v, v - count) == false);
-        waitForHandler.remove(field);
 
-        return atomic.get();
+        Semaphore semaphore = semaphores.get(field.getName());
+        if (count == 0) {
+            semaphore.availablePermits();
+        }
+
+        try {
+            semaphore.acquire(count);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            semaphore.drainPermits(); // mstodo ?
+            policy.failOnNewFailure();
+        }
+
+        policy.unregister(thread);
+
+        return semaphore.availablePermits();
     }
 
     @Override
-    public void setWaitForHandler(WaitForHandler waitForHandler) {
-        this.waitForHandler = waitForHandler;
+    public void setFaultTolerancePolicy(FaultTolerancePolicy policy) {
+        this.policy = policy;
+        System.out.println("Set policy for:  " + this);
     }
 }

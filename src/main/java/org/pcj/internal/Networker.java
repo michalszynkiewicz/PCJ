@@ -6,7 +6,6 @@ package org.pcj.internal;
 import org.pcj.internal.faulttolerance.NodeFailedException;
 import org.pcj.internal.message.BroadcastedMessage;
 import org.pcj.internal.message.Message;
-import org.pcj.internal.message.MessageNodeRemoved;
 import org.pcj.internal.network.LoopbackSocketChannel;
 import org.pcj.internal.network.MessageOutputStream;
 import org.pcj.internal.network.SelectorProc;
@@ -249,9 +248,6 @@ public class Networker {        // mstodo: access rights!
             }
         }
         if (socket instanceof LoopbackSocketChannel) {
-            if (message instanceof MessageNodeRemoved) {
-                System.out.println("enqueuing locally");
-            }
             worker.enqueueMessage(socket, message);
         } else {
             ByteBuffer mbuf = prepareByteBuffer(message);

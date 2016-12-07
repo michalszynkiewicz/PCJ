@@ -26,8 +26,7 @@ log "MEM info: `cat /proc/meminfo`"
 
 # --- LOADING MODULES ---
 log "Loading modules"
-module load plgrid/tools/openmpi || exit 1
-module load plgrid/tools/java8 || exit 1
+module load java || exit 1
 
 
 # --- PREPARING NODES LIST ---

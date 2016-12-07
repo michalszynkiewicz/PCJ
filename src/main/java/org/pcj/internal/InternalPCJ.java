@@ -5,7 +5,6 @@ package org.pcj.internal;
 
 import org.pcj.Group;
 import org.pcj.internal.faulttolerance.FaultTolerancePolicy;
-import org.pcj.internal.faulttolerance.NodeFailureWaiter;
 import org.pcj.internal.message.MessageFinished;
 import org.pcj.internal.message.MessageGroupJoinQuery;
 import org.pcj.internal.message.MessageGroupJoinRequest;
@@ -30,9 +29,11 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.UnknownHostException;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -51,8 +52,6 @@ public abstract class InternalPCJ {
     private static WorkerData workerData;
     private static Node0Data node0Data;
     private static BarrierHandler barrierHandler;
-    private static WaitForHandler waitForHandler;
-    private static NodeFailureWaiter nodeFailureWaiter;
     private static FutureHandler futureHandler;
 
     // Suppress default constructor for noninstantiability
@@ -133,12 +132,7 @@ public abstract class InternalPCJ {
         localData = new ConcurrentHashMap<>();
         InternalGroup globalGroup = new InternalGroup(0, "");
 
-        FaultTolerancePolicy policy = workerData.activityMonitor.getFaultTolerancePolicy();
-        barrierHandler = new BarrierHandler(policy);
-        waitForHandler = new WaitForHandler(policy);
-        futureHandler = new FutureHandler(policy);
-        nodeFailureWaiter = new NodeFailureWaiter(policy);
-
+        List<InternalStorage> storages = new ArrayList<>();
         try {
             for (int i = 0; i < localIds.length; ++i) {
                 int localId = localIds[i];
@@ -150,7 +144,7 @@ public abstract class InternalPCJ {
                 /* create storage */
                 @SuppressWarnings("unchecked")
                 InternalStorage lStorage = createStorageConstructor(classLoader, storage.getName()).newInstance();
-                lStorage.setWaitForHandler(waitForHandler);
+                storages.add(lStorage);
 
                 /* create startpoint */
                 if (theSame) {
@@ -179,6 +173,12 @@ public abstract class InternalPCJ {
 
         /* WorkerData contains physicalId, localData map and globalGroup reference */
         workerData = new WorkerData(localIds, localData, globalGroup, isNode0 ? clientsCount : null);
+
+        FaultTolerancePolicy policy = workerData.activityMonitor.getFaultTolerancePolicy();
+        barrierHandler = new BarrierHandler(policy);
+        futureHandler = new FutureHandler(policy);
+
+        storages.forEach(s -> s.setFaultTolerancePolicy(policy));
 
         Worker worker = new Worker(workerData);
 
@@ -354,14 +354,6 @@ public abstract class InternalPCJ {
 
     public static FutureHandler getFutureHandler() {
         return futureHandler;
-    }
-
-    public static WaitForHandler getWaitForHandler() {
-        return waitForHandler;
-    }
-
-    public static NodeFailureWaiter getNodeFailureWaiter() {
-        return nodeFailureWaiter;
     }
 
     public static Networker getNetworker() {

@@ -18,9 +18,9 @@ public class BarrierTest extends Storage implements StartPoint {
     @Override
     public void main() throws Throwable {
 //         warmup
-        for (int i = 0; i < 10000; i++) {
-            PCJ.barrier();
-        }
+//        for (int i = 0; i < 10000; i++) {
+//            PCJ.barrier();
+//        }
         long time = System.nanoTime();
 //        if (PCJ.myId() == 0) {
 //            System.out.println("START");
@@ -37,13 +37,13 @@ public class BarrierTest extends Storage implements StartPoint {
 //            }
 //            LogUtils.log(PCJ.getPhysicalNodeId(), "-   will do barrier number: " + i);
             PCJ.barrier();
-//            System.out.print(i + ",");
+            System.out.println("b@" + i);
 //            Lock.printLockState();
 //            LogUtils.log(PCJ.getPhysicalNodeId(), "+   after barrier number: " + i);
-            if (i == 200 && PCJ.getPhysicalNodeId() == 17 && fails > 1) {
+            if (i == 2 && PCJ.getPhysicalNodeId() == 17 && fails > 1) {
                 System.exit(12);
             }
-            if (i == 100 && PCJ.getPhysicalNodeId() == 2 && fails > 0) {
+            if (i == 2 && PCJ.getPhysicalNodeId() == 2 && fails > 0) {
                 System.exit(12);
             }
         }

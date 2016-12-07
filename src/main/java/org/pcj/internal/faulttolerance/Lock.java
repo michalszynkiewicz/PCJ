@@ -3,7 +3,6 @@ package org.pcj.internal.faulttolerance;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -16,8 +15,8 @@ public class Lock {
 
 //    private static ThreadLocal<Integer> localLockCount;
 //    private static ThreadLocal<Integer> localWriteLockCount = new ThreadLocal<>();
-    private static AtomicInteger lockCount = new AtomicInteger(0);
-    private static AtomicInteger writeLockCount = new AtomicInteger(0);
+//    private static AtomicInteger lockCount = new AtomicInteger(0);
+//    private static AtomicInteger writeLockCount = new AtomicInteger(0);
 
     private static final Set<Thread> readLockThreads = Collections.synchronizedSet(new HashSet<>());
 
@@ -49,16 +48,16 @@ public class Lock {
     }
 
     public static void writeLock() {
-        System.out.println("############################will write lock");
+//        System.out.println("############################will write lock from thread: " + Thread.currentThread().toString());
 //        System.out.print("Will write-lock read lock count: : " + lockCount.get() +
 //                " this thread read lock count: " + localWriteLockCount.get());
-        System.out.println("\twrite lock count: " + writeLockCount.get());
+//        System.out.println("\twrite lock count: " + writeLockCount.get());
         readWriteLock.writeLock().lock();
-        writeLockCount.incrementAndGet();
-        System.out.println("##################################################");
-        Thread.dumpStack();
-        System.out.println("##################################################");
-        System.out.println("in the lock");
+//        writeLockCount.incrementAndGet();
+//        System.out.println("##################################################");
+//        Thread.dumpStack();
+//        System.out.println("##################################################");
+//        System.out.println("in the lock");
 
     }
 
@@ -66,12 +65,12 @@ public class Lock {
 //        Integer localWriteLocks = localWriteLockCount.get() - 1;
 //        localWriteLockCount.set(localWriteLocks);
 //        System.out.println("Unlock: " + localWriteLocks);
-        System.out.println("write lock count: " + writeLockCount.decrementAndGet());
+//        System.out.println("write lock count: " + writeLockCount.decrementAndGet());
         readWriteLock.writeLock().unlock();
-        System.out.println("****************************************************");
-        System.out.println("UNLOCKED FROM");
-        Thread.dumpStack();
-        System.out.println("****************************************************");                       /*mstodo remove logging*/
+//        System.out.println("****************************************************");
+//        System.out.println("UNLOCKED FROM");
+//        Thread.dumpStack();
+//        System.out.println("****************************************************");                       /*mstodo remove logging*/
     }
 
     public static void printLockState() {

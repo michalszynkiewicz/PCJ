@@ -6,7 +6,6 @@ package org.pcj.internal;
 import org.pcj.FutureObject;
 import org.pcj.internal.faulttolerance.FaultTolerancePolicy;
 import org.pcj.internal.faulttolerance.Lock;
-import org.pcj.internal.faulttolerance.SetChild;
 import org.pcj.internal.message.BroadcastedMessage;
 import org.pcj.internal.message.Message;
 import org.pcj.internal.message.MessageFinishCompleted;
@@ -70,8 +69,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static org.pcj.internal.InternalPCJ.getFutureHandler;
-import static org.pcj.internal.InternalPCJ.getNodeFailureWaiter;
-import static org.pcj.internal.InternalPCJ.getWaitForHandler;
 
 /**
  * This class processes incoming messages.
@@ -317,9 +314,6 @@ public class Worker implements Runnable {
 //            LogUtils.log(data.physicalId, "" + message.getMessageId() + " is a replay event");
             BroadcastedMessage broadcastedMessage = (BroadcastedMessage) message;
             if (data.broadcastCache.isProcessed(broadcastedMessage)) {
-//                LogUtils.log(data.physicalId, "" + message.getMessageId() + " was already processed");
-//                LogUtils.setEnabled(true);
-//                LogUtils.log(data.physicalId, "Will replay event: " + message.getType() + ", msgId=" + message.getMessageId());
                 networker.broadcast(broadcastedMessage);
                 return true;
             } else {
@@ -332,68 +326,7 @@ public class Worker implements Runnable {
     }
 
     private void nodeRemoved(MessageNodeRemoved message) {   // mstodo move to policy!
-        System.out.println("processing node removed!!!");
-        // LogUtils.setEnabled(true);
-//        LogUtils.setEnabled(true);
-        Lock.writeLock();
-        try {
-            int failedNodeId = message.getFailedNodePhysicalId();
-            System.out.println("GOT NODE REMOVED: " + failedNodeId);
-            data.removePhysicalNode(failedNodeId);
-            getWaitForHandler().nodeFailed(failedNodeId);
-            System.out.println("will fail future");
-            getFutureHandler().nodeFailed(failedNodeId);
-
-            int myNodeId = data.physicalId;
-            for (SetChild update : message.getCommunicationUpdates()) {
-                if (update.getParent().equals(myNodeId)) {
-//                    LogUtils.log(data.physicalId, "############will attach " + update.getChild() + " on the " + update.getDirection());
-                    data.internalGlobalGroup.updateCommunicationTree(update);
-//                    data.internalGlobalGroup.printCommunicationTree(); // mstodo remove
-//                 LogUtils.log(data.physicalId, "attached");
-                    replayBroadcast();
-                }
-                if (update.isNewChild(myNodeId)) {
-//                    LogUtils.log(data.physicalId, "############will attach " + update.getParent() + " as parent");
-                    data.internalGlobalGroup.setPhysicalParent(update.getParent());
-                }
-            }
-            data.addFailedNode(failedNodeId);
-            getNodeFailureWaiter().nodeFailed(failedNodeId);
-            LogUtils.log(myNodeId, "Finished removal");
-        } catch (RuntimeException rex) {
-            LogUtils.log(data.physicalId, rex.getMessage());  // mstodo remove
-            StackTraceElement traceTop = rex.getStackTrace()[0];
-            LogUtils.log(data.physicalId, traceTop.getFileName() + "#" + traceTop.getMethodName() + ":" + traceTop.getLineNumber());  // mstodo remove
-        } finally {
-            LogUtils.log(data.physicalId, "Will write unlock");
-            Lock.writeUnlock();
-            LogUtils.log(data.physicalId, "write unlocked");
-        }
-    }
-
-    private void replayBroadcast() {
-//        System.out.println("replay broadcast invoked");
-        List<BroadcastedMessage> list = data.broadcastCache.getList();
-//        LogUtils.setEnabled(true);
-//         LogUtils.log(data.physicalId, "replaying events after prev parent failure. ");
-
-        MessageSyncGo lastSyncGo = null; // mstodo undo
-        for (BroadcastedMessage message : list) {
-//            System.out.println("replaying message: " + message);
-//            LogUtils.log(getPhysicalNodeId(), "replaying message: " + message);
-//             LogUtils.log(data.physicalId, "event[" + message.getType() + "] : " + message.getMessageId());
-            if (message instanceof MessageSyncGo) {
-                lastSyncGo = (MessageSyncGo) message;
-            } else {
-                networker.broadcast(message);
-            }
-        }
-
-        if (lastSyncGo != null) {
-            // LogUtils.log(getPhysicalNodeId(), "will replay: " + lastSyncGo);
-            networker.broadcast(lastSyncGo);
-        }
+        data.getFaultTolerancePolicy().error(message);
     }
 
     private void nodeFailed(MessageNodeFailed message) {

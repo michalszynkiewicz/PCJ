@@ -3,18 +3,24 @@ package org.pcj.internal.faulttolerance;
 import org.pcj.PCJ;
 import org.pcj.internal.InternalPCJ;
 import org.pcj.internal.WorkerData;
+import org.pcj.internal.message.BroadcastedMessage;
 import org.pcj.internal.message.MessageFinished;
 import org.pcj.internal.message.MessageNodeFailed;
 import org.pcj.internal.message.MessageNodeRemoved;
+import org.pcj.internal.message.MessageSyncGo;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.synchronizedList;
 import static org.pcj.internal.InternalPCJ.getBarrierHandler;
+import static org.pcj.internal.InternalPCJ.getFutureHandler;
+import static org.pcj.internal.InternalPCJ.getNetworker;
 import static org.pcj.internal.InternalPCJ.getWorkerData;
 
 /**
@@ -29,11 +35,14 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
      */
     private Set<Integer> failedNodes = new HashSet<>();
     private Set<Integer> failedThreads = new HashSet<>();
+    private Set<Consumer<NodeFailedException>> failureHandlers = new HashSet<>();
 
     /**
      * set of failed nodes unknown for the application
      */
     private final Set<Integer> newFailures = new HashSet<>();    // mstodo too early ? won't it miss
+    private final List<Thread> threadsWaitingForFailure = synchronizedList(new ArrayList<>());
+    private final NodeFailureWaiter nodeFailureWaiter = new NodeFailureWaiter();
 
     @Override
     public void handleNodeFailure(int failedNodeId) {
@@ -43,15 +52,11 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
             if (failedNodes.contains(failedNodeId)) {
                 return;
             }
-            synchronized (newFailures) {
-                newFailures.add(failedNodeId);
-            }
             failedNodes.add(failedNodeId);
 //         System.out.println("[" + new Date() + "]Acquiring write lock for node removal: " + failedNodeId + "...");
 //         System.out.println("[" + new Date() + "]DONE");
             failedThreads.addAll(getWorkerData().getVirtualNodes(failedNodeId));
             updates = InternalPCJ.getNode0Data().remove(failedNodeId);
-            finishBarrierIfInProgress(failedNodeId);
 
             mockNodeFinish(getWorkerData());
 //         System.out.println("after mocking node finish"); // mstodo remove
@@ -60,11 +65,7 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
         }
 
         Set<Integer> physicalNodes = getWorkerData().getPhysicalNodes().keySet();   // todo: is synchronization needed?
-        System.out.println("()()()   ");
-        System.out.println("()()()   ");
         System.out.println("()()()   physical nodes: " + physicalNodes);
-        System.out.println("()()()   ");
-        System.out.println("()()()   ");
         for (Integer node : physicalNodes) {
 //            sending to the failed node will fail
             System.out.println("sending to " + node + " for failure of: " + failedNodeId);
@@ -95,19 +96,97 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
         }
 
         if (waitForReconfiguration) {
-            InternalPCJ.getNodeFailureWaiter().waitForFailure(nodeId);   // mstodo sth wrong on node 0 - maybe if both children are dead?
+            nodeFailureWaiter.waitForFailure(nodeId);   // mstodo sth wrong on node 0 - maybe if both children are dead?
         }
         System.out.println("Finished reporting error");
     }
 
-    private void finishBarrierIfInProgress(int failedNodeId) {
+    @Override
+    public void error(MessageNodeRemoved message) {
+        System.out.println("processing node removed!!!");
+        Lock.writeLock();
         try {
-            getBarrierHandler().finishBarrierIfInProgress(failedNodeId, failedThreads);
-//         System.out.println("barrier should be released");
-        } catch (IOException e) {
-            e.printStackTrace();
+            int failedNodeId = message.getFailedNodePhysicalId();
+            System.out.println("GOT NODE REMOVED: " + failedNodeId);
+            WorkerData data = getWorkerData();
+            data.removePhysicalNode(failedNodeId);
+
+            int myNodeId = data.getPhysicalId();
+            for (SetChild update : message.getCommunicationUpdates()) {
+                if (update.getParent().equals(myNodeId)) {
+                    data.getInternalGlobalGroup().updateCommunicationTree(update);
+                    replayBroadcast();
+                }
+                if (update.isNewChild(myNodeId)) {
+                    data.getInternalGlobalGroup().setPhysicalParent(update.getParent());
+                }
+            }
+            data.addFailedNode(failedNodeId);
+
+            failureHandlers.forEach(h -> h.accept(new NodeFailedException(failedNodeId)));   // mstodo is it needed?
+            synchronized (newFailures) {
+                newFailures.add(failedNodeId);
+            }
+            threadsWaitingForFailure.forEach(Thread::interrupt);
+
+            getFutureHandler().nodeFailed(failedNodeId);
+            nodeFailureWaiter.nodeFailed(failedNodeId);
+            try {
+                getBarrierHandler().finishBarrierIfInProgress(failedThreads);
+            } catch (IOException ioe) {
+                ioe.printStackTrace();
+            }
+        } finally {
+            Lock.writeUnlock();
         }
     }
+
+    @Override
+    public void register(Thread thread) {
+        threadsWaitingForFailure.add(thread);
+    }
+
+    @Override
+    public void unregister(Thread thread) {
+        threadsWaitingForFailure.remove(thread);
+    }
+
+    @Override
+    public void failOnNewFailure() {
+        if (!newFailures.isEmpty()) {
+            synchronized (newFailures) {
+                List<Integer> failures = new ArrayList<>(newFailures);
+                newFailures.clear();
+                throw new NodeFailedException(failures);
+            }
+        }
+    }
+
+    private void replayBroadcast() {
+        WorkerData data = getWorkerData();
+        List<BroadcastedMessage> list = data.getBroadcastCache().getList();
+        MessageSyncGo lastSyncGo = null; // mstodo undo
+        for (BroadcastedMessage message : list) {
+            if (message instanceof MessageSyncGo) {
+                lastSyncGo = (MessageSyncGo) message;
+            } else {
+                getNetworker().broadcast(message);
+            }
+        }
+
+        if (lastSyncGo != null) {
+            getNetworker().broadcast(lastSyncGo);
+        }
+    }
+
+//    private void finishBarrierIfInProgress(int failedNodeId) {  // mstodo move to the new mechanism
+//        try {
+//            getBarrierHandler().finishBarrierIfInProgress(failedNodeId, failedThreads);
+//         System.out.println("barrier should be released");
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//    }
 
     private void mockNodeFinish(WorkerData data) {
         try {
@@ -126,21 +205,6 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
         } catch (IOException e) {
             System.err.println("Error trying to send message to node: " + node + " for failed node: " + failedNodeId);
             e.printStackTrace();
-        }
-    }
-
-    public void removeNode(int nodeId) {
-
-    }
-
-    @Override
-    public void onFailure(Consumer<NodeFailedException> r) { // mstodo check if synchronization is needed
-        synchronized (newFailures) {
-            if (!newFailures.isEmpty()) {
-                Set<Integer> failures = new HashSet<>(newFailures);
-                newFailures.clear();
-                throw new NodeFailedException(failures);
-            }
         }
     }
 

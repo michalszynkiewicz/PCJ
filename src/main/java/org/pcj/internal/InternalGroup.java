@@ -55,7 +55,6 @@ public class InternalGroup {
 
     //private final InternalGroup g;
     protected InternalGroup(InternalGroup g) {
-        System.out.println(this);
         this.groupId = g.groupId;
         this.groupName = g.groupName;
         this.joinBitmaskMap = g.joinBitmaskMap;
@@ -77,7 +76,6 @@ public class InternalGroup {
     }
 
     protected InternalGroup(int groupId, String groupName) {
-        System.out.println(this);
         this.groupId = groupId;
         this.groupName = groupName;
         this.joinBitmaskMap = new ConcurrentHashMap<>();
@@ -183,10 +181,8 @@ public class InternalGroup {
     }
 
     boolean physicalSync(int physicalId) {
-//        System.out.println("physical sync before: " + physicalSync);
         int position = physicalIds.indexOf(physicalId);
         physicalSync.set(position);
-//        System.out.println("physical sync after: " + physicalSync);
         return physicalSync.isSet();
     }
 
@@ -211,7 +207,7 @@ public class InternalGroup {
         return physicalCommunication.getParent();
     }
 
-    void setPhysicalParent(int physicalParent) {
+    public void setPhysicalParent(int physicalParent) {
         this.physicalCommunication.setParent(physicalParent);
     }
 
@@ -320,15 +316,11 @@ public class InternalGroup {
             InternalPCJ.getBarrierHandler().setGroupUnderBarrier(groupId);
             try {
                 localSync.set(myNodeId);
-//                System.out.println("barrier] set localSync");
                 if (localSync.isSet(localSyncMask)) {
-//                    System.out.println("barrier] localSync is set");
                     Lock.readUnlock();
                     unlocked = true;
                     try {
-//                         System.out.println("barrier] sending syncMessage");
                         InternalPCJ.getNetworker().send(getPhysicalMaster(), syncMessage); // goes to node 0 for "normal" barrier
-//                         System.out.println("barrier] syncMessage sent");
                     } catch (IOException e) {
                         throw new RuntimeException("Node 0 failed!");
                     }
@@ -338,9 +330,7 @@ public class InternalGroup {
                     Lock.readUnlock();
                     unlocked = true;
                 }
-//                System.out.println("barrier] will await");
                 syncObject.await();
-//                System.out.println("barrier] after await");
             } catch (InterruptedException ex) {
                 throw new RuntimeException(ex);
             }
@@ -538,10 +528,10 @@ public class InternalGroup {
         // mstodo on other nodes there's no physicalIds!!
         int removedNodeIdx = physicalIds.indexOf(physicalNodeId);
         if (removedNodeIdx == -1) {
-            System.out.println("Cannot remove from group " + this);
+//            System.out.println("Cannot remove from group " + this);
 //            LogUtils.log(InternalPCJ.getWorkerData().physicalId, "No physical node with id: " + physicalNodeId + " found" + "\tphysical node ids: " + physicalIds);
         } else {
-            System.out.println("Removing from group " + this);
+//            System.out.println("Removing from group " + this);
             physicalIds.remove(removedNodeIdx);
 
             List<Integer> groupIdsToRemove = new ArrayList<>();
@@ -560,34 +550,9 @@ public class InternalGroup {
             localSync = localSync.without(removedNodeIdx);
             localSyncMask = localSyncMask.without(removedNodeIdx);
             physicalSync = physicalSync.without(removedNodeIdx);
+
+//            System.out.println("physicalSync without: " + physicalSync);
         }
-//
-//
-//        if (!removedNodes.contains(physicalNodeId)) {
-//            int removedNodeIdx = physicalIds.indexOf(physicalNodeId);
-//            if (removedNodeIdx > -1) {
-//                physicalIds.remove(removedNodeIdx);
-//
-//                localSync = localSync.without(removedNodeIdx);     // mstodo what should be removed here???
-//                localSyncMask = localSyncMask.without(removedNodeIdx);
-//                physicalSync = physicalSync.without(removedNodeIdx);
-//            }
-//
-//            physicalCommunication.removeNode(physicalNodeId);
-//
-//            List<Integer> groupIdsToRemove = new ArrayList<>();
-//            for (Map.Entry<Integer, Integer> nodeEntry : nodes.entrySet()) {
-//                if (virtualNodes.contains(nodeEntry.getValue())) {
-//                    groupIdsToRemove.add(nodeEntry.getKey());
-//                }
-//            }
-//
-//            for (Integer groupId : groupIdsToRemove) {
-//                nodes.remove(groupId);
-//            }
-//
-//            removedNodes.add(physicalNodeId);
-//        }
     }
 
     public void updateCommunicationTree(SetChild update) {

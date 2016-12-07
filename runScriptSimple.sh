@@ -1,11 +1,11 @@
 #!/bin/bash -l
-# #SBATCH -J PCJ-tests
-# #SBATCH -N 1
-# #SBATCH -n 28
-# #SBATCH --mem 18000
-# #SBATCH --time=24:00:00
-# #SBATCH --output="PCJ-tests_%j.out"
-# #SBATCH --error="PCJ-tests_%j.err"
+#SBATCH -J PCJ-tests
+#SBATCH -N 1
+#SBATCH -n 28
+#SBATCH --mem 18000
+#SBATCH --time=24:00:00
+#SBATCH --output="PCJ-tests_%j.out"
+#SBATCH --error="PCJ-tests_%j.err"
 
 timer=`date +%s`
 

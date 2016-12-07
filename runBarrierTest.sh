@@ -1,8 +1,8 @@
 #!/bin/bash
 
 
-TEST_CLASS=WaitForOnNode0Test
-#TEST_CLASS=BarrierTest
+#TEST_CLASS=WaitForOnNode0Test
+TEST_CLASS=BarrierTest
 #TEST_CLASS=IntegralPiCalcTest
 #TEST_CLASS=NonFTPi
 #TEST_CLASS=PiCalculationTest
@@ -11,8 +11,8 @@ LIB_BINARY='PCJ-4.1.0.SNAPSHOT-bin.jar'
 HOSTS=("192.168.0.100" "192.168.0.101")
 #HOST=192.168.42.229
 
-BARRIER_COUNT=400
-POINT_COUNT=100000
+BARRIER_COUNT=1000
+POINT_COUNT=10000000
 
 if (( $# > 0 )); then
     echo "will build"

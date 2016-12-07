@@ -1,5 +1,6 @@
 package org.pcj.internal;
 
+import org.pcj.PCJ;
 import org.pcj.internal.faulttolerance.FaultTolerancePolicy;
 import org.pcj.internal.message.MessageSyncGo;
 import org.pcj.internal.utils.BitMask;
@@ -29,49 +30,32 @@ public class BarrierHandler {
     }
 
     public void resetBarrier() {
-        this.groupId = null;
+        groupId = null;
     }
 
-    public void finishBarrierIfInProgress(int failedNodeId, Set<Integer> failedThreads) throws IOException {
-//        LogUtils.setEnabled(true);
-//        LogUtils.log("[barrier] marking complete... ");
+    public void finishBarrierIfInProgress(Set<Integer> failedThreads) throws IOException {
         if (groupId != null) {
-//            LogUtils.log("in progress for groupId: " + groupId);
             InternalGroup group = getWorkerData().internalGroupsById.get(groupId);
-            final BitMask physicalSync = group.getPhysicalSync();
-            int position = group.indexOf(failedNodeId);
-            if (position < 0) {
+            if (group.getPhysicalMaster() != PCJ.getPhysicalNodeId()) {
                 return;
             }
+            final BitMask physicalSync = group.getPhysicalSync();
             synchronized (physicalSync) {
-                System.out.println("physical sync after node removal: " + physicalSync);
-//                LogUtils.log(getWorkerData().physicalId, );
-                if (!physicalSync.isSet(position)) {
-                    physicalSync.set(position);
-                }
                 if (physicalSync.isSet()) {
-//                    LogUtils.log(getWorkerData().physicalId, "Barrier to finish");
                     physicalSync.clear();
-//                    LogUtils.log("will send sync go from failure handler");
                     MessageSyncGo msg = new MessageSyncGo();
                     msg.setGroupId(groupId);
                     msg.setFailedThreads(failedThreads);
                     getNetworker().send(group, msg);
-//                    LogUtils.log("will send sync message to finish barrier: " + msg);
-//                    LogUtils.log(getWorkerData().physicalId, "sent sync go");
-//                } else {
-//                    LogUtils.log(getWorkerData().physicalId, "Barrier not finished yet, bitmask: " + physicalSync.toString());
                 }
-//                }
             }
-        } else {
-            // LogUtils.log("UNNECESSARY");
         }
     }
 
     public void markCompleteOnPhysicalNode(int groupId, int physicalId) throws IOException {     // mstodo move back to internal group!!
         InternalGroup group = getWorkerData().internalGroupsById.get(groupId);
         final BitMask physicalSync = group.getPhysicalSync();
+//        System.out.println("will mark complete on physical node: " + physicalId + " physicalSync: " + physicalSync);
         synchronized (physicalSync) {
             if (group.physicalSync(physicalId)) {
                 physicalSync.clear();
@@ -80,10 +64,6 @@ public class BarrierHandler {
                 msg.setGroupId(groupId);
 
                 getNetworker().send(group, msg);
-//                LogUtils.log("will send sync go from markComplete");// mstodo rem ove
-                // LogUtils.log("BARRIER FINISHED - bitmask: " + physicalSync);
-            } else {
-                // LogUtils.log("BARRIER NOT FINISHED - bitmask: " + physicalSync);
             }
         }
     }
