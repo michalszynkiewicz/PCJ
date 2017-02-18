@@ -558,11 +558,9 @@ public class InternalGroup {
     public void updateCommunicationTree(SetChild update) {
         switch (update.getDirection()) {
             case LEFT:
-                System.out.println("new LEFT: " + update.getChild());  // mstodo remove
                 setPhysicalLeft(update.getChild());
                 break;
             case RIGHT:
-                System.out.println("new RIGHT: " + update.getChild());  // mstodo remove
                 setPhysicalRight(update.getChild());
                 break;
         }

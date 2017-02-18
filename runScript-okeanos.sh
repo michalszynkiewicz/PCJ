@@ -1,12 +1,12 @@
 #!/bin/bash -l
 #SBATCH -J PCJ-tests
-#SBATCH -N 1
-#SBATCH -n 28
+#SBATCH -N 256
+#SBATCH -n 256
 #SBATCH --mem 18000
-#SBATCH --time=24:00:00
+#SBATCH --time=8:00:00
 #SBATCH --output="PCJ-tests_%j.out"
 #SBATCH --error="PCJ-tests_%j.err"
-
+NODE_NUM=256
 timer=`date +%s`
 
 function log {
@@ -33,36 +33,6 @@ module load java || exit 1
 log "Preparing nodes list"
 mpiexec hostname -s | sort > all_nodes.txt
 
-declare -i port
-port=8050
-
-nodeList=()
-exec 3<> all_nodes.txt
-while read -u 3 node
-do
-    if [ "x$node" != "x" ]
-    then
-        nodeList=("${nodeList[@]}" "${node}:${port}")
-        port=$((port + 1))
-    fi
-done
-exec 3>&-
-
-function prepareNodes() {
-    declare -i nodeCount=$1
-    nodeCount=$((nodeCount-1))
-    nodes="${nodeList[0]}"
-    for i in ${nodeList[@]:1:$nodeCount}
-    do
-        nodes="${nodes},${i}"
-    done
-}
-
-echo "will print result"
-echo $nodes
-
-prepareNodes 20
-
 attempts=4
 #mstodo change to 50
 
@@ -72,16 +42,12 @@ function tryTimes() {
     outFile="output${descriptiveName}.txt"
     for i in `seq 1 ${attempts}`
     do
-        outFile="output${descriptiveName}-${i}.txt"
-        echo "java -Dnodes=$nodes -DpcjNodeDiscriminator $@ -cp .:${LIB_BINARY} ${TEST_CLASS}"
-        java -Dnodes=${nodes} -DpcjNodeDiscriminator $@ -cp .:${LIB_BINARY} ${TEST_CLASS} > $outFile
-#        if grep -q 'too long' "${outFile}"
-#        then
-#           echo "will retry barrier"
-#        else
-#           echo "success. will quit"
-#           break
-#        fi
+        echo "--------------------------------------$NODE_NUM procesy ------------------------------------------------"
+        srun -N $NODE_NUM -n $NODE_NUM hostname > nodes.txt
+        uniq nodes.txt > nodes.uniq
+        echo "java -Xms2g -Xmx2g -Dpcj.port=8094 -cp .:${LIB_BINARY} $@ ${TEST_CLASS} nodes.txt"
+        srun --hint=nomultithread -N $NODE_NUM --nodelist=./nodes.uniq -n $NODE_NUM -c 1 java -Xms2g -Xmx2g -Dpcj.port=8094 -cp .:${LIB_BINARY} $@ ${TEST_CLASS} nodes.txt
+        echo "------------------------------------------------------------------------------------------------------------------"
     done
 }
 
@@ -94,20 +60,22 @@ function tryWithFailureCount() {
     done
 }
 
-LIB_BINARY='PCJ-4.0.0.SNAPSHOT-bin.jar'
+LIB_BINARY='PCJ-4.1.0.SNAPSHOT-bin.jar'
 TEST_CLASS=BarrierTest
 tryWithFailureCount "10k_barrier" -DbarrierCount=10000
 tryWithFailureCount "100k_barrier" -DbarrierCount=100000
+tryWithFailureCount "1m_barrier" -DbarrierCount=1000000
 TEST_CLASS=IntegralPiCalcTest
-tryWithFailureCount "IntegralPiCalculation" -DpointCount=100000
+tryWithFailureCount "IntegralPiCalc" -DpointCount=100000000
 TEST_CLASS=PiCalculationTest
-tryWithFailureCount "piCalcTest" -DpointCount=100000
+tryWithFailureCount "PiCalculationTest" -DpointCount=100000000
 
-LIB_BINARY='PCJ-NonFT.jar'
+LIB_BINARY='PCJ-4.1.0.SNAPSHOT-binNonFT.jar'
 TEST_CLASS=BarrierTestNonFT
 tryTimes "10k_barrierNonFT" -DbarrierCount=10000
 tryTimes "100k_barrierNonFT" -DbarrierCount=100000
-TEST_CLASS=IntegralPiCalculationNonFT
-tryTimes "IntegralPiCalculationNonFT" -DpointCount=100000
+tryTimes "1m_barrierNonFT" -DbarrierCount=1000000
+TEST_CLASS=IntegralPiCalcTestNonFT
+tryTimes "IntegralPiCalcTestNonFT" -DpointCount=100000000
 TEST_CLASS=PiCalculationTestNonFT
-tryTimes "piCalcTestNonFT" -DpointCount=100000
+tryTimes "piCalcTestNonFT" -DpointCount=100000000

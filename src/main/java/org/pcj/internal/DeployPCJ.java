@@ -168,6 +168,7 @@ final public class DeployPCJ {
 
         List<String> sshExec = new ArrayList<>(Arrays.asList(
                 "ssh",
+                "-o", "StrictHostKeyChecking no",
                 node.getHostname(), // ssh host
                 sb.toString().trim() // command
         ));

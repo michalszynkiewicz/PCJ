@@ -401,6 +401,7 @@ public class GameOfLifeFT2 extends Storage implements StartPoint {
     }
 
     private void recover() {
+        System.out.println("Started recovery");
         while (true) {
             Set<Integer> failedThreads = PCJ.getFailedThreadIds();
             try {

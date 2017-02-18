@@ -3,8 +3,9 @@
  */
 package org.pcj.internal;
 
-import java.util.Map;
 import org.pcj.internal.storage.InternalStorage;
+
+import java.util.Map;
 
 /**
  * This class represents PCJ thread.

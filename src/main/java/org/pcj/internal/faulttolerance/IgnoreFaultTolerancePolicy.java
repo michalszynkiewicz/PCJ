@@ -144,6 +144,9 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
     @Override
     public void register(Thread thread) {
         threadsWaitingForFailure.add(thread);
+        if (!newFailures.isEmpty()) {
+            threadsWaitingForFailure.forEach(t -> t.interrupt());
+        }
     }
 
     @Override

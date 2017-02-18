@@ -50,8 +50,13 @@ public class WaitForOnNode0Test extends Storage implements StartPoint {
     }
 
     public static void main(String... args) {
+        if (args.length < 1) {
+            System.err.println("Please pass file name for nodes file.");
+            System.exit(13);
+        }
+
         System.out.println(ManagementFactory.getRuntimeMXBean().getName());
 
-        PCJ.deploy(WaitForOnNode0Test.class, WaitForOnNode0Test.class, System.getProperty("nodes").split(","));
+        PCJ.start(WaitForOnNode0Test.class, WaitForOnNode0Test.class, args[0]);
     }
 }

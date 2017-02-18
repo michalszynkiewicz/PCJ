@@ -28,17 +28,13 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
 
     private void work() {
         while (true) {
-            PCJ.log("Will wait for " + new Date());
             if (!doIgnoringFailure(() -> PCJ.waitFor("work"))) {
                 continue;
             }
-            PCJ.log("after wait for " + new Date());
             Work work = PCJ.getLocal("work");
             if (work.finished) {
-                PCJ.log("finished" + new Date());
                 break;
             } else {
-                PCJ.log("Will work: " + work.task);
                 work(work.task);
             }
         }
@@ -51,18 +47,18 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
     private void work(Task task) {
         double sum = 0.0;
 
-       for (double i = task.start; i < task.end; i++) {
-                sum += f((i + 0.5) * weight);
-                if (fails > 0
-                        && PCJ.getPhysicalNodeId() == 2         /*mstodo smarter way before tests to minimize the impact!*/
-                        && i - task.start < (task.end - task.start)/3) {
-                    System.exit(123);
-                }
-                if (fails > 1
-                        && PCJ.getPhysicalNodeId() == 17
-                        && i - task.start < (task.end - task.start)/2) {
-                    System.exit(124);
-                }
+        for (double i = task.start; i < task.end; i++) {
+            sum += f((i + 0.5) * weight);
+            if (fails > 0
+                    && PCJ.getPhysicalNodeId() == 2         /*mstodo smarter way before tests to minimize the impact!*/
+                    && i - task.start < (task.end - task.start) / 3) {
+                System.exit(123);
+            }
+            if (fails > 1
+                    && PCJ.getPhysicalNodeId() == 17
+                    && i - task.start < (task.end - task.start) / 2) {
+                System.exit(124);
+            }
         }
         PCJ.putLocal("sum", sum * weight);
         PCJ.barrier();
@@ -81,7 +77,6 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
             splitWork(activeThreads);
             work(tasksByThreadId.get(0));
             if (gatherResults(activeThreads)) {
-                System.out.println("#### results gathered successfully, should break and finish");
                 break;
             }
         }
@@ -90,7 +85,7 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
 
     private void setFinish(List<Integer> activeThreads) {
         activeThreads.forEach(t ->
-                        doIgnoringFailure(() -> PCJ.put(t, "work", FINISH_WORK))
+                doIgnoringFailure(() -> PCJ.put(t, "work", FINISH_WORK))
         );
     }
 
@@ -106,7 +101,7 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
     }
 
     private Work createWork(int nodesNum, int nodeOrdinal, Task t) {
-        long size = (t.end - t.start)/nodesNum;
+        long size = (t.end - t.start) / nodesNum;
         long start = t.start + nodeOrdinal * size;
         long end = nodeOrdinal == nodesNum - 1 ? t.end : start + size;
         return new Work(new Task(start, end));
@@ -154,7 +149,7 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
         time2 -= time;
 
         if (PCJ.myId() == 0) {
-            System.out.printf("######PI: %f10 time: %f5\n", pi, time2 * 1.0E-9);
+            System.out.printf("IntegralPiCalcTest" + pointCount + "###### PI: %f10 time: %f5\n", pi, time2 * 1.0E-9);
         }
     }
 
@@ -166,10 +161,6 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
         } catch (NodeFailedException ignored) {
             return false;
         }
-    }
-
-    public static void main(String[] args) {
-        PCJ.deploy(IntegralPiCalcTest.class, IntegralPiCalcTest.class, System.getProperty("nodes").split(","));
     }
 
     public static class Work implements Serializable {
@@ -203,5 +194,17 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
         }
     }
 
+    public static void main(String[] args) {
+        String nodeProperty = System.getProperty("nodes");
+        if (nodeProperty != null) {
+            PCJ.deploy(IntegralPiCalcTest.class, IntegralPiCalcTest.class, nodeProperty.split(","));
+        } else {
+            if (args.length < 1) {
+                System.err.println("Please pass file name for nodes file or 'nodes' property (-Dnodes=...).");
+                System.exit(13);
+            }
+            PCJ.start(IntegralPiCalcTest.class, IntegralPiCalcTest.class, args[0]);
+        }
+    }
 
 }

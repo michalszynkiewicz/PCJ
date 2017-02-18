@@ -7,18 +7,15 @@ import org.pcj.internal.faulttolerance.NodeFailedException;
 import java.lang.management.ManagementFactory;
 import java.util.Random;
 
-import static java.lang.System.getProperty;
-
 /**
  * Author: Michal Szynkiewicz, michal.l.szynkiewicz@gmail.com
  * Date: 4/22/15
  * Time: 5:09 PM
  */
 public class PiCalculationTest extends Storage implements StartPoint {
-    private static String[] nodes = getProperty("nodes").split(",");
     private static final int fails = Integer.valueOf(System.getProperty("fails", "0"));
-    public static final Integer POINT_COUNT = Integer.valueOf(System.getProperty("pointCount"));
-    public static final int FAIL_POINT = POINT_COUNT / 2;
+    public static final Integer pointCount = Integer.valueOf(System.getProperty("pointCount"));
+    public static final int FAIL_POINT = pointCount / 2;
 
     private static final Random random = new Random();
     private static final double radius = .5;
@@ -36,7 +33,7 @@ public class PiCalculationTest extends Storage implements StartPoint {
     @Override
     public void main() throws Throwable {
         long time = System.nanoTime();
-        for (int i = 0; i < POINT_COUNT; i++) {
+        for (int i = 0; i < pointCount; i++) {
             double x = random.nextDouble(), y = random.nextDouble();
             if (isInside(x, y)) {
                 localCount++;
@@ -49,9 +46,7 @@ public class PiCalculationTest extends Storage implements StartPoint {
             }
         }
         PCJ.putLocal("count", localCount);
-        System.out.println("before barrier"); System.out.flush();
         PCJ.barrier();
-        System.out.println("after barrier"); System.out.flush();
 
         if (PCJ.myId() == 0) {
             long totalPointCount = 0L;
@@ -59,7 +54,7 @@ public class PiCalculationTest extends Storage implements StartPoint {
             for (int i = 0; i < PCJ.threadCount(); i++) {
                 try {
                     totalMatchCount += PCJ.<Integer>get(i, COUNT);
-                    totalPointCount += POINT_COUNT;
+                    totalPointCount += pointCount;
                 } catch (NodeFailedException nfe) {
                     nfe.printStackTrace(); //ignored - we want to conitnue calculations
                 }
@@ -72,14 +67,18 @@ public class PiCalculationTest extends Storage implements StartPoint {
             long secs = millis / 1000;
             millis -= secs * 1000;
             nanos -= millis * 1000 * 1000;
-            System.out.println("[PiCalculationTest@" + nodes.length + "] ####WORKING TIME: " + secs + "."
+            System.out.println("[PiCalculationTest" + pointCount + "@" + PCJ.threadCount() + "] ####WORKING TIME: " + secs + "."
                     + String.format("%03d", millis) + "."
                     + String.format("%06d", nanos) + "ns");
         }
     }
 
     public static void main(String[] args) {
+        if (args.length < 1) {
+            System.err.println("Please pass file name for nodes file.");
+            System.exit(13);
+        }
         System.out.println(ManagementFactory.getRuntimeMXBean().getName());
-        PCJ.deploy(PiCalculationTest.class, PiCalculationTest.class, nodes);
+        PCJ.start(PiCalculationTest.class, PiCalculationTest.class, args[0]);
     }
 }

@@ -88,7 +88,6 @@ public class CommunicationTreeFixer {
             parent.setRight(replacement);
             setChild = new SetChild(parent.getId(), nullSafeId(replacement), RIGHT);
         }
-        System.out.println("Created setChild: " + setChild);
         resultList.add(setChild);
     }
 

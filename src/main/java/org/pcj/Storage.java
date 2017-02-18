@@ -313,7 +313,6 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
         }
 
         Thread thread = Thread.currentThread();
-        System.out.println("policy for : " + this + " is " + policy);
         policy.register(thread);
         final Field field = getField(variable);
 
@@ -325,8 +324,7 @@ public abstract class Storage implements org.pcj.internal.storage.InternalStorag
         try {
             semaphore.acquire(count);
         } catch (InterruptedException e) {
-            e.printStackTrace();
-            semaphore.drainPermits(); // mstodo ?
+            semaphore.drainPermits();
             policy.failOnNewFailure();
         }
 
