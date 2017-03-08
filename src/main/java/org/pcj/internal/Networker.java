@@ -288,6 +288,7 @@ public class Networker {        // mstodo: access rights!
         } catch (IOException ex) {
             ex.printStackTrace(System.err);
         }
+        System.out.println("SHUTTING DOWN"); //mstodo remove
         selectorProcThread.interrupt();
         workerThread.interrupt();
 

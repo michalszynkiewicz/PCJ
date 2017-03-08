@@ -16,9 +16,9 @@ public class RestoreConfiguration implements Serializable {
     final int newNodeCount;
     final Map<Integer, Integer> newNodeIdMap;
 
-    public RestoreConfiguration(Checkpoint checkpoint, int newNodeCount, Map<Integer, Integer> newNodeIdMap) {
+    public RestoreConfiguration(Checkpoint checkpoint, Map<Integer, Integer> newNodeIdMap) {
         this.checkpoint = checkpoint;
-        this.newNodeCount = newNodeCount;
         this.newNodeIdMap = newNodeIdMap;
+        newNodeCount = newNodeIdMap.size();
     }
 }

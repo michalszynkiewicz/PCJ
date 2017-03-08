@@ -332,7 +332,8 @@ public class InternalGroup {
                 }
                 syncObject.await();
             } catch (InterruptedException ex) {
-                throw new RuntimeException(ex);
+//                throw new RuntimeException(ex);
+
             }
             InternalPCJ.getBarrierHandler().resetBarrier();
 //             System.out.println("barrier] after resetBarrier");
@@ -556,6 +557,7 @@ public class InternalGroup {
     }
 
     public void updateCommunicationTree(SetChild update) {
+        System.out.println("applying update: " + update); //mstodo remove
         switch (update.getDirection()) {
             case LEFT:
                 setPhysicalLeft(update.getChild());

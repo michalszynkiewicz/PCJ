@@ -52,12 +52,12 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
             if (fails > 0
                     && PCJ.getPhysicalNodeId() == 2         /*mstodo smarter way before tests to minimize the impact!*/
                     && i - task.start < (task.end - task.start) / 3) {
-                System.exit(123);
+                System.exit(0);
             }
             if (fails > 1
                     && PCJ.getPhysicalNodeId() == 17
                     && i - task.start < (task.end - task.start) / 2) {
-                System.exit(124);
+                System.exit(0);
             }
         }
         PCJ.putLocal("sum", sum * weight);
@@ -149,7 +149,7 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
         time2 -= time;
 
         if (PCJ.myId() == 0) {
-            System.out.printf("IntegralPiCalcTest" + pointCount + "###### PI: %f10 time: %f5\n", pi, time2 * 1.0E-9);
+            System.out.printf("IntegralPiCalcTest" + pointCount + ", fails: " + fails + "###### PI: %f10 time: %f5\n", pi, time2 * 1.0E-9);
         }
     }
 

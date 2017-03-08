@@ -20,29 +20,15 @@ public class BarrierTestNonFT extends Storage implements StartPoint {
             PCJ.barrier();
         }
         long time = System.nanoTime();
-//        if (PCJ.myId() == 0) {
-//            System.out.println("START");
-//            PCJ.log("will sleep");
-//            Thread.sleep(8000l);
-//            PCJ.log("woken up");
-//        } else {
-//            PCJ.log("won't sleep");
-//        }
+
         Integer barrierCount = Integer.valueOf(getProperty("barrierCount"));
+        int batchSize = 1000;
         for (int i = 0; i < barrierCount; i++) {
-//            LogUtils.log(PCJ.getPhysicalNodeId(), "-   will do barrier number: " + i);
-            PCJ.barrier();
-//            LogUtils.log(PCJ.g    etPhysicalNodeId(), "+   after barrier number: " + i);
-            if (i == 5000 && PCJ.getPhysicalNodeId() == 17) {
-                // do nothing
-            }
-            if (i == 5000 && PCJ.getPhysicalNodeId() == 2) {
-                // do nothing
+            int count = Math.min(batchSize, barrierCount - i);
+            for (int j=0; j<count; j++, i++) {
+                PCJ.barrier();
             }
         }
-//        PCJ.log("After all barriers");
-//        PCJ.log(ManagementFactory.getRuntimeMXBean().getName());
-//        PCJ.log("my thread number: " + PCJ.myId());
         if (PCJ.myId() == 0) {
             long nanos = System.nanoTime() - time;
             long millis = nanos / (1000 * 1000);

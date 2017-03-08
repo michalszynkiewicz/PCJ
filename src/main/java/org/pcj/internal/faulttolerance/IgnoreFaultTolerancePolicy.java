@@ -127,6 +127,7 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
             synchronized (newFailures) {
                 newFailures.add(failedNodeId);
             }
+            System.out.println("INTERRUPTING WAITING FOR THREADS"); //mstodo remove
             threadsWaitingForFailure.forEach(Thread::interrupt);
 
             getFutureHandler().nodeFailed(failedNodeId);
@@ -145,6 +146,7 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
     public void register(Thread thread) {
         threadsWaitingForFailure.add(thread);
         if (!newFailures.isEmpty()) {
+            System.out.println("INTERRUPTING WAITING FOR THREADS"); //mstodo remove
             threadsWaitingForFailure.forEach(t -> t.interrupt());
         }
     }

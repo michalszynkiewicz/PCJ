@@ -17,8 +17,8 @@ public class PiCalculationTestNonFT extends Storage implements StartPoint {
     private static final double x0 = .5, y0 = .5;
     public static final String COUNT = "count";
 
-    public static final Integer pointCount = Integer.valueOf(System.getProperty("pointCount"));
-    public static final int FAIL_POINT = pointCount / 2;
+    public static final Long pointCount = Long.valueOf(System.getProperty("pointCount"));
+    public static final Long FAIL_POINT = pointCount / 2;
 
     private static boolean isInside(double x, double y) {
         return (x - x0) * (x - x0) + (y - y0) * (y - y0) <= radius * radius;
@@ -31,7 +31,7 @@ public class PiCalculationTestNonFT extends Storage implements StartPoint {
     @Override
     public void main() throws Throwable {
         long time = System.nanoTime();
-        for (int i = 0; i < pointCount; i++) {
+        for (long i = 0; i < pointCount; i++) {
             double x = random.nextDouble(), y = random.nextDouble();
             if (isInside(x, y)) {
                 localCount++;

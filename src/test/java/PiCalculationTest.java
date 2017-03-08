@@ -14,8 +14,8 @@ import java.util.Random;
  */
 public class PiCalculationTest extends Storage implements StartPoint {
     private static final int fails = Integer.valueOf(System.getProperty("fails", "0"));
-    public static final Integer pointCount = Integer.valueOf(System.getProperty("pointCount"));
-    public static final int FAIL_POINT = pointCount / 2;
+    public static final Long pointCount = Long.valueOf(System.getProperty("pointCount"));
+    public static final Long FAIL_POINT = pointCount / 2;
 
     private static final Random random = new Random();
     private static final double radius = .5;
@@ -33,16 +33,16 @@ public class PiCalculationTest extends Storage implements StartPoint {
     @Override
     public void main() throws Throwable {
         long time = System.nanoTime();
-        for (int i = 0; i < pointCount; i++) {
+        for (long i = 0; i < pointCount; i++) {
             double x = random.nextDouble(), y = random.nextDouble();
             if (isInside(x, y)) {
                 localCount++;
             }
             if (i == FAIL_POINT && PCJ.getPhysicalNodeId() == 17 && fails > 1) {
-                System.exit(12);
+                System.exit(0);
             }
             if (i == FAIL_POINT && PCJ.getPhysicalNodeId() == 2 && fails > 0) {
-                System.exit(12);
+                System.exit(0);
             }
         }
         PCJ.putLocal("count", localCount);
@@ -56,7 +56,7 @@ public class PiCalculationTest extends Storage implements StartPoint {
                     totalMatchCount += PCJ.<Integer>get(i, COUNT);
                     totalPointCount += pointCount;
                 } catch (NodeFailedException nfe) {
-                    nfe.printStackTrace(); //ignored - we want to conitnue calculations
+                    nfe.printStackTrace(); //ignored - we want to continue calculations
                 }
             }
             System.out.println("Pi = " + 4. * totalMatchCount / totalPointCount);
@@ -67,7 +67,7 @@ public class PiCalculationTest extends Storage implements StartPoint {
             long secs = millis / 1000;
             millis -= secs * 1000;
             nanos -= millis * 1000 * 1000;
-            System.out.println("[PiCalculationTest" + pointCount + "@" + PCJ.threadCount() + "] ####WORKING TIME: " + secs + "."
+            System.out.println("[PiCalculationTest" + pointCount + "@" + PCJ.threadCount() + ", fails: " + fails + "] ####WORKING TIME: " + secs + "."
                     + String.format("%03d", millis) + "."
                     + String.format("%06d", nanos) + "ns");
         }

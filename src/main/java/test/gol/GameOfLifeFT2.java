@@ -45,6 +45,7 @@ import static test.gol.utils.GameUtils.createLightweightSpaceShip;
 public class GameOfLifeFT2 extends Storage implements StartPoint {
 
     public static final String RESTORE_CONFIGURATION = "restoreConfiguration";
+    public static final int MAX_RECOVERY_ATTEMPTS = 2;
     private final ExecutorService executor = UserThreadExecutorServicceFactory.newSingleThreadExecutor();
 
     public static final String RIGHT = "right", LEFT = "left", BOTTOM = "bottom", TOP = "top";
@@ -147,6 +148,8 @@ public class GameOfLifeFT2 extends Storage implements StartPoint {
                     }
                     step();
                 } catch (NodeFailedException e) {
+                    System.out.println("NFE caught, will recover");
+                    e.printStackTrace();
                     recover = true;
                 }
                 if (newNodesFailed() || recover) {
@@ -207,51 +210,51 @@ public class GameOfLifeFT2 extends Storage implements StartPoint {
     }
 
     private void waitForBorders() {
-        System.out.println("[" + PCJ.myId() + "] INCOMING BORDERS: \n");
+//        System.out.println("[" + PCJ.myId() + "] INCOMING BORDERS: \n");
         if (col > 0) {
-            System.out.println("for left");
+//            System.out.println("for left");
             PCJ.waitFor(LEFT);
-            System.out.println("(" + System.nanoTime() + " @LEFT@ :" + Arrays.toString(left[prevStep]) + "\n");
+//            System.out.println("(" + System.nanoTime() + " @LEFT@ :" + Arrays.toString(left[prevStep]) + "\n");
         }
         if (col < colNum - 1) {
-            System.out.println("for right");
+//            System.out.println("for right");
             PCJ.waitFor(RIGHT);
-            System.out.println("(" + System.nanoTime() + ") @RIGHT@ :" + Arrays.toString(right[prevStep]) + "\n");
+//            System.out.println("(" + System.nanoTime() + ") @RIGHT@ :" + Arrays.toString(right[prevStep]) + "\n");
         }
         if (row < rowNum - 1) {
-            System.out.println("for bottom");
+//            System.out.println("for bottom");
             PCJ.waitFor(BOTTOM);
-            System.out.println("(" + System.nanoTime() + ") @BOTTOM@ :" + Arrays.toString(bottom[prevStep]) + "\n");
+//            System.out.println("(" + System.nanoTime() + ") @BOTTOM@ :" + Arrays.toString(bottom[prevStep]) + "\n");
         }
 
         if (row > 0) {
-            System.out.println("for top");
+//            System.out.println("for top");
             PCJ.waitFor(TOP);
-            System.out.println("(" + System.nanoTime() + ") @TOP@ :" + Arrays.toString(top[prevStep]) + "\n");
+//            System.out.println("(" + System.nanoTime() + ") @TOP@ :" + Arrays.toString(top[prevStep]) + "\n");
         }
 
         // CORNERS:
 
         if (col > 0 && row < rowNum - 1) {
-            System.out.println("for BOTTOM_LEFT");
+//            System.out.println("for BOTTOM_LEFT");
             PCJ.waitFor(BOTTOM_LEFT);
-            System.out.println(" @BOTTOM_LEFT@ :" + topLeft[prevStep] + "\n");
+//            System.out.println(" @BOTTOM_LEFT@ :" + topLeft[prevStep] + "\n");
         }
         if (col < colNum - 1 && row < rowNum - 1) {
-            System.out.println("for bottom right");
+//            System.out.println("for bottom right");
             PCJ.waitFor(BOTTOM_RIGHT);
-            System.out.println(" @RIGHT@ :" + bottomRight[prevStep] + "\n");
+//            System.out.println(" @RIGHT@ :" + bottomRight[prevStep] + "\n");
         }
 
         if (col > 0 && row > 0) {
-            System.out.println("for bottom left");
+//            System.out.println("for bottom left");
             PCJ.waitFor(TOP_LEFT);
-            System.out.println(" @TOP_LEFT@ :" + topLeft[prevStep] + "\n");
+//            System.out.println(" @TOP_LEFT@ :" + topLeft[prevStep] + "\n");
         }
         if (col < colNum - 1 && row > 0) {
-            System.out.println("for top right");
+//            System.out.println("for top right");
             PCJ.waitFor(TOP_RIGHT);
-            System.out.println(" @RIGHT@ :" + topRight[prevStep] + "\n");
+//            System.out.println(" @RIGHT@ :" + topRight[prevStep] + "\n");
         }
 
     }
@@ -274,12 +277,12 @@ public class GameOfLifeFT2 extends Storage implements StartPoint {
         if (Arrays.stream(array).anyMatch(i -> i != 0)) {
             nonZeros = true;
         }
-        System.out.println("\n(" + System.nanoTime() + " COMING -> " + nodeId + ": " + Arrays.toString(array) + " for variable: " + variableName + " at pos: " + Arrays.toString(indexes));
+//        System.out.println("\n(" + System.nanoTime() + " COMING -> " + nodeId + ": " + Arrays.toString(array) + " for variable: " + variableName + " at pos: " + Arrays.toString(indexes));
         if (nodeId != null) {
             PCJ.put(nodeId, variableName, value, indexes);
-            if (nonZeros) System.out.println("shared\t INTO: " + nodeId + "\n");
-        } else {
-            if (nonZeros) System.out.println("skipped\n");
+//            if (nonZeros) System.out.println("shared\t INTO: " + nodeId + "\n");
+//        } else {
+//            if (nonZeros) System.out.println("skipped\n");
         }
     }
 
@@ -402,7 +405,9 @@ public class GameOfLifeFT2 extends Storage implements StartPoint {
 
     private void recover() {
         System.out.println("Started recovery");
-        while (true) {
+        int attemptsLeft = MAX_RECOVERY_ATTEMPTS;
+        while (attemptsLeft > 0) {
+            attemptsLeft --;
             Set<Integer> failedThreads = PCJ.getFailedThreadIds();
             try {
                 doRecover();
@@ -415,6 +420,9 @@ public class GameOfLifeFT2 extends Storage implements StartPoint {
             if (failedThreads.containsAll(PCJ.getFailedThreadIds())) {
                 return;
             }
+        }
+        if (attemptsLeft <= 0) {
+            throw new RuntimeException("Reached maximum number of recoveries.");
         }
     }
 
@@ -437,11 +445,12 @@ public class GameOfLifeFT2 extends Storage implements StartPoint {
                     System.out.println("waiting for configuration");
                     System.out.flush();
                     PCJ.waitFor(RESTORE_CONFIGURATION);
-                    System.out.println("got configuration");
+                    System.out.println("got configuration: " + PCJ.getLocal(RESTORE_CONFIGURATION));
                     System.out.flush();
                     setRestoredBoard();
                     System.out.println("set restored board");
                     System.out.flush();
+                    break;
                 } catch (NodeFailedException ignored) {
                 }
             }
@@ -449,15 +458,20 @@ public class GameOfLifeFT2 extends Storage implements StartPoint {
     }
 
     private void setRestoredBoard() {
-        Checkpoint checkpoint = restoreConfiguration.checkpoint;
-        myNum = restoreConfiguration.newNodeIdMap.get(PCJ.myId());
-        int preNodeCount = checkpoint.nodeCount;
-        // mstodo backup path?
-        IntStream.range(0, preNodeCount).forEach(nodeNum -> {
-                    Optional<Cut> cut = myCut(checkpoint, nodeNum);
-                    cut.map(c -> c.apply(backupRoot.toAbsolutePath().toString(), board[step]));     // mstodo backupRoot may be passed earlier
-                }
-        );
+        if (restoreConfiguration == null) {
+            System.out.println("WARNING: no stored backup, will start calculations from the beginning.");
+            init();
+        } else {
+            Checkpoint checkpoint = restoreConfiguration.checkpoint;
+            myNum = restoreConfiguration.newNodeIdMap.get(PCJ.myId());
+            int preNodeCount = checkpoint.nodeCount;
+            // mstodo backup path?
+            IntStream.range(0, preNodeCount).forEach(nodeNum -> {
+                        Optional<Cut> cut = myCut(checkpoint, nodeNum);
+                        cut.map(c -> c.apply(backupRoot.toAbsolutePath().toString(), board[step]));     // mstodo backupRoot may be passed earlier
+                    }
+            );
+        }
     }
 
     private Optional<Cut> myCut(Checkpoint checkpoint, int sourceNodeNum) {
@@ -493,8 +507,8 @@ public class GameOfLifeFT2 extends Storage implements StartPoint {
     private void sendOutConfiguration(Optional<Entry<Checkpoint, List<String>>> latestBackup) {
         RestoreConfiguration configuration = latestBackup.map(e -> {
             Map<Integer, Integer> newIdMap = prepareNewIdMap();
-            return new RestoreConfiguration(e.getKey(), newIdMap.size(), newIdMap);
-        }).orElse(null);
+            return new RestoreConfiguration(e.getKey(), newIdMap);
+        }).orElse(new RestoreConfiguration(null, prepareNewIdMap()));
 
         PCJ.broadcast(RESTORE_CONFIGURATION, configuration);
     }
@@ -576,7 +590,9 @@ public class GameOfLifeFT2 extends Storage implements StartPoint {
 
     private boolean newNodesFailed() {
         Set<Integer> newFailedThreads = PCJ.getFailedThreadIds();
-        return failedThreads.addAll(newFailedThreads);
+        boolean result = failedThreads.addAll(newFailedThreads);
+        System.out.println("new failures found: " + result);
+        return result;
     }
 
 

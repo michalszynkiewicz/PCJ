@@ -22,40 +22,31 @@ public class BarrierTest extends Storage implements StartPoint {
             PCJ.barrier();
         }
         long time = System.nanoTime();
-//        if (PCJ.myId() == 0) {
-//            System.out.println("START");
-//            PCJ.log("will sleep");
-//            Thread.sleep(8000l);
-//            PCJ.log("woken up");
-//        } else {
-//            PCJ.log("won't sleep");
-//        }
+
         Integer barrierCount = Integer.valueOf(getProperty("barrierCount"));
-        for (int i = 0; i < barrierCount; i++) {
-//            if (i == 4998 && PCJ.getPhysicalNodeId() == 0) {
-//                LogUtils.setEnabled(true);
-//            }
-//            LogUtils.log(PCJ.getPhysicalNodeId(), "-   will do barrier number: " + i);
-            PCJ.barrier();
-//            Lock.printLockState();
-//            LogUtils.log(PCJ.getPhysicalNodeId(), "+   after barrier number: " + i);
-            if (i == 2 && PCJ.getPhysicalNodeId() == 17 && fails > 1) {
-                System.exit(12);
+        int batchSize = 1000;
+        int firstFailure = barrierCount / 3;
+        int secondFailure = firstFailure * 2;
+
+        for (int i = 0; i < barrierCount;) {
+            int count = Math.min(batchSize, barrierCount - i);
+            for (int j=0; j<count; j++, i++) {
+                PCJ.barrier();
             }
-            if (i == 2 && PCJ.getPhysicalNodeId() == 2 && fails > 0) {
-                System.exit(12);
+            if (i >= secondFailure && PCJ.getPhysicalNodeId() == 17 && fails > 1) {
+                System.exit(0);
+            }
+            if (i >= firstFailure && PCJ.getPhysicalNodeId() == 2 && fails > 0) {
+                System.exit(0);
             }
         }
-//        PCJ.log("After all barriers");
-//        PCJ.log(ManagementFactory.getRuntimeMXBean().getName());
-//        PCJ.log("my thread number: " + PCJ.myId());
         if (PCJ.myId() == 0) {
             long nanos = System.nanoTime() - time;
             long millis = nanos / (1000 * 1000);
             long secs = millis / 1000;
             millis -= secs * 1000;
             nanos -= millis * 1000 * 1000;
-            System.out.println("[BarrierTest" + barrierCount + "@" + PCJ.threadCount() + "] #### WORKING TIME: " + secs + "."
+            System.out.println("[BarrierTest" + barrierCount + "@" + PCJ.threadCount() + ", fails: " + fails + "] #### WORKING TIME: " + secs + "."
                     + String.format("%03d", millis) + "."
                     + String.format("%06d", nanos) + "ns");
         }

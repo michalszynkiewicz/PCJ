@@ -33,6 +33,7 @@ public class PcjThread extends Thread {
             System.exit(5);
         } finally {
             // TODO: sprawdzić, czy ten interrupt jest konieczny
+            System.out.println("DESERIALIZER SHUTTING DOWN"); //mstodo remove
             deserializer.interrupt();
         }
     }
