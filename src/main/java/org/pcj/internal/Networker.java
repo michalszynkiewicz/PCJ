@@ -6,6 +6,7 @@ package org.pcj.internal;
 import org.pcj.internal.faulttolerance.NodeFailedException;
 import org.pcj.internal.message.BroadcastedMessage;
 import org.pcj.internal.message.Message;
+import org.pcj.internal.message.MessageNodeRemoved;
 import org.pcj.internal.network.LoopbackSocketChannel;
 import org.pcj.internal.network.MessageOutputStream;
 import org.pcj.internal.network.SelectorProc;
@@ -22,6 +23,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Deque;
+import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 import static org.pcj.internal.InternalPCJ.getWorkerData;
@@ -302,7 +304,9 @@ public class Networker {        // mstodo: access rights!
 //        if (physicalRoot != null) {
 //            socket = workerData.physicalNodes.getFutureObject(physicalRoot);
 //        }
-        SocketChannel socket = workerData.physicalNodes.get(group.getPhysicalMaster());
+        Map<Integer, SocketChannel> physicalNodes = workerData.physicalNodes;
+        Integer physicalMaster = group.getPhysicalMaster();
+        SocketChannel socket = physicalNodes.get(physicalMaster);
         send(socket, msg);
     }
 

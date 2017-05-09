@@ -36,12 +36,6 @@ public class PiCalculationTestNonFT extends Storage implements StartPoint {
             if (isInside(x, y)) {
                 localCount++;
             }
-            if (i == FAIL_POINT && PCJ.getPhysicalNodeId() == 17) {
-                // do nothing - keep the perf impact
-            }
-            if (i == FAIL_POINT && PCJ.getPhysicalNodeId() == 2) {
-                // do nothing - keep the perf impact
-            }
         }
         PCJ.putLocal("count", localCount);
         PCJ.barrier();

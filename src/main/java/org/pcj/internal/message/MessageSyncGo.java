@@ -69,4 +69,5 @@ final public class MessageSyncGo extends BroadcastedMessage {
     public void setFailedThreads(Set<Integer> failedThreads) {
         this.failedThreads = failedThreads;
     }
+    
 }

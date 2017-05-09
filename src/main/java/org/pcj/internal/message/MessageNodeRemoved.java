@@ -1,5 +1,6 @@
 package org.pcj.internal.message;
 
+import org.pcj.PCJ;
 import org.pcj.internal.faulttolerance.SetChild;
 import org.pcj.internal.network.MessageInputStream;
 import org.pcj.internal.network.MessageOutputStream;
@@ -13,7 +14,7 @@ import java.util.List;
  */
 
 
-public class MessageNodeRemoved extends Message {
+public class MessageNodeRemoved extends BroadcastedMessage {
     int failedNodePhysicalId;
     private List<SetChild> communicationUpdates = new ArrayList<>();
 
@@ -64,6 +65,11 @@ public class MessageNodeRemoved extends Message {
 
     public void setCommunicationUpdates(List<SetChild> updates) {
         this.communicationUpdates = updates;
+    }
+
+    @Override
+    public int getGroupId() {
+        return 0; // this message is always broadcasted to all nodes
     }
 }
 

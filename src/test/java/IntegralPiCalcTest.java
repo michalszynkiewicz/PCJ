@@ -45,19 +45,24 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
     }
 
     private void work(Task task) {
+        System.out.println("got task: " + task);
         double sum = 0.0;
 
-        for (double i = task.start; i < task.end; i++) {
-            sum += f((i + 0.5) * weight);
-            if (fails > 0
-                    && PCJ.getPhysicalNodeId() == 2         /*mstodo smarter way before tests to minimize the impact!*/
-                    && i - task.start < (task.end - task.start) / 3) {
-                System.exit(0);
+        if (PCJ.getPhysicalNodeId() == 2 && fails > 0) {
+            long end = task.start + (task.end - task.start) / 3;
+            for (double i = task.start; i < end; i++) {
+                sum += f((i + 0.5) * weight);
             }
-            if (fails > 1
-                    && PCJ.getPhysicalNodeId() == 17
-                    && i - task.start < (task.end - task.start) / 2) {
-                System.exit(0);
+            System.exit(0);
+        } else if (fails > 1 && PCJ.getPhysicalNodeId() == 7) { // mstodo rollback
+            long end = task.start + (task.end - task.start) / 2;
+            for (double i = task.start; i < end; i++) {
+                sum += f((i + 0.5) * weight);
+            }
+            System.exit(0);
+        } else {
+            for (double i = task.start; i < task.end; i++) {
+                sum += f((i + 0.5) * weight);
             }
         }
         PCJ.putLocal("sum", sum * weight);

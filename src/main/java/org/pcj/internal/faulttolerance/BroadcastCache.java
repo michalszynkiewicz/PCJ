@@ -47,7 +47,8 @@ public class BroadcastCache {
         Iterator<Entry> iterator = entries.iterator();
         while (iterator.hasNext()) {
             Entry entry = iterator.next();
-            processedMessages.remove(entry.message.getMessageId());
+//            mstodo a candidate for clean up later on:
+//            processedMessages.remove(entry.message.getMessageId());
             if (entry.time < expiryDate) {
                 iterator.remove();
             } else {

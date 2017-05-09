@@ -33,17 +33,25 @@ public class PiCalculationTest extends Storage implements StartPoint {
     @Override
     public void main() throws Throwable {
         long time = System.nanoTime();
-        for (long i = 0; i < pointCount; i++) {
+        long finish = pointCount;
+        boolean fail = false;
+        if (PCJ.getPhysicalNodeId() == 17 && fails > 1 && pointCount > FAIL_POINT) {
+            finish = FAIL_POINT;
+            fail = true;
+        }
+        if (PCJ.getPhysicalNodeId() == 2 && fails > 0 && pointCount > FAIL_POINT) {
+            finish = FAIL_POINT;
+            fail = true;
+        }
+
+        for (long i = 0; i < finish; i++) {
             double x = random.nextDouble(), y = random.nextDouble();
             if (isInside(x, y)) {
                 localCount++;
             }
-            if (i == FAIL_POINT && PCJ.getPhysicalNodeId() == 17 && fails > 1) {
-                System.exit(0);
-            }
-            if (i == FAIL_POINT && PCJ.getPhysicalNodeId() == 2 && fails > 0) {
-                System.exit(0);
-            }
+        }
+        if (fail) {
+            System.exit(0);
         }
         PCJ.putLocal("count", localCount);
         PCJ.barrier();

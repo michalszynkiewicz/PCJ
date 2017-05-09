@@ -151,16 +151,13 @@ final public class PCJ extends org.pcj.internal.InternalPCJ {
 
     /**
      * Returns physical node id (internal value for distinguishing nodes).
+     *<br/>
+     * NOTE: this value does not change so it should not be wrapped into a read lock
      * 
      * @return physical node id
      */
     public static int getPhysicalNodeId() {
-        Lock.readLock();
-        try {
-            return InternalPCJ.getPhysicalNodeId();
-        } finally {
-            Lock.readUnlock();
-        }
+        return InternalPCJ.getPhysicalNodeId();
     }
     
     /**

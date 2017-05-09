@@ -65,14 +65,14 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
         }
 
         Set<Integer> physicalNodes = getWorkerData().getPhysicalNodes().keySet();   // todo: is synchronization needed?
-        System.out.println("()()()   physical nodes: " + physicalNodes);
-        for (Integer node : physicalNodes) {
+//        System.out.println("()()()   physical nodes: " + physicalNodes);
+        propagateFailure(failedNodeId, updates);
+//        for (Integer node : physicalNodes) {
 //            sending to the failed node will fail
-            System.out.println("sending to " + node + " for failure of: " + failedNodeId);
-            if (!node.equals(failedNodeId)) {
-                propagateFailure(failedNodeId, node, updates);
-            }
-        }
+//            System.out.println("sending to " + node + " for failure of: " + failedNodeId);
+//            if (!node.equals(failedNodeId)) {
+//            }
+//        }
 //      System.out.println("failure propagated"); // mstodo remove
 
     }
@@ -103,7 +103,6 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
 
     @Override
     public void error(MessageNodeRemoved message) {
-        System.out.println("processing node removed!!!");
         Lock.writeLock();
         try {
             int failedNodeId = message.getFailedNodePhysicalId();
@@ -200,15 +199,16 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
             e.printStackTrace();
         }
     }
-
-    private void propagateFailure(int failedNodeId, Integer node, List<SetChild> updates) {
+    // mstodo broadcast it!
+    private void propagateFailure(int failedNodeId, List<SetChild> updates) {
         try {
 //            LogUtils.setEnabled(true);
             MessageNodeRemoved message = new MessageNodeRemoved(failedNodeId);
             message.setCommunicationUpdates(updates);
-            InternalPCJ.getNetworker().sendToPhysicalNode(node, message);
+            InternalPCJ.getNetworker().send(getWorkerData().getInternalGlobalGroup(), message);
+//            InternalPCJ.getNetworker().sendToPhysicalNode(node, message);
         } catch (IOException e) {
-            System.err.println("Error trying to send message to node: " + node + " for failed node: " + failedNodeId);
+            System.err.println("Error trying to broadcast message for failed node: " + failedNodeId);
             e.printStackTrace();
         }
     }

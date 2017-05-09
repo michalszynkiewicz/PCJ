@@ -3,9 +3,11 @@
 #SBATCH -N 256
 #SBATCH -n 256
 #SBATCH --mem 18000
-#SBATCH --time=8:00:00
+#SBATCH --time=16:00:00
 #SBATCH --output="PCJ-tests_%j.out"
 #SBATCH --error="PCJ-tests_%j.err"
+#SBATCH --no-kill
+# mstodo comment the usage of --no-kill and problems without it in the paper
 NODE_NUM=256
 timer=`date +%s`
 
@@ -33,8 +35,8 @@ module load java || exit 1
 log "Preparing nodes list"
 mpiexec hostname -s | sort > all_nodes.txt
 
-attempts=4
-#mstodo change to 50
+attempts=2
+#mstodo change to 50?
 
 function tryTimes() {
     descriptiveName=$1
@@ -61,21 +63,23 @@ function tryWithFailureCount() {
 }
 
 LIB_BINARY='PCJ-4.1.0.SNAPSHOT-bin.jar'
-TEST_CLASS=BarrierTest
-tryWithFailureCount "10k_barrier" -DbarrierCount=10000
-tryWithFailureCount "100k_barrier" -DbarrierCount=100000
-tryWithFailureCount "1m_barrier" -DbarrierCount=1000000
-TEST_CLASS=IntegralPiCalcTest
-tryWithFailureCount "IntegralPiCalc" -DpointCount=100000000
+#TEST_CLASS=BarrierTest
+#tryWithFailureCount "10k_barrier" -DbarrierCount=10000
+#tryWithFailureCount "100k_barrier" -DbarrierCount=100000
+#tryWithFailureCount "1m_barrier" -DbarrierCount=1000000
+#TEST_CLASS=IntegralPiCalcTest
+#tryWithFailureCount "IntegralPiCalcTest" -DpointCount=1000000000000
+#tryWithFailureCount "IntegralPiCalcTest" -DpointCount=10000000000000
 TEST_CLASS=PiCalculationTest
-tryWithFailureCount "PiCalculationTest" -DpointCount=100000000
+tryWithFailureCount "PiCalculationTest" -DpointCount=10000000000
 
 LIB_BINARY='PCJ-4.1.0.SNAPSHOT-binNonFT.jar'
-TEST_CLASS=BarrierTestNonFT
-tryTimes "10k_barrierNonFT" -DbarrierCount=10000
-tryTimes "100k_barrierNonFT" -DbarrierCount=100000
-tryTimes "1m_barrierNonFT" -DbarrierCount=1000000
-TEST_CLASS=IntegralPiCalcTestNonFT
-tryTimes "IntegralPiCalcTestNonFT" -DpointCount=100000000
+#TEST_CLASS=BarrierTestNonFT
+#tryTimes "10k_barrierNonFT" -DbarrierCount=10000
+#tryTimes "100k_barrierNonFT" -DbarrierCount=100000
+#tryTimes "1m_barrierNonFT" -DbarrierCount=1000000
+#TEST_CLASS=IntegralPiCalcTestNonFT
+#tryTimes "IntegralPiCalcTestNonFT" -DpointCount=1000000000000
+#tryTimes "IntegralPiCalcTestNonFT" -DpointCount=10000000000000
 TEST_CLASS=PiCalculationTestNonFT
-tryTimes "piCalcTestNonFT" -DpointCount=100000000
+tryTimes "PiCalculationTestNonFT" -DpointCount=10000000000

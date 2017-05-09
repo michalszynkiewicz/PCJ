@@ -56,6 +56,7 @@ import java.nio.channels.SelectableChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -317,7 +318,6 @@ public class Worker implements Runnable {
                 networker.broadcast(broadcastedMessage);
                 return true;
             } else {
-                // mstodo verify if it is ok for node 0
                 // LogUtils.log(getPhysicalNodeId(), "added to broadcastCache: " + broadcastedMessage);
                 data.broadcastCache.add(broadcastedMessage);
             }
@@ -327,11 +327,11 @@ public class Worker implements Runnable {
 
     private void nodeRemoved(MessageNodeRemoved message) {   // mstodo move to policy!
         data.getFaultTolerancePolicy().error(message);
+        networker.broadcast(message);
     }
 
     private void nodeFailed(MessageNodeFailed message) {
         FaultTolerancePolicy policy = data.activityMonitor.getFaultTolerancePolicy();
-        System.err.println("got message node failed for node: " + message.getFailedNodePhysicalId()); // mstodo keeps being repeated in the log
         policy.handleNodeFailure(message.getFailedNodePhysicalId());
     }
 

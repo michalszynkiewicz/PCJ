@@ -64,7 +64,7 @@ final public class Configuration {
         WAIT_TIME = getPropertyInt("pcj.waittime", 60);
         DEFAULT_PORT = getPropertyInt("pcj.port", 8091);
         BUFFER_SIZE = getPropertyInt("pcj.buffersize", 256 * 1024);
-        NODE_TIMEOUT = getPropertyInt("pcj.node.timeout", 5);
+        NODE_TIMEOUT = getPropertyInt("pcj.node.timeout", 10);
         NODE_PING_INTERVAL = getPropertyInt("pcj.node.ping", 500);
         NODES_FILENAME = getNodesFilename();
     }
