@@ -2,6 +2,7 @@ package org.pcj.internal.faulttolerance;
 
 import org.pcj.internal.message.BroadcastedMessage;
 import org.pcj.internal.message.MessageSyncGo;
+import org.pcj.internal.utils.Configuration;
 
 import java.util.*;
 
@@ -12,7 +13,7 @@ import java.util.*;
  */
 public class BroadcastCache {
 
-    public static final long timeToLive = 5000; //[ms] todo: move to configuration
+    public static final long timeToLive = Configuration.NODE_TIMEOUT * 10; //[ms] todo: move to configuration
     private LinkedHashSet<Entry> entries = new LinkedHashSet<>();
     private Set<Integer> processedMessages = new HashSet<>();
     private Map<Integer, Entry> latestSyncGoByGroup = new HashMap<>();
