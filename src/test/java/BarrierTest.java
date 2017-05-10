@@ -17,28 +17,31 @@ public class BarrierTest extends Storage implements StartPoint {
 
     @Override
     public void main() throws Throwable {
+        boolean fail = false;
+
 //         warmup
         for (int i = 0; i < 10000; i++) {
             PCJ.barrier();
         }
         long time = System.nanoTime();
 
-        Integer barrierCount = Integer.valueOf(getProperty("barrierCount"));
+        int finish = Integer.valueOf(getProperty("barrierCount"));
         int batchSize = 1000;
-        int firstFailure = barrierCount / 3;
-        int secondFailure = firstFailure * 2;
 
-        for (int i = 0; i < barrierCount;) {
-            int count = Math.min(batchSize, barrierCount - i);
-            for (int j=0; j<count; j++, i++) {
-                PCJ.barrier();
-            }
-            if (i >= secondFailure && PCJ.getPhysicalNodeId() == 17 && fails > 1) {
-                System.exit(0);
-            }
-            if (i >= firstFailure && PCJ.getPhysicalNodeId() == 2 && fails > 0) {
-                System.exit(0);
-            }
+        if (PCJ.getPhysicalNodeId() == 17 && fails > 1) {
+            finish /= 3;
+            fail = true;
+        }
+        if (PCJ.getPhysicalNodeId() == 2 && fails > 0) {
+            finish = (2 * finish)/3;
+            fail = true;
+        }
+
+        for (int i = 0; i < finish; i++) {
+            PCJ.barrier();
+        }
+        if (fail) {
+            System.exit(0);
         }
         if (PCJ.myId() == 0) {
             long nanos = System.nanoTime() - time;
@@ -46,7 +49,7 @@ public class BarrierTest extends Storage implements StartPoint {
             long secs = millis / 1000;
             millis -= secs * 1000;
             nanos -= millis * 1000 * 1000;
-            System.out.println("[BarrierTest" + barrierCount + "@" + PCJ.threadCount() + ", fails: " + fails + "] #### WORKING TIME: " + secs + "."
+            System.out.println("[BarrierTest" + finish + "@" + PCJ.threadCount() + ", fails: " + fails + "] #### WORKING TIME: " + secs + "."
                     + String.format("%03d", millis) + "."
                     + String.format("%06d", nanos) + "ns");
         }

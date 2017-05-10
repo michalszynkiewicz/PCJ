@@ -27,8 +27,8 @@ public class PiCalculationTest extends Storage implements StartPoint {
     }
 
     @Shared
-    int count = 0;
-    int localCount = 0;
+    long count = 0;
+    long localCount = 0;
 
     @Override
     public void main() throws Throwable {
@@ -61,7 +61,7 @@ public class PiCalculationTest extends Storage implements StartPoint {
             long totalMatchCount = 0L;
             for (int i = 0; i < PCJ.threadCount(); i++) {
                 try {
-                    totalMatchCount += PCJ.<Integer>get(i, COUNT);
+                    totalMatchCount += PCJ.<Long>get(i, COUNT);
                     totalPointCount += pointCount;
                 } catch (NodeFailedException nfe) {
                     nfe.printStackTrace(); //ignored - we want to continue calculations
@@ -82,11 +82,16 @@ public class PiCalculationTest extends Storage implements StartPoint {
     }
 
     public static void main(String[] args) {
-        if (args.length < 1) {
-            System.err.println("Please pass file name for nodes file.");
-            System.exit(13);
+        String nodeProperty = System.getProperty("nodes");
+        if (nodeProperty != null) {
+            PCJ.deploy(PiCalculationTest.class, PiCalculationTest.class, nodeProperty.split(","));
+        } else {
+            if (args.length < 1) {
+                System.err.println("Please pass file name for nodes file.");
+                System.exit(13);
+            }
+            System.out.println(ManagementFactory.getRuntimeMXBean().getName());
+            PCJ.start(PiCalculationTest.class, PiCalculationTest.class, args[0]);
         }
-        System.out.println(ManagementFactory.getRuntimeMXBean().getName());
-        PCJ.start(PiCalculationTest.class, PiCalculationTest.class, args[0]);
     }
 }

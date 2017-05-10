@@ -1,6 +1,7 @@
 package org.pcj.internal.faulttolerance;
 
 import org.pcj.internal.message.BroadcastedMessage;
+import org.pcj.internal.message.MessageSyncGo;
 
 import java.util.*;
 
@@ -12,8 +13,9 @@ import java.util.*;
 public class BroadcastCache {
 
     public static final long timeToLive = 5000; //[ms] todo: move to configuration
-    private List<Entry> entries = new LinkedList<>();
+    private LinkedHashSet<Entry> entries = new LinkedHashSet<>();
     private Set<Integer> processedMessages = new HashSet<>();
+    private Map<Integer, Entry> latestSyncGoByGroup = new HashMap<>();
 
     public void add(BroadcastedMessage message) {
         long now = getNow();
@@ -24,6 +26,13 @@ public class BroadcastCache {
         e.time = now;
         entries.add(e);
         processedMessages.add(message.getMessageId());
+        if (message instanceof MessageSyncGo) {
+            MessageSyncGo syncGo = (MessageSyncGo) message;
+            Entry replacedEntry = latestSyncGoByGroup.put(syncGo.getGroupId(), e);
+            if (replacedEntry != null) {
+                entries.remove(replacedEntry);
+            }
+        }
     }
 
     public List<BroadcastedMessage> getList() {

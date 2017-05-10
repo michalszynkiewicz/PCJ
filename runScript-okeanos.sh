@@ -63,23 +63,23 @@ function tryWithFailureCount() {
 }
 
 LIB_BINARY='PCJ-4.1.0.SNAPSHOT-bin.jar'
-#TEST_CLASS=BarrierTest
-#tryWithFailureCount "10k_barrier" -DbarrierCount=10000
-#tryWithFailureCount "100k_barrier" -DbarrierCount=100000
-#tryWithFailureCount "1m_barrier" -DbarrierCount=1000000
+TEST_CLASS=BarrierTest
+tryWithFailureCount "10k_barrier" -DbarrierCount=10000
+tryWithFailureCount "100k_barrier" -DbarrierCount=100000
+tryWithFailureCount "1m_barrier" -DbarrierCount=1000000
 #TEST_CLASS=IntegralPiCalcTest
 #tryWithFailureCount "IntegralPiCalcTest" -DpointCount=1000000000000
 #tryWithFailureCount "IntegralPiCalcTest" -DpointCount=10000000000000
-TEST_CLASS=PiCalculationTest
-tryWithFailureCount "PiCalculationTest" -DpointCount=10000000000
+#TEST_CLASS=PiCalculationTest
+#tryWithFailureCount "PiCalculationTest" -DpointCount=10000000000
 
 LIB_BINARY='PCJ-4.1.0.SNAPSHOT-binNonFT.jar'
-#TEST_CLASS=BarrierTestNonFT
-#tryTimes "10k_barrierNonFT" -DbarrierCount=10000
-#tryTimes "100k_barrierNonFT" -DbarrierCount=100000
-#tryTimes "1m_barrierNonFT" -DbarrierCount=1000000
+TEST_CLASS=BarrierTestNonFT
+tryTimes "10k_barrierNonFT" -DbarrierCount=10000
+tryTimes "100k_barrierNonFT" -DbarrierCount=100000
+tryTimes "1m_barrierNonFT" -DbarrierCount=1000000
 #TEST_CLASS=IntegralPiCalcTestNonFT
 #tryTimes "IntegralPiCalcTestNonFT" -DpointCount=1000000000000
 #tryTimes "IntegralPiCalcTestNonFT" -DpointCount=10000000000000
-TEST_CLASS=PiCalculationTestNonFT
-tryTimes "PiCalculationTestNonFT" -DpointCount=10000000000
+#TEST_CLASS=PiCalculationTestNonFT
+#tryTimes "PiCalculationTestNonFT" -DpointCount=10000000000
