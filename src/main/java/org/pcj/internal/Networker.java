@@ -178,7 +178,7 @@ public class Networker {        // mstodo: access rights!
             right = getWorkerData().physicalNodes.get(rightChildrenIndex);
         }
         try {
-            broadcast(left, right, message);    // mstodo verify!
+            broadcast(left, right, message);
         } catch (NodeFailedException nfe) {
             nfe.printStackTrace();         // mstodo add some info about continuing
             // do nothing, the message will be replayed when the node failure is handled

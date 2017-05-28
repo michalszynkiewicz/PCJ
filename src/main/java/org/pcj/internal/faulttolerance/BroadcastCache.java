@@ -15,7 +15,7 @@ public class BroadcastCache {
 
     public static final long timeToLive = Configuration.NODE_TIMEOUT * 10; //[ms] todo: move to configuration
     private LinkedHashSet<Entry> entries = new LinkedHashSet<>();
-    private Set<Integer> processedMessages = new HashSet<>();
+    private BitSet processedMessages = new BitSet();
     private Map<Integer, Entry> latestSyncGoByGroup = new HashMap<>();
 
     public void add(BroadcastedMessage message) {
@@ -26,7 +26,7 @@ public class BroadcastCache {
         e.message = message;
         e.time = now;
         entries.add(e);
-        processedMessages.add(message.getMessageId());
+        processedMessages.set(message.getMessageId());
         if (message instanceof MessageSyncGo) {
             MessageSyncGo syncGo = (MessageSyncGo) message;
             Entry replacedEntry = latestSyncGoByGroup.put(syncGo.getGroupId(), e);
@@ -49,7 +49,7 @@ public class BroadcastCache {
     }
 
     public boolean isProcessed(BroadcastedMessage message) {
-        return processedMessages.contains(message.getMessageId());
+        return processedMessages.get(message.getMessageId());
     }
 
     private void removeOldOnes(long now) {
