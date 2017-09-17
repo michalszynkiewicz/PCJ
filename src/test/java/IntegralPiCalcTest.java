@@ -45,26 +45,27 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
     }
 
     private void work(Task task) {
-        System.out.println("got task: " + task);
+        System.out.println("got task: " + task + " at: " + new Date());
         double sum = 0.0;
 
+        long end = task.end;
+        boolean fail = false;
         if (PCJ.getPhysicalNodeId() == 2 && fails > 0) {
-            long end = task.start + (task.end - task.start) / 3;
-            for (double i = task.start; i < end; i++) {
-                sum += f((i + 0.5) * weight);
-            }
-            System.exit(0);
-        } else if (fails > 1 && PCJ.getPhysicalNodeId() == 7) { // mstodo rollback
-            long end = task.start + (task.end - task.start) / 2;
-            for (double i = task.start; i < end; i++) {
-                sum += f((i + 0.5) * weight);
-            }
-            System.exit(0);
-        } else {
-            for (double i = task.start; i < task.end; i++) {
-                sum += f((i + 0.5) * weight);
-            }
+            end = task.start + (task.end - task.start)/3;
+            fail = true;
         }
+        if (PCJ.getPhysicalNodeId() == 17 && fails > 1) {
+            end = task.start + 2*((task.end - task.start)/3);
+            fail = true;
+        }
+        for (double i = task.start; i < end; i++) {
+            sum += f((i + 0.5) * weight);
+        }
+        if (fail) {
+            System.out.printf("finishing at " + end);
+            System.exit(0);
+        }
+
         PCJ.putLocal("sum", sum * weight);
         PCJ.barrier();
     }
@@ -105,10 +106,10 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
         }
     }
 
-    private Work createWork(int nodesNum, int nodeOrdinal, Task t) {
-        long size = (t.end - t.start) / nodesNum;
+    private Work createWork(int nodeCount, int nodeOrdinal, Task t) {
+        long size = (t.end - t.start) / nodeCount;
         long start = t.start + nodeOrdinal * size;
-        long end = nodeOrdinal == nodesNum - 1 ? t.end : start + size;
+        long end = nodeOrdinal == nodeCount - 1 ? t.end : start + size;
         return new Work(new Task(start, end));
     }
 
@@ -154,7 +155,8 @@ public class IntegralPiCalcTest extends Storage implements StartPoint {
         time2 -= time;
 
         if (PCJ.myId() == 0) {
-            System.out.printf("IntegralPiCalcTest" + pointCount + ", fails: " + fails + "###### PI: %f10 time: %f5\n", pi, time2 * 1.0E-9);
+            System.out.printf("IntegralPiCalcTest" + pointCount + "@" + PCJ.threadCount()
+                    + ", fails: " + fails + "###### PI: %f10 time: %f5\n", pi, time2 * 1.0E-9);
         }
     }
 

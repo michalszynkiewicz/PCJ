@@ -10,10 +10,7 @@ import org.pcj.internal.message.MessageNodeRemoved;
 import org.pcj.internal.message.MessageSyncGo;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
 
 import static java.util.Arrays.asList;
@@ -106,7 +103,7 @@ public class IgnoreFaultTolerancePolicy implements FaultTolerancePolicy {
         Lock.writeLock();
         try {
             int failedNodeId = message.getFailedNodePhysicalId();
-            System.out.println("GOT NODE REMOVED: " + failedNodeId);
+            System.out.println("GOT NODE REMOVED: " + failedNodeId + " at: " + new Date());
             WorkerData data = getWorkerData();
             data.removePhysicalNode(failedNodeId);
 

@@ -26,17 +26,13 @@ public class IntegralPiCalcTestNonFT extends Storage implements StartPoint {
 
     private void work() {
         while (true) {
-//         PCJ.log("Will wait for " + new Date());
             if (!doIgnoringFailure(() -> PCJ.waitFor("work"))) {
                 continue;
             }
-//         PCJ.log("after wait for " + new Date());
             Work work = PCJ.getLocal("work");
             if (work.finished) {
-//            PCJ.log("finished" + new Date());
                 break;
             } else {
-//            PCJ.log("Will work: " + work.task);
                 work(work.task);
             }
         }
@@ -47,17 +43,13 @@ public class IntegralPiCalcTestNonFT extends Storage implements StartPoint {
     }
 
     private void work(Task task) {
-//      PCJ.log("will work " + new Date());
-
         double sum = 0.0;
 
         for (double i = task.start; i < task.end; i++) {
             sum += f((i + 0.5) * weight);
         }
         PCJ.putLocal("sum", sum * weight);
-//      PCJ.log("will barrier " + new Date());
         PCJ.barrier();
-//      PCJ.log("after" + new Date());
     }
 
 
@@ -98,10 +90,10 @@ public class IntegralPiCalcTestNonFT extends Storage implements StartPoint {
         }
     }
 
-    private Work createWork(int nodesNum, int nodeOrdinal, Task t) {
-        long size = (t.end - t.start) / nodesNum;
+    private Work createWork(int nodeCount, int nodeOrdinal, Task t) {
+        long size = (t.end - t.start) / nodeCount;
         long start = t.start + nodeOrdinal * size;
-        long end = nodeOrdinal == nodesNum - 1 ? t.end : start + size;
+        long end = nodeOrdinal == nodeCount - 1 ? t.end : start + size;
         return new Work(new Task(start, end));
     }
 
@@ -157,14 +149,6 @@ public class IntegralPiCalcTestNonFT extends Storage implements StartPoint {
         return true;
     }
 
-    public static void main(String[] args) {
-        if (args.length < 1) {
-            System.err.println("Please pass file name for nodes file.");
-            System.exit(13);
-        }
-        PCJ.start(IntegralPiCalcTestNonFT.class, IntegralPiCalcTestNonFT.class, args[0]);
-    }
-
     public static class Work implements Serializable {
         boolean finished;
         Task task;
@@ -194,6 +178,14 @@ public class IntegralPiCalcTestNonFT extends Storage implements StartPoint {
                     ", end=" + end +
                     '}';
         }
+    }
+
+    public static void main(String[] args) {
+        if (args.length < 1) {
+            System.err.println("Please pass file name for nodes file.");
+            System.exit(13);
+        }
+        PCJ.start(IntegralPiCalcTestNonFT.class, IntegralPiCalcTestNonFT.class, args[0]);
     }
 
 

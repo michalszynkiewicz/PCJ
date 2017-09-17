@@ -14,9 +14,8 @@ import java.util.*;
 public class BroadcastCache {
 
     public static final long timeToLive = Configuration.NODE_TIMEOUT * 10; //[ms] todo: move to configuration
-    private LinkedHashSet<Entry> entries = new LinkedHashSet<>();
+    private List<Entry> entries = new LinkedList<>();
     private BitSet processedMessages = new BitSet();
-    private Map<Integer, Entry> latestSyncGoByGroup = new HashMap<>();
 
     public void add(BroadcastedMessage message) {
         long now = getNow();
@@ -27,13 +26,6 @@ public class BroadcastCache {
         e.time = now;
         entries.add(e);
         processedMessages.set(message.getMessageId());
-        if (message instanceof MessageSyncGo) {
-            MessageSyncGo syncGo = (MessageSyncGo) message;
-            Entry replacedEntry = latestSyncGoByGroup.put(syncGo.getGroupId(), e);
-            if (replacedEntry != null) {
-                entries.remove(replacedEntry);
-            }
-        }
     }
 
     public List<BroadcastedMessage> getList() {
@@ -57,8 +49,6 @@ public class BroadcastCache {
         Iterator<Entry> iterator = entries.iterator();
         while (iterator.hasNext()) {
             Entry entry = iterator.next();
-//            mstodo a candidate for clean up later on:
-//            processedMessages.remove(entry.message.getMessageId());
             if (entry.time < expiryDate) {
                 iterator.remove();
             } else {
