@@ -8,6 +8,10 @@
  */
 package org.pcj.internal.network;
 
+import org.pcj.internal.Configuration;
+import org.pcj.internal.InternalPCJ;
+import org.pcj.internal.ft.FailurePropagator;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.InetAddress;
@@ -29,11 +33,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.pcj.internal.Configuration;
-import org.pcj.internal.InternalPCJ;
 
 /**
- * Main Runnable class for process all incoming data from network in nonblocking
+ * Main Runnable class for processing all incoming data from network in a nonblocking
  * way using {@link java.nio.channels.Selector}.
  *
  * @author Marek Nowicki (faramir@mat.umk.pl)
@@ -132,7 +134,7 @@ public class SelectorProc implements Runnable {
         return socket;
     }
 
-    public void writeMessage(SocketChannel socket, MessageBytesOutputStream objectBytes) throws IOException {
+    public void writeMessage(SocketChannel socket, MessageBytesOutputStream objectBytes) {
         Queue<MessageBytesOutputStream> queue = writeMap.get(socket);
         queue.add(objectBytes);
         changeInterestOps(socket, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
@@ -301,7 +303,7 @@ public class SelectorProc implements Runnable {
         return true;
     }
 
-    private boolean opWrite(SocketChannel socket) throws IOException {
+    private boolean opWrite(SocketChannel socket) {
         Queue<MessageBytesOutputStream> queue = writeMap.get(socket);
 
         while (!queue.isEmpty()) {
@@ -309,7 +311,11 @@ public class SelectorProc implements Runnable {
 
             MessageBytesOutputStream.ByteBufferArray byteBuffersArray = messageBytes.getByteBufferArray();
             if (socket.isOpen()) {
-                socket.write(byteBuffersArray.getArray(), byteBuffersArray.getOffset(), byteBuffersArray.getRemainingLength());
+                try {
+                    socket.write(byteBuffersArray.getArray(), byteBuffersArray.getOffset(), byteBuffersArray.getRemainingLength());
+                } catch (IOException e) {
+                    FailurePropagator.get().notifyAboutFailure(socket, e);
+                }
                 byteBuffersArray.revalidate();
 
                 if (byteBuffersArray.getRemainingLength() == 0) {

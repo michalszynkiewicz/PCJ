@@ -8,6 +8,19 @@
  */
 package org.pcj.internal;
 
+import org.pcj.NodesDescription;
+import org.pcj.StartPoint;
+import org.pcj.internal.ft.ActivityMonitor;
+import org.pcj.internal.ft.Emitter;
+import org.pcj.internal.ft.FailurePropagator;
+import org.pcj.internal.futures.GroupJoinQuery;
+import org.pcj.internal.futures.WaitObject;
+import org.pcj.internal.message.MessageBye;
+import org.pcj.internal.message.MessageGroupJoinQuery;
+import org.pcj.internal.message.MessageGroupJoinRequest;
+import org.pcj.internal.message.MessageHello;
+import org.pcj.internal.network.LoopbackSocketChannel;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.InetAddress;
@@ -27,15 +40,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import org.pcj.NodesDescription;
-import org.pcj.StartPoint;
-import org.pcj.internal.futures.GroupJoinQuery;
-import org.pcj.internal.futures.WaitObject;
-import org.pcj.internal.message.MessageBye;
-import org.pcj.internal.message.MessageGroupJoinQuery;
-import org.pcj.internal.message.MessageGroupJoinRequest;
-import org.pcj.internal.message.MessageHello;
-import org.pcj.internal.network.LoopbackSocketChannel;
 
 /**
  * Internal class for external PCJ class.
@@ -63,7 +67,7 @@ public abstract class InternalPCJ {
     }
 
     protected static void start(Class<? extends StartPoint> startPoint,
-            NodesDescription nodesFile) {
+                                NodesDescription nodesFile) {
         NodeInfo node0 = nodesFile.getNode0();
         NodeInfo currentJvm = nodesFile.getCurrentJvm();
         int allNodesThreadCount = nodesFile.getAllNodesThreadCount();
@@ -71,7 +75,7 @@ public abstract class InternalPCJ {
     }
 
     protected static void start(Class<? extends StartPoint> startPointClass,
-            NodeInfo node0, NodeInfo currentJvm, int allNodesThreadCount) {
+                                NodeInfo node0, NodeInfo currentJvm, int allNodesThreadCount) {
         if (currentJvm == null) {
             throw new IllegalArgumentException("There is no entry for PCJ threads for current JVM");
         }
@@ -128,11 +132,13 @@ public abstract class InternalPCJ {
 
 
             /* Preparing PcjThreads*/
+            FailurePropagator.get().init(nodeData.getSocketChannelByPhysicalId().keySet());
             Set<PcjThread> pcjThreads = preparePcjThreads(startPointClass, currentJvm.getThreadIds());
             pcjThreads.forEach(pcjThread -> nodeData.putPcjThread(pcjThread));
 
             /* Starting PcjThreads*/
-            pcjThreads.forEach(pcjThread -> pcjThread.start());
+            pcjThreads.forEach(Thread::start);
+            ActivityMonitor.get().start();
 
             /* Waiting for all threads complete */
             waitForPcjThreadsComplete(pcjThreads);
@@ -330,7 +336,7 @@ public abstract class InternalPCJ {
         WaitObject sync = nodeData.getGlobalWaitObject();
         sync.lock();
         try {
-            networker.send(nodeData.getNode0Socket(), messageHello);
+            Emitter.get().send(nodeData.getNode0Socket(), messageHello);
 
             /* waiting for HELLO_GO */
             sync.await();
@@ -341,13 +347,13 @@ public abstract class InternalPCJ {
         }
     }
 
-    private static void byePhase() throws UncheckedIOException {
+    private static void byePhase() {
         /* Sending BYE message to node0 */
         MessageBye messageBye = new MessageBye(nodeData.getPhysicalId());
         WaitObject finishedObject = nodeData.getGlobalWaitObject();
         finishedObject.lock();
         try {
-            networker.send(nodeData.getNode0Socket(), messageBye);
+            Emitter.get().send(nodeData.getNode0Socket(), messageBye);
 
             /* waiting for BYE_COMPLETED */
             finishedObject.await();
@@ -389,7 +395,7 @@ public abstract class InternalPCJ {
 
             waitObject.lock();
             try {
-                networker.send(nodeData.getNode0Socket(), message);
+                Emitter.get().send(nodeData.getNode0Socket(), message);
 
                 waitObject.await();
 
@@ -410,7 +416,7 @@ public abstract class InternalPCJ {
 
         waitObject.lock();
         try {
-            networker.send(masterSocketChannel, message);
+            Emitter.get().send(masterSocketChannel, message);
 
             waitObject.await();
 

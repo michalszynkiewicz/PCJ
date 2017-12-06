@@ -8,16 +8,18 @@
  */
 package org.pcj.internal.futures;
 
+import org.pcj.internal.InternalCommonGroup;
+import org.pcj.internal.InternalPCJ;
+import org.pcj.internal.NodeData;
+import org.pcj.internal.ft.Emitter;
+import org.pcj.internal.message.Message;
+import org.pcj.internal.message.MessageGroupJoinConfirm;
+import org.pcj.internal.message.MessageGroupJoinResponse;
+
 import java.nio.channels.SocketChannel;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.pcj.internal.InternalCommonGroup;
-import org.pcj.internal.InternalPCJ;
-import org.pcj.internal.NodeData;
-import org.pcj.internal.message.Message;
-import org.pcj.internal.message.MessageGroupJoinConfirm;
-import org.pcj.internal.message.MessageGroupJoinResponse;
 
 /**
  *
@@ -46,7 +48,9 @@ public class GroupJoinState {
         }
 
         childrenSet.remove(physicalId);
-
+        // mstodo what is this?
+        // mstodo: how to handle group join in progress when a node fails?
+        // mstodo: ignoring for now
         if (childrenSet.isEmpty()) {
             NodeData nodeData = InternalPCJ.getNodeData();
             InternalCommonGroup commonGroup = nodeData.getGroupById(groupId);
@@ -69,7 +73,7 @@ public class GroupJoinState {
                         nodeData.getPhysicalId());
             }
 
-            InternalPCJ.getNetworker().send(socket, message);
+            Emitter.get().send(socket, message);
             return true;
         }
         return false;

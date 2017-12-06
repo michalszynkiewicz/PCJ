@@ -8,14 +8,16 @@
  */
 package org.pcj.internal.message;
 
-import java.io.IOException;
-import java.nio.channels.SocketChannel;
 import org.pcj.internal.InternalPCJ;
 import org.pcj.internal.InternalStorages;
 import org.pcj.internal.NodeData;
 import org.pcj.internal.PcjThread;
+import org.pcj.internal.ft.Emitter;
 import org.pcj.internal.network.MessageDataInputStream;
 import org.pcj.internal.network.MessageDataOutputStream;
+
+import java.io.IOException;
+import java.nio.channels.SocketChannel;
 
 /**
  * ....
@@ -85,6 +87,6 @@ final public class MessageValueGetRequest extends Message {
             messageValueGetResponse.setException(ex);
         }
 
-        InternalPCJ.getNetworker().send(sender, messageValueGetResponse);
+        Emitter.get().send(sender, messageValueGetResponse);
     }
 }

@@ -8,6 +8,15 @@
  */
 package org.pcj.internal.message;
 
+import org.pcj.PCJ;
+import org.pcj.internal.InternalPCJ;
+import org.pcj.internal.NodeData;
+import org.pcj.internal.NodeInfo;
+import org.pcj.internal.ft.Emitter;
+import org.pcj.internal.network.LoopbackSocketChannel;
+import org.pcj.internal.network.MessageDataInputStream;
+import org.pcj.internal.network.MessageDataOutputStream;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
@@ -16,12 +25,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.pcj.internal.InternalPCJ;
-import org.pcj.internal.NodeData;
-import org.pcj.internal.NodeInfo;
-import org.pcj.internal.network.LoopbackSocketChannel;
-import org.pcj.internal.network.MessageDataInputStream;
-import org.pcj.internal.network.MessageDataOutputStream;
 
 /**
  * Message sent by new-Client to Server with <b>new client connection data</b>
@@ -119,15 +122,17 @@ final public class MessageHello extends Message {
                 nodeData.setPhysicalId(threadId, newPhysicalId);
             }
 
-            nodeData.getSocketChannelByPhysicalId().entrySet().stream()
-                    .forEach(element -> {
-                        int physicalId = element.getKey();
-                        SocketChannel socketChannel = element.getValue();
-
-                        MessageHelloInform helloInform = new MessageHelloInform(physicalId, node0Data.getNodeInfoByPhysicalId());
-
-                        InternalPCJ.getNetworker().send(socketChannel, helloInform);
-                    });
+            sendOut();
         }
+    }
+
+    private void sendOut() {
+        NodeData nodeData = PCJ.getNodeData();
+        nodeData.getSocketChannelByPhysicalId().forEach((physicalId, socketChannel) -> {
+            MessageHelloInform helloInform =
+                    new MessageHelloInform(physicalId, nodeData.getNode0Data().getNodeInfoByPhysicalId());
+
+            Emitter.get().sendAndPerformOnFailure(socketChannel, helloInform, this::sendOut);
+        });
     }
 }

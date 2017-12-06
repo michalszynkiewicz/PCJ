@@ -8,6 +8,15 @@
  */
 package org.pcj.internal;
 
+import org.pcj.internal.message.Message;
+import org.pcj.internal.message.MessageType;
+import org.pcj.internal.network.LoopbackMessageBytesStream;
+import org.pcj.internal.network.LoopbackSocketChannel;
+import org.pcj.internal.network.MessageBytesInputStream;
+import org.pcj.internal.network.MessageBytesOutputStream;
+import org.pcj.internal.network.MessageDataInputStream;
+import org.pcj.internal.network.SelectorProc;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.InetAddress;
@@ -21,14 +30,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.pcj.internal.message.Message;
-import org.pcj.internal.message.MessageType;
-import org.pcj.internal.network.LoopbackMessageBytesStream;
-import org.pcj.internal.network.LoopbackSocketChannel;
-import org.pcj.internal.network.MessageBytesInputStream;
-import org.pcj.internal.network.MessageBytesOutputStream;
-import org.pcj.internal.network.MessageDataInputStream;
-import org.pcj.internal.network.SelectorProc;
 
 /**
  * This is intermediate class (between classes that want to send data (eg.
@@ -115,29 +116,25 @@ final public class Networker {
         workers.shutdownNow();
     }
 
-    public void send(SocketChannel socket, Message message) {
-        try {
-            if (socket instanceof LoopbackSocketChannel) {
-                LoopbackMessageBytesStream loopbackMessageBytesStream = new LoopbackMessageBytesStream(message);
-                loopbackMessageBytesStream.writeMessage();
-                loopbackMessageBytesStream.close();
+    public void send(SocketChannel socket, Message message) throws IOException {
+        if (socket instanceof LoopbackSocketChannel) {
+            LoopbackMessageBytesStream loopbackMessageBytesStream = new LoopbackMessageBytesStream(message);
+            loopbackMessageBytesStream.writeMessage();
+            loopbackMessageBytesStream.close();
 
-                if (LOGGER.isLoggable(Level.FINEST)) {
-                    LOGGER.log(Level.FINEST, "Locally processing message {0}", message.getType());
-                }
-                workers.submit(new WorkerTask(socket, message, loopbackMessageBytesStream.getMessageDataInputStream()));
-            } else {
-                MessageBytesOutputStream objectBytes = new MessageBytesOutputStream(message);
-                objectBytes.writeMessage();
-                objectBytes.close();
-
-                if (LOGGER.isLoggable(Level.FINEST)) {
-                    LOGGER.log(Level.FINEST, "Sending message {0} to {1}", new Object[]{message.getType(), socket});
-                }
-                selectorProc.writeMessage(socket, objectBytes);
+            if (LOGGER.isLoggable(Level.FINEST)) {
+                LOGGER.log(Level.FINEST, "Locally processing message {0}", message.getType());
             }
-        } catch (Throwable t) {
-            LOGGER.log(Level.SEVERE, "Exception while sending message", t);
+            workers.submit(new WorkerTask(socket, message, loopbackMessageBytesStream.getMessageDataInputStream()));
+        } else {
+            MessageBytesOutputStream objectBytes = new MessageBytesOutputStream(message);
+            objectBytes.writeMessage();
+            objectBytes.close();
+
+            if (LOGGER.isLoggable(Level.FINEST)) {
+                LOGGER.log(Level.FINEST, "Sending message {0} to {1}", new Object[]{message.getType(), socket});
+            }
+            selectorProc.writeMessage(socket, objectBytes);
         }
     }
 

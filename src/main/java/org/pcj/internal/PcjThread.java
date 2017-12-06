@@ -8,6 +8,12 @@
  */
 package org.pcj.internal;
 
+import org.pcj.PCJ;
+import org.pcj.RegisterStorage;
+import org.pcj.StartPoint;
+import org.pcj.Storage;
+import org.pcj.internal.ft.NodeFailedException;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.ExecutorService;
@@ -16,10 +22,6 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.pcj.PCJ;
-import org.pcj.RegisterStorage;
-import org.pcj.StartPoint;
-import org.pcj.Storage;
 
 /**
  * This class represents PCJ thread.
@@ -87,7 +89,13 @@ public class PcjThread extends Thread {
             PCJ.barrier();
 
             /* start calculations */
-            startPoint.main();
+            try {
+                startPoint.main();
+            } catch (NodeFailedException e) {
+                e.printStackTrace();
+                asyncTasksWorkers.shutdownNow();
+                System.exit(0);
+            }
 
             /* be sure that each thread finishes before continuing */
             PCJ.barrier();

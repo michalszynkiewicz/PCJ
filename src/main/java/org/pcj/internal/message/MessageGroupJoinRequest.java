@@ -8,6 +8,14 @@
  */
 package org.pcj.internal.message;
 
+import org.pcj.internal.InternalCommonGroup;
+import org.pcj.internal.InternalPCJ;
+import org.pcj.internal.NodeData;
+import org.pcj.internal.ft.Emitter;
+import org.pcj.internal.futures.GroupJoinState;
+import org.pcj.internal.network.MessageDataInputStream;
+import org.pcj.internal.network.MessageDataOutputStream;
+
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 import java.util.HashMap;
@@ -15,12 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
-import org.pcj.internal.InternalCommonGroup;
-import org.pcj.internal.InternalPCJ;
-import org.pcj.internal.NodeData;
-import org.pcj.internal.futures.GroupJoinState;
-import org.pcj.internal.network.MessageDataInputStream;
-import org.pcj.internal.network.MessageDataOutputStream;
 
 /**
  *
@@ -96,7 +98,7 @@ public class MessageGroupJoinRequest extends Message {
 
         childrenNodes.stream()
                 .map(nodeData.getSocketChannelByPhysicalId()::get)
-                .forEach(socket -> InternalPCJ.getNetworker().send(socket, message));
+                .forEach(socket -> Emitter.get().send(socket, message));
 
         if (groupJoinState.processPhysical(currentPhysicalId)) {
             commonGroup.removeGroupJoinState(requestNum, globalThreadId);

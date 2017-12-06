@@ -8,10 +8,11 @@
  */
 package org.pcj.internal.futures;
 
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import org.pcj.PcjFuture;
 import org.pcj.PcjRuntimeException;
+
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  *
@@ -20,7 +21,12 @@ import org.pcj.PcjRuntimeException;
 public class GetVariable<T> extends InternalFuture<T> implements PcjFuture<T> {
 
     private T variableValue;
+    private Integer threadId;
     private Exception exception;
+
+    public GetVariable(int threadId) {
+        // TODO: Customise this generated block
+    }
 
     @SuppressWarnings("unchecked")
     public void signalDone(Object variableValue) {
@@ -31,6 +37,14 @@ public class GetVariable<T> extends InternalFuture<T> implements PcjFuture<T> {
     public void signalException(Exception exception) {
         this.exception = exception;
         super.signalDone();
+    }
+
+    public void setThreadId(Integer threadId) {
+        this.threadId = threadId;
+    }
+
+    public Integer getThreadId() {
+        return threadId;
     }
 
     @Override

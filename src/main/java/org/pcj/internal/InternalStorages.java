@@ -8,6 +8,11 @@
  */
 package org.pcj.internal;
 
+import org.pcj.PCJ;
+import org.pcj.PcjRuntimeException;
+import org.pcj.Storage;
+import org.pcj.internal.ft.FailureRegister;
+
 import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -19,12 +24,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import org.pcj.PcjRuntimeException;
-import org.pcj.Storage;
 
 /**
  * External class with methods do handle shared variables.
@@ -36,13 +39,13 @@ public class InternalStorages {
     private class StorageField {
 
         private final Field field;
-        private final AtomicInteger modificationCount;
+        private final Semaphore waitForSemaphore;
         private final Object storageObject;
 
         public StorageField(Field field, Object storageObject) {
             this.field = field;
-            this.modificationCount = new AtomicInteger(0);
             this.storageObject = storageObject;
+            this.waitForSemaphore = new Semaphore(0);
 
             field.setAccessible(true);
         }
@@ -51,8 +54,8 @@ public class InternalStorages {
             return field.getType();
         }
 
-        public AtomicInteger getModificationCount() {
-            return modificationCount;
+        public Semaphore getModCountSemaphore() {
+            return waitForSemaphore;
         }
 
         public Object getValue() {
@@ -75,6 +78,7 @@ public class InternalStorages {
     private final transient ConcurrentMap<String, String> enumToStorageMap;
     private final transient ConcurrentMap<String, Object> storageObjectsMap;
     private final transient ConcurrentMap<String, ConcurrentMap<String, StorageField>> sharedObjectsMap;
+    private final transient FailureRegister failureRegister = FailureRegister.get();
 
     public InternalStorages() {
         enumToStorageMap = new ConcurrentHashMap<>();
@@ -102,6 +106,7 @@ public class InternalStorages {
     }
 
     private Object registerStorage0(Class<? extends Enum<?>> storageEnumClass, Object storageObject) throws NoSuchFieldException, InstantiationException, IllegalAccessException, NoSuchMethodException, IllegalArgumentException, InvocationTargetException {
+        System.out.println("registering " + storageEnumClass + " on the node: " + PCJ.getNodeId()); // mstodo
         if (storageEnumClass.isEnum() == false) {
             throw new IllegalArgumentException("Class is not enum: " + storageEnumClass.getName());
         }
@@ -311,7 +316,7 @@ public class InternalStorages {
         if (indices.length == 0) {
             synchronized (field) {
                 field.setValue(newValue);
-                field.getModificationCount().incrementAndGet();
+                field.getModCountSemaphore().release();
                 field.notifyAll();
             }
         } else {
@@ -327,7 +332,7 @@ public class InternalStorages {
 
             synchronized (field) {
                 Array.set(array, indices[indices.length - 1], newValue);
-                field.getModificationCount().incrementAndGet();
+                field.getModCountSemaphore().release();
                 field.notifyAll();
             }
         }
@@ -404,7 +409,7 @@ public class InternalStorages {
         if (field == null) {
             throw new IllegalArgumentException("Variable not found: " + name);
         }
-        return field.getModificationCount().getAndSet(0);
+        return field.getModCountSemaphore().drainPermits();
     }
 
     /**
@@ -420,38 +425,6 @@ public class InternalStorages {
         return waitFor0(getParent(variable), variable.name(), count);
     }
 
-    private int waitFor0(String parent, String name, int count) {
-        if (count < 0) {
-            throw new IllegalArgumentException("Value count is less than zero:" + count);
-        }
-        ConcurrentMap<String, StorageField> storage = sharedObjectsMap.get(parent);
-
-        StorageField field = storage.get(name);
-        if (field == null) {
-            throw new IllegalArgumentException("Variable not found: " + name);
-        }
-
-        AtomicInteger modificationCount = field.getModificationCount();
-        if (count == 0) {
-            return modificationCount.get();
-        }
-
-        int v;
-        do {
-            synchronized (field) {
-                while ((v = modificationCount.get()) < count) {
-                    try {
-                        field.wait();
-                    } catch (InterruptedException ex) {
-                        throw new PcjRuntimeException(ex);
-                    }
-                }
-            }
-        } while (modificationCount.compareAndSet(v, v - count) == false);
-
-        return modificationCount.get();
-    }
-
     /**
      * Pauses current Thread and wait for <code>count</code> modifications of
      * variable. After modification decreases the variable modification counter
@@ -461,14 +434,20 @@ public class InternalStorages {
      * @param count number of modifications. If 0 - the method exits
      * immediately.
      */
-    final public int waitFor(Enum<?> variable, int count, long timeout, TimeUnit unit) throws TimeoutException {
+    final public int waitFor(Enum<?> variable,
+                             int count,
+                             long timeout,
+                             TimeUnit unit) throws TimeoutException {
         return waitFor0(getParent(variable), variable.name(), count, timeout, unit);
     }
 
-    private int waitFor0(String parent, String name, int count, long timeout, TimeUnit unit) throws TimeoutException {
+    private int waitFor0(String parent, String name, int count) {
         if (count < 0) {
             throw new IllegalArgumentException("Value count is less than zero:" + count);
         }
+
+        Thread thread = Thread.currentThread();
+        failureRegister.registerFailureWatchingThread(thread);
 
         ConcurrentMap<String, StorageField> storage = sharedObjectsMap.get(parent);
 
@@ -477,31 +456,56 @@ public class InternalStorages {
             throw new IllegalArgumentException("Variable not found: " + name);
         }
 
-        AtomicInteger modificationCount = field.getModificationCount();
+        Semaphore semaphore = field.getModCountSemaphore();
         if (count == 0) {
-            return modificationCount.get();
+            return semaphore.availablePermits();
         }
-        long nanosTimeout = unit.toNanos(timeout);
-        final long deadline = System.nanoTime() + nanosTimeout;
 
-        int v;
-        do {
+        try {
+            semaphore.acquire(count);
+            return semaphore.availablePermits();
+        } catch (InterruptedException e) {
+            semaphore.drainPermits();
+            failureRegister.failOnNewFailure();
+        }
 
-            synchronized (field) {
-                while ((v = modificationCount.get()) < count) {
-                    if (nanosTimeout <= 0L) {
-                        throw new TimeoutException();
-                    }
-                    try {
-                        field.wait(nanosTimeout / 1_000_000, (int) (nanosTimeout % 1_000_000));
-                    } catch (InterruptedException ex) {
-                        throw new PcjRuntimeException(ex);
-                    }
-                    nanosTimeout = deadline - System.nanoTime();
-                }
+        failureRegister.unregisterFailureWatchingThread(thread);
+
+        return semaphore.availablePermits();
+    }
+
+    private int waitFor0(String parent, String name, int count, long timeout, TimeUnit unit) throws TimeoutException {
+        if (count < 0) {
+            throw new IllegalArgumentException("Value count is less than zero:" + count);
+        }
+
+        Thread thread = Thread.currentThread();
+        failureRegister.registerFailureWatchingThread(thread);
+
+        ConcurrentMap<String, StorageField> storage = sharedObjectsMap.get(parent);
+
+        StorageField field = storage.get(name);
+        if (field == null) {
+            throw new IllegalArgumentException("Variable not found: " + name);
+        }
+
+        Semaphore semaphore = field.getModCountSemaphore();
+        if (count == 0) {
+            return semaphore.availablePermits();
+        }
+
+        try {
+            if (!semaphore.tryAcquire(count, timeout, unit)) {
+                throw new TimeoutException();
             }
-        } while (modificationCount.compareAndSet(v, v - count) == false);
+            return semaphore.availablePermits();
+        } catch (InterruptedException e) {
+            semaphore.drainPermits();
+            failureRegister.failOnNewFailure();
+        }
 
-        return modificationCount.get();
+        failureRegister.unregisterFailureWatchingThread(thread);
+
+        return semaphore.availablePermits();
     }
 }

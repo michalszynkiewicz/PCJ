@@ -8,12 +8,15 @@
  */
 package org.pcj.internal;
 
+import org.pcj.internal.futures.GroupJoinQuery;
+import org.pcj.internal.futures.WaitObject;
+
 import java.nio.channels.SocketChannel;
+import java.util.Collection;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.pcj.internal.futures.GroupJoinQuery;
-import org.pcj.internal.futures.WaitObject;
 
 /**
  *
@@ -32,6 +35,14 @@ final public class NodeData {
     private final ConcurrentMap<Integer, GroupJoinQuery> groupJoinQueryMap;
     private int physicalId;
     private int totalNodeCount;
+
+    public Map<Integer, Integer> getPhysicalIdByThreadId() {
+        return physicalIdByThreadId;
+    }
+
+    public Collection<InternalCommonGroup> getGroups() {
+        return groupById.values();
+    }
 
     public static class Node0Data {
 
@@ -137,6 +148,10 @@ final public class NodeData {
         return groupById.get(id);
     }
 
+    public InternalCommonGroup getGlobalGroup() {
+        return getGroupById(InternalCommonGroup.GLOBAL_GROUP_ID);
+    }
+
     public InternalCommonGroup getGroupByName(String name) {
         return groupById.values().stream()
                 .filter(groups -> name.equals(groups.getGroupName()))
@@ -150,7 +165,15 @@ final public class NodeData {
         physicalIdByThreadId.put(globalThreadId, physicalId);
     }
 
-    public int getPhysicalId(int globalThreadId) {
+    // mstodo add a reverse map to optimize this method?
+    public int getPhysicalId(SocketChannel socket) {
+        return socketChannelByPhysicalId.entrySet().stream().filter(e -> e.getValue() == socket)
+                .findFirst()
+                .map(Map.Entry::getKey)
+                .orElseThrow(() -> new IllegalStateException("Unable to find node id for socket " + socket));
+    }
+
+    public Integer getPhysicalId(int globalThreadId) {  // mstodo handle null returned here
         return physicalIdByThreadId.get(globalThreadId);
     }
 

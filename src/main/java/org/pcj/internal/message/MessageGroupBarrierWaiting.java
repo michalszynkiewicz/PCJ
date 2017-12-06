@@ -3,20 +3,21 @@
  */
 package org.pcj.internal.message;
 
-import java.io.IOException;
-import java.nio.channels.SocketChannel;
 import org.pcj.internal.InternalCommonGroup;
 import org.pcj.internal.InternalPCJ;
 import org.pcj.internal.futures.GroupBarrierState;
 import org.pcj.internal.network.MessageDataInputStream;
 import org.pcj.internal.network.MessageDataOutputStream;
 
+import java.io.IOException;
+import java.nio.channels.SocketChannel;
+
 /**
  * ....
  *
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
-final public class MessageGroupBarrierWaiting extends Message {
+final public class MessageGroupBarrierWaiting extends ReliableMessage {
 
     private int physicalId;
     private int groupId;
@@ -36,6 +37,7 @@ final public class MessageGroupBarrierWaiting extends Message {
 
     @Override
     public void write(MessageDataOutputStream out) throws IOException {
+        writeFTData(out);
         out.writeInt(groupId);
         out.writeInt(barrierRound);
         out.writeInt(physicalId);
@@ -44,6 +46,7 @@ final public class MessageGroupBarrierWaiting extends Message {
 
     @Override
     public void execute(SocketChannel sender, MessageDataInputStream in) throws IOException {
+        readFTData(in);
         groupId = in.readInt();
         barrierRound = in.readInt();
         physicalId = in.readInt();

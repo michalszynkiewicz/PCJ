@@ -5,21 +5,23 @@
  */
 package org.pcj.internal.futures;
 
-import java.nio.channels.SocketChannel;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import org.pcj.PcjFuture;
 import org.pcj.PcjRuntimeException;
 import org.pcj.internal.Bitmask;
 import org.pcj.internal.InternalCommonGroup;
 import org.pcj.internal.InternalPCJ;
 import org.pcj.internal.NodeData;
+import org.pcj.internal.ft.Emitter;
 import org.pcj.internal.message.Message;
 import org.pcj.internal.message.MessageGroupBarrierGo;
 import org.pcj.internal.message.MessageGroupBarrierWaiting;
+
+import java.nio.channels.SocketChannel;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  *
@@ -119,8 +121,7 @@ public class GroupBarrierState extends InternalFuture<Void> implements PcjFuture
 
                 message = new MessageGroupBarrierWaiting(groupId, barrierRound, physicalId);
             }
-
-            InternalPCJ.getNetworker().send(socket, message);
+            Emitter.get().sendAndPerformOnFailure(socket, message, this::process);
         }
     }
 }

@@ -8,9 +8,10 @@
  */
 package org.pcj.internal;
 
+import org.pcj.Group;
+
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import org.pcj.Group;
 
 /**
  * This class represents internal data for PCJ Thread.

@@ -8,14 +8,16 @@
  */
 package org.pcj.internal.message;
 
-import java.io.IOException;
-import java.nio.channels.SocketChannel;
 import org.pcj.internal.InternalPCJ;
 import org.pcj.internal.InternalStorages;
 import org.pcj.internal.NodeData;
 import org.pcj.internal.PcjThread;
+import org.pcj.internal.ft.Emitter;
 import org.pcj.internal.network.MessageDataInputStream;
 import org.pcj.internal.network.MessageDataOutputStream;
+
+import java.io.IOException;
+import java.nio.channels.SocketChannel;
 
 /**
  *
@@ -63,6 +65,11 @@ final public class MessageValuePutRequest extends Message {
 
     @Override
     public void execute(SocketChannel sender, MessageDataInputStream in) throws IOException {
+        readMessage(in);
+        putValueAndRespond(sender, in);
+    }
+
+    private void readMessage(MessageDataInputStream in) throws IOException {
         groupId = in.readInt();
         requestNum = in.readInt();
         requesterThreadId = in.readInt();
@@ -70,7 +77,9 @@ final public class MessageValuePutRequest extends Message {
         sharedEnumClassName = in.readString();
         name = in.readString();
         indices = in.readIntArray();
+    }
 
+    private void putValueAndRespond(SocketChannel sender, MessageDataInputStream in) {
         NodeData nodeData = InternalPCJ.getNodeData();
         int globalThreadId = nodeData.getGroupById(groupId).getGlobalThreadId(threadId);
         PcjThread pcjThread = nodeData.getPcjThread(globalThreadId);
@@ -85,6 +94,6 @@ final public class MessageValuePutRequest extends Message {
             messageValuePutResponse.setException(ex);
         }
 
-        InternalPCJ.getNetworker().send(sender, messageValuePutResponse);
+        Emitter.get().send(sender, messageValuePutResponse);
     }
 }

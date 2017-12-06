@@ -8,12 +8,14 @@
  */
 package org.pcj.internal.message;
 
-import java.io.IOException;
-import java.nio.channels.SocketChannel;
 import org.pcj.internal.InternalPCJ;
 import org.pcj.internal.NodeData;
+import org.pcj.internal.ft.Emitter;
 import org.pcj.internal.network.MessageDataInputStream;
 import org.pcj.internal.network.MessageDataOutputStream;
+
+import java.io.IOException;
+import java.nio.channels.SocketChannel;
 
 /**
  * Message sent by new-Client to Server with <b>new client connection data</b>
@@ -37,15 +39,16 @@ final public class MessageHelloGo extends Message {
     public void write(MessageDataOutputStream out) throws IOException {
     }
 
+    // TODO MSTODO: this case is not fault-tolerant at the moment
     @Override
     public void execute(SocketChannel sender, MessageDataInputStream in) {
         NodeData nodeData = InternalPCJ.getNodeData();
         int physicalId = nodeData.getPhysicalId();
         if (physicalId * 2 + 1 < nodeData.getTotalNodeCount()) {
-            InternalPCJ.getNetworker().send(nodeData.getSocketChannelByPhysicalId().get(physicalId * 2 + 1), this);
+            Emitter.get().send(nodeData.getSocketChannelByPhysicalId().get(physicalId * 2 + 1), this);
         }
         if (physicalId * 2 + 2 < nodeData.getTotalNodeCount()) {
-            InternalPCJ.getNetworker().send(nodeData.getSocketChannelByPhysicalId().get(physicalId * 2 + 2), this);
+            Emitter.get().send(nodeData.getSocketChannelByPhysicalId().get(physicalId * 2 + 2), this);
         }
 
         nodeData.getGlobalWaitObject().signal();

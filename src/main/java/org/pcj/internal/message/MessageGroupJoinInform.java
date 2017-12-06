@@ -8,6 +8,14 @@
  */
 package org.pcj.internal.message;
 
+import org.pcj.internal.InternalCommonGroup;
+import org.pcj.internal.InternalPCJ;
+import org.pcj.internal.NodeData;
+import org.pcj.internal.ft.Emitter;
+import org.pcj.internal.futures.GroupJoinState;
+import org.pcj.internal.network.MessageDataInputStream;
+import org.pcj.internal.network.MessageDataOutputStream;
+
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
@@ -16,18 +24,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
-import org.pcj.internal.InternalCommonGroup;
-import org.pcj.internal.InternalPCJ;
-import org.pcj.internal.NodeData;
-import org.pcj.internal.futures.GroupJoinState;
-import org.pcj.internal.network.MessageDataInputStream;
-import org.pcj.internal.network.MessageDataOutputStream;
 
 /**
  *
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
-public class MessageGroupJoinInform extends Message {
+public class MessageGroupJoinInform extends BroadcastedMessage {
 
     private int requestNum;
     private int groupId;
@@ -50,6 +52,7 @@ public class MessageGroupJoinInform extends Message {
 
     @Override
     public void write(MessageDataOutputStream out) throws IOException {
+        writeFTData(out);
         out.writeInt(requestNum);
         out.writeInt(groupId);
         out.writeInt(globalThreadId);
@@ -58,6 +61,7 @@ public class MessageGroupJoinInform extends Message {
 
     @Override
     public void execute(SocketChannel sender, MessageDataInputStream in) throws IOException {
+        readFTData(in);
         requestNum = in.readInt();
         groupId = in.readInt();
         globalThreadId = in.readInt();
@@ -73,6 +77,10 @@ public class MessageGroupJoinInform extends Message {
             throw new RuntimeException("Unable to read threadsMapping", ex);
         }
 
+        handle();
+    }
+
+    private void handle() {
         NodeData nodeData = InternalPCJ.getNodeData();
         InternalCommonGroup commonGroup = nodeData.getGroupById(groupId);
 
@@ -102,7 +110,7 @@ public class MessageGroupJoinInform extends Message {
 
         childrenNodes.stream()
                 .map(nodeData.getSocketChannelByPhysicalId()::get)
-                .forEach(socket -> InternalPCJ.getNetworker().send(socket, this));
+                .forEach(socket -> Emitter.get().sendAndPerformOnFailure(socket, this, this::handle));
 
         if (groupJoinState.processPhysical(currentPhysicalId)) {
             commonGroup.removeGroupJoinState(requestNum, globalThreadId);

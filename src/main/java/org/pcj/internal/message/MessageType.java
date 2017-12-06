@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- *
+ * Message type. Message id 5x are used by the fault tolerance extensions.
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
 public enum MessageType {
@@ -196,6 +196,24 @@ public enum MessageType {
         @Override
         public MessageValueBroadcastInform create() {
             return new MessageValueBroadcastInform();
+        }
+    },
+    NODE_FAILURE_DETECTED((byte) 50) {
+        @Override
+        public MessageNodeFailureDetected create() {
+            return new MessageNodeFailureDetected();
+        }
+    },
+    NODE_REMOVED((byte) 51) {
+        @Override
+        public MessageNodeRemoved create() {
+            return new MessageNodeRemoved();
+        }
+    },
+    PING((byte) 52) {
+        @Override
+        public MessagePing create() {
+            return new MessagePing();
         }
     },
     /**

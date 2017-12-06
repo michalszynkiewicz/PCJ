@@ -8,8 +8,13 @@
  */
 package org.pcj.internal;
 
+import org.pcj.internal.ft.SetChild;
+import org.pcj.internal.futures.GroupBarrierState;
+import org.pcj.internal.futures.GroupJoinState;
+
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -18,8 +23,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.pcj.internal.futures.GroupBarrierState;
-import org.pcj.internal.futures.GroupJoinState;
+import java.util.stream.Collectors;
+
+import static org.pcj.PCJ.getNodeId;
 
 /**
  * Internal (with common ClassLoader) representation of Group. It contains
@@ -82,10 +88,6 @@ public class InternalCommonGroup {
 
         threadsCounter = new AtomicInteger(0);
         joinGroupSynchronizer = new Object();
-    }
-
-    public List<Integer> getPhysicalIds() {
-        return Collections.unmodifiableList(physicalIds); // DO USUNIECIA
     }
 
     final protected int getGroupId() {
@@ -233,37 +235,63 @@ public class InternalCommonGroup {
         return groupJoinStateMap.remove(Arrays.asList(requestNum, threadId));
     }
 
-    /**
-     * Class for representing part of communication tree.
-     *
-     * @author Marek Nowicki (faramir@mat.umk.pl)
-     */
-    public static class CommunicationTree {
+    public CommunicationTree getPhysicalTree() {
+        return physicalTree;
+    }
 
-        private final int rootNode;
-        private int parentNode;
-        private final List<Integer> childrenNodes;
+    public boolean removeNode(Integer physicalId, Collection<Integer> threadIds) {
+        // mstodo: finish
+        boolean removed = physicalIds.remove(physicalId) || localIds.removeAll(threadIds);
 
-        public CommunicationTree(int rootNode) {
-            this.rootNode = rootNode;
-            this.parentNode = -1;
-            childrenNodes = new CopyOnWriteArrayList<>();
+        if (removed) {
+            if (getGroupMasterNode() == getNodeId()) {
+                barrierStateMap.values()
+                        .forEach(state -> state.processPhysical(physicalId));
+            }
+            List<Integer> failedGroupThreadIds = threadsMapping.entrySet().stream()
+                    .filter(e -> threadIds.contains(e.getValue()))
+                    .map(Map.Entry::getKey)
+                    .collect(Collectors.toList());
+            failedGroupThreadIds.forEach(threadsMapping::remove);
         }
 
-        public int getRootNode() {
-            return rootNode;
+        return removed;
+    }
+
+    public void applyTreeUpdates(List<SetChild> communicationUpdates) {
+        communicationUpdates.forEach(
+                update -> {
+                    if (update.touches(getNodeId())) {
+                        if (update.isNewChild(getNodeId())) {
+                            physicalTree.setParentNode(update.getParent());
+                        } else if (update.getParent().equals(getNodeId())) {
+                            updateChild(update);
+                        }
+                    }
+                }
+        );
+    }
+
+    private void updateChild(SetChild update) {
+        Integer newChild = update.getChild();
+        List<Integer> children = physicalTree.getChildrenNodes();
+        int childIndex = update.getDirection().ordinal();
+        while (childIndex >= children.size()) {
+            System.out.println("filling children with nulls to make place for index " + childIndex); // mstodo remove
+            children.add(null);
         }
 
-        public void setParentNode(int parentNode) {
-            this.parentNode = parentNode;
-        }
+//        mstodo: remove sout
+        System.out.println("Setting newChild at position " + childIndex + " value: " + newChild);
+        physicalTree.getChildrenNodes().set(childIndex, newChild);
 
-        public int getParentNode() {
-            return parentNode;
+        while (!children.isEmpty() && children.get(children.size() - 1) == null) {
+            System.out.println("removing child at " + (children.size() - 1)); // mstodo remove
+            children.remove(children.size() - 1);
         }
+    }
 
-        public List<Integer> getChildrenNodes() {
-            return childrenNodes;
-        }
+    public Collection<Integer> getThreadIds() {
+        return threadsMapping.values();
     }
 }

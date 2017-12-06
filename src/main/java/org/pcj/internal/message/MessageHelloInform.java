@@ -8,6 +8,16 @@
  */
 package org.pcj.internal.message;
 
+import org.pcj.internal.Configuration;
+import org.pcj.internal.InternalCommonGroup;
+import org.pcj.internal.InternalPCJ;
+import org.pcj.internal.Networker;
+import org.pcj.internal.NodeData;
+import org.pcj.internal.NodeInfo;
+import org.pcj.internal.ft.Emitter;
+import org.pcj.internal.network.MessageDataInputStream;
+import org.pcj.internal.network.MessageDataOutputStream;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.channels.SocketChannel;
@@ -17,14 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.logging.Level;
-import org.pcj.internal.Configuration;
-import org.pcj.internal.InternalCommonGroup;
-import org.pcj.internal.InternalPCJ;
-import org.pcj.internal.Networker;
-import org.pcj.internal.NodeData;
-import org.pcj.internal.NodeInfo;
-import org.pcj.internal.network.MessageDataInputStream;
-import org.pcj.internal.network.MessageDataOutputStream;
 
 /**
  * Message sent by node0 to every node about node's physicalId and with data about all nodes in run.
@@ -34,7 +36,7 @@ import org.pcj.internal.network.MessageDataOutputStream;
  *
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
-final public class MessageHelloInform extends Message {
+final public class MessageHelloInform extends BroadcastedMessage {
 
     private int physicalId;
     private Map<Integer, NodeInfo> nodeInfoByPhysicalId;
@@ -52,12 +54,14 @@ final public class MessageHelloInform extends Message {
 
     @Override
     public void write(MessageDataOutputStream out) throws IOException {
+        writeFTData(out);
         out.writeInt(physicalId);
         out.writeObject(nodeInfoByPhysicalId);
     }
 
     @Override
     public void execute(SocketChannel sender, MessageDataInputStream in) throws IOException {
+        readFTData(in);
         physicalId = in.readInt();
         try {
             Object obj = in.readObject();
@@ -92,14 +96,15 @@ final public class MessageHelloInform extends Message {
                 SocketChannel socketChannel = connectToNode(nodeInfo.getHostname(), nodeInfo.getPort());
                 nodeData.getSocketChannelByPhysicalId().put(currentPhysicalId, socketChannel);
 
-                networker.send(socketChannel, new MessageHelloBonjour(physicalId));
+                // TODO: MSTODO: not fault tolerant!
+                Emitter.get().send(socketChannel, new MessageHelloBonjour(physicalId));
             }
         }
 
         nodeData.getSocketChannelByPhysicalId().put(physicalId, InternalPCJ.getLoopbackSocketChannel());
 
         if (nodeData.getSocketChannelByPhysicalId().size() == nodeData.getTotalNodeCount()) {
-            InternalPCJ.getNetworker().send(InternalPCJ.getNodeData().getNode0Socket(),
+            Emitter.get().send(InternalPCJ.getNodeData().getNode0Socket(),
                     new MessageHelloCompleted(nodeData.getPhysicalId()));
         }
     }

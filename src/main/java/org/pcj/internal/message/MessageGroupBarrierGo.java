@@ -8,21 +8,23 @@
  */
 package org.pcj.internal.message;
 
-import java.io.IOException;
-import java.nio.channels.SocketChannel;
 import org.pcj.internal.InternalCommonGroup;
 import org.pcj.internal.InternalPCJ;
 import org.pcj.internal.NodeData;
+import org.pcj.internal.ft.Emitter;
 import org.pcj.internal.futures.GroupBarrierState;
 import org.pcj.internal.network.MessageDataInputStream;
 import org.pcj.internal.network.MessageDataOutputStream;
+
+import java.io.IOException;
+import java.nio.channels.SocketChannel;
 
 /**
  * ....
  *
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
-final public class MessageGroupBarrierGo extends Message {
+final public class MessageGroupBarrierGo extends BroadcastedMessage {
 
     private int groupId;
     private int barrierRound;
@@ -40,22 +42,29 @@ final public class MessageGroupBarrierGo extends Message {
 
     @Override
     public void write(MessageDataOutputStream out) throws IOException {
+        writeFTData(out);
         out.writeInt(groupId);
         out.writeInt(barrierRound);
     }
 
     @Override
     public void execute(SocketChannel sender, MessageDataInputStream in) throws IOException {
+        readFTData(in);
         groupId = in.readInt();
         barrierRound = in.readInt();
+        handle();
+    }
 
+    private void handle() {
         NodeData nodeData = InternalPCJ.getNodeData();
 
         InternalCommonGroup group = nodeData.getGroupById(groupId);
 
+        System.out.println("children nodes: " + group.getChildrenNodes()); // mstodo remove
         group.getChildrenNodes().stream()
+                .peek(n -> System.out.println("will send to node: " + n)) // mstodo remove
                 .map(nodeData.getSocketChannelByPhysicalId()::get)
-                .forEach(socket -> InternalPCJ.getNetworker().send(socket, this));
+                .forEach(socket -> Emitter.get().sendAndPerformOnFailure(socket, this, this::handle));
 
         GroupBarrierState barrier = group.removeBarrierState(barrierRound);
         barrier.signalDone();

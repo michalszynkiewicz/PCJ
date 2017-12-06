@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (c) 2011-2016, PCJ Library, Marek Nowicki
  * All rights reserved.
  *
@@ -8,11 +8,16 @@
  */
 package org.pcj;
 
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import org.pcj.internal.DeployPCJ;
 import org.pcj.internal.InternalPCJ;
 import org.pcj.internal.PcjThread;
+
+import java.util.Collection;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+import static org.pcj.internal.ConfigurationLock.callUnderReadLock;
+import static org.pcj.internal.ConfigurationLock.runUnderReadLock;
 
 /**
  * Main PCJ class with static methods.
@@ -38,8 +43,7 @@ final public class PCJ extends InternalPCJ {
      * @param nodesDescription description of used nodes (and threads)
      */
     public static void start(Class<? extends StartPoint> startPoint,
-            NodesDescription nodesDescription
-    ) {
+                             NodesDescription nodesDescription) {
         InternalPCJ.start(startPoint, nodesDescription);
     }
 
@@ -59,8 +63,7 @@ final public class PCJ extends InternalPCJ {
      * @param nodesDescription description of used nodes (and threads)
      */
     public static void deploy(Class<? extends StartPoint> startPoint,
-            NodesDescription nodesDescription
-    ) {
+                              NodesDescription nodesDescription) {
         DeployPCJ.deploy(startPoint, nodesDescription);
     }
 
@@ -71,6 +74,7 @@ final public class PCJ extends InternalPCJ {
      * @return node identifier
      */
     public static int getNodeId() {
+        // immutable, hence no need for ConfigurationLock
         return InternalPCJ.getNodeData().getPhysicalId();
     }
 
@@ -80,7 +84,7 @@ final public class PCJ extends InternalPCJ {
      * @return total number of nodes.
      */
     public static int getNodeCount() {
-        return InternalPCJ.getNodeData().getTotalNodeCount();
+        return callUnderReadLock(() -> InternalPCJ.getNodeData().getTotalNodeCount());
     }
 
     /**
@@ -99,7 +103,7 @@ final public class PCJ extends InternalPCJ {
      * @return total number of PCJ Thread in the global group
      */
     public static int threadCount() {
-        return getGlobalGroup().threadCount();
+        return callUnderReadLock(getGlobalGroup()::threadCount);
     }
 
     /**
@@ -212,7 +216,7 @@ final public class PCJ extends InternalPCJ {
      * @return PcjFuture to check barrier state
      */
     public static PcjFuture<Void> asyncBarrier(int threadId) {
-        return getGlobalGroup().asyncBarrier(threadId);
+        return callUnderReadLock(() -> getGlobalGroup().asyncBarrier(threadId));
     }
 
     /**
@@ -327,7 +331,9 @@ final public class PCJ extends InternalPCJ {
      * @return {@link org.pcj.PcjFuture} that will contain shared variable value
      */
     public static <T> PcjFuture<T> asyncGet(int threadId, Enum<?> variable, int... indices) {
-        return getGlobalGroup().asyncGet(threadId, variable, indices);
+        return callUnderReadLock(
+                () -> getGlobalGroup().asyncGet(threadId, variable, indices)
+        );
     }
 
     /**
@@ -349,7 +355,7 @@ final public class PCJ extends InternalPCJ {
      * ArrayOutOfBoundException).
      */
     public static <T> T get(int threadId, Enum<?> variable, int... indices) throws PcjRuntimeException {
-        return PCJ.<T>asyncGet(threadId, variable, indices).get();
+        return callUnderReadLock(() -> PCJ.<T>asyncGet(threadId, variable, indices).get());
     }
 
     /**
@@ -365,7 +371,7 @@ final public class PCJ extends InternalPCJ {
      * @return {@link org.pcj.PcjFuture}&lt;{@link java.lang.Void}&gt;
      */
     public static <T> PcjFuture<Void> asyncPut(T newValue, int threadId, Enum<?> variable, int... indices) {
-        return getGlobalGroup().asyncPut(newValue, threadId, variable, indices);
+        return callUnderReadLock(() -> getGlobalGroup().asyncPut(newValue, threadId, variable, indices));
     }
 
     /**
@@ -386,7 +392,7 @@ final public class PCJ extends InternalPCJ {
      * ArrayOutOfBoundException).
      */
     public static <T> void put(T newValue, int threadId, Enum<?> variable, int... indices) throws PcjRuntimeException {
-        PCJ.<T>asyncPut(newValue, threadId, variable, indices).get();
+        runUnderReadLock(() -> PCJ.<T>asyncPut(newValue, threadId, variable, indices).get());
     }
 
     /**
@@ -400,7 +406,7 @@ final public class PCJ extends InternalPCJ {
      * function
      */
     public static <T> PcjFuture<T> asyncAt(int threadId, AsyncTask<T> asyncTask) throws PcjRuntimeException {
-        return getGlobalGroup().asyncAt(threadId, asyncTask);
+        return callUnderReadLock(() -> getGlobalGroup().asyncAt(threadId, asyncTask));
     }
 
     /**
@@ -431,7 +437,7 @@ final public class PCJ extends InternalPCJ {
      * execution
      */
     public static PcjFuture<Void> asyncAt(int threadId, AsyncTask.VoidTask asyncTask) throws PcjRuntimeException {
-        return getGlobalGroup().asyncAt(threadId, asyncTask);
+        return callUnderReadLock(() -> getGlobalGroup().asyncAt(threadId, asyncTask));
     }
 
     /**
@@ -461,7 +467,9 @@ final public class PCJ extends InternalPCJ {
      * @return {@link org.pcj.PcjFuture}&lt;{@link java.lang.Void}&gt;
      */
     public static <T> PcjFuture<Void> asyncBroadcast(T newValue, Enum<?> variable, int... indices) {
-        return getGlobalGroup().asyncBroadcast(newValue, variable, indices);
+        return callUnderReadLock(
+                () -> getGlobalGroup().asyncBroadcast(newValue, variable, indices)
+        );
     }
 
     /**
@@ -478,7 +486,7 @@ final public class PCJ extends InternalPCJ {
      * @param indices (optional) indices for array variable
      */
     public static <T> void broadcast(T newValue, Enum<?> variable, int... indices) {
-        PCJ.<T>asyncBroadcast(newValue, variable, indices).get();
+        runUnderReadLock(() -> PCJ.<T>asyncBroadcast(newValue, variable, indices).get());
     }
 
     /**
@@ -493,5 +501,9 @@ final public class PCJ extends InternalPCJ {
     public static Group join(String name) {
         int myThreadId = getGlobalGroup().myId();
         return (Group) InternalPCJ.join(myThreadId, name);
+    }
+
+    public static Collection<Integer> getThreadIds() {
+        return getGlobalGroup().getThreadIds();
     }
 }

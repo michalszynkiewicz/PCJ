@@ -8,12 +8,14 @@
  */
 package org.pcj.internal.message;
 
-import java.io.IOException;
-import java.nio.channels.SocketChannel;
 import org.pcj.internal.InternalPCJ;
 import org.pcj.internal.NodeData.Node0Data;
+import org.pcj.internal.ft.Emitter;
 import org.pcj.internal.network.MessageDataInputStream;
 import org.pcj.internal.network.MessageDataOutputStream;
+
+import java.io.IOException;
+import java.nio.channels.SocketChannel;
 
 /**
  *
@@ -56,7 +58,7 @@ public class MessageGroupJoinQuery extends Message {
         int masterPhysicalId = node0Data.getGroupMaster(groupId, requesterPhysialId);
 
         MessageGroupJoinAnswer message = new MessageGroupJoinAnswer(requestNum, groupName, groupId, masterPhysicalId);
-        InternalPCJ.getNetworker().send(sender, message);
+        Emitter.get().send(sender, message);
     }
 
 }

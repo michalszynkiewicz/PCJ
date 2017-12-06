@@ -67,6 +67,14 @@ final public class Configuration {
      * pcj.workers.queuesize (int) default: 1024
      */
     final public static int WORKERS_QUEUE_SIZE;
+    /**
+     * number of <b>seconds</b> after which node is assumed dead and is replaced or removed
+     */
+    public static final int NODE_TIMEOUT;
+    /**
+     * number of <b>milliseconds</b> after which node is assumed dead and is replaced or removed
+     */
+    public static final int NODE_PING_INTERVAL;
 
     static {
         DEFAULT_PORT = getPropertyInt("pcj.port", 8091);
@@ -76,6 +84,8 @@ final public class Configuration {
         INIT_MAXTIME = getPropertyInt("pcj.init.maxtime", Math.max((INIT_RETRY_COUNT + 1) * INIT_RETRY_DELAY, 60));
         BUFFER_CHUNK_SIZE = getPropertyInt("pcj.buffer.chunksize", 8 * 1024);
         BUFFER_POOL_SIZE = getPropertyInt("pcj.buffer.poolsize", 1024);
+        NODE_TIMEOUT = getPropertyInt("pcj.node.timeout", 10);
+        NODE_PING_INTERVAL = getPropertyInt("pcj.node.ping.interval", 500);
         WORKERS_MIN_COUNT = getPropertyInt("pcj.workers.min", -1);
         WORKERS_MAX_COUNT = getPropertyInt("pcj.workers.max", -1);
         WORKERS_KEEPALIVE = getPropertyInt("pcj.workers.keepalive", 60);

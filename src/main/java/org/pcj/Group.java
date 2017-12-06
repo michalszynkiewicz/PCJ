@@ -8,6 +8,9 @@
  */
 package org.pcj;
 
+import java.util.Collection;
+import java.util.List;
+
 /**
  * Class that represents group of PCJ Threads.
  *
@@ -115,4 +118,8 @@ public interface Group {
      * @return {@link org.pcj.PcjFuture}&lt;{@link java.lang.Void}&gt;
      */
     <T> PcjFuture<Void> asyncBroadcast(T newValue, Enum<?> variable, int... indices);
+
+    Collection<Integer> getThreadIds();
+
+    List<Integer> getChildrenNodes();
 }

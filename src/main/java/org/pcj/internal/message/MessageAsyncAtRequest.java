@@ -8,14 +8,16 @@
  */
 package org.pcj.internal.message;
 
-import java.io.IOException;
-import java.nio.channels.SocketChannel;
 import org.pcj.AsyncTask;
 import org.pcj.internal.InternalPCJ;
 import org.pcj.internal.NodeData;
 import org.pcj.internal.PcjThread;
+import org.pcj.internal.ft.Emitter;
 import org.pcj.internal.network.MessageDataInputStream;
 import org.pcj.internal.network.MessageDataOutputStream;
+
+import java.io.IOException;
+import java.nio.channels.SocketChannel;
 
 /**
  * ....
@@ -69,10 +71,14 @@ final public class MessageAsyncAtRequest<T> extends Message {
                     groupId, requestNum, requesterThreadId, null);
             messageAsyncAtResponse.setException(ex);
 
-            InternalPCJ.getNetworker().send(sender, messageAsyncAtResponse);
+            Emitter.get().send(sender, messageAsyncAtResponse);
             return;
         }
 
+        handle(sender);
+    }
+
+    private void handle(SocketChannel sender) {
         NodeData nodeData = InternalPCJ.getNodeData();
         int globalThreadId = nodeData.getGroupById(groupId).getGlobalThreadId(threadId);
         PcjThread pcjThread = nodeData.getPcjThread(globalThreadId);
@@ -87,7 +93,7 @@ final public class MessageAsyncAtRequest<T> extends Message {
                         groupId, requestNum, requesterThreadId, null);
                 messageAsyncAtResponse.setException(ex);
             }
-            InternalPCJ.getNetworker().send(sender, messageAsyncAtResponse);
+            Emitter.get().send(sender, messageAsyncAtResponse);
         });
     }
 }

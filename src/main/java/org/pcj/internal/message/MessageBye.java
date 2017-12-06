@@ -8,13 +8,15 @@
  */
 package org.pcj.internal.message;
 
-import java.io.IOException;
-import java.nio.channels.SocketChannel;
 import org.pcj.internal.Bitmask;
 import org.pcj.internal.InternalPCJ;
 import org.pcj.internal.NodeData.Node0Data;
+import org.pcj.internal.ft.Emitter;
 import org.pcj.internal.network.MessageDataInputStream;
 import org.pcj.internal.network.MessageDataOutputStream;
+
+import java.io.IOException;
+import java.nio.channels.SocketChannel;
 
 /**
  * Message sent by each node to node0 about finished execution.
@@ -49,13 +51,17 @@ final public class MessageBye extends Message {
         Node0Data node0Data = InternalPCJ.getNodeData().getNode0Data();
         Bitmask bitmask = node0Data.getFinishedBitmask();
         synchronized (bitmask) {
+            System.out.println("bitmask before: " + bitmask);
             bitmask.set(physicalId);
+            System.out.println("bitmask: " + bitmask + " after adding physicalId"); // mstodo remove
+
             if (bitmask.isSet()) {
+                System.out.println("bitmask is set"); // mstodo remove
                 bitmask.clear();
                 MessageByeCompleted messageByeCompleted = new MessageByeCompleted();
 
                 // broadcasting:
-                InternalPCJ.getNetworker().send(InternalPCJ.getNodeData().getNode0Socket(), messageByeCompleted);
+                Emitter.get().send(InternalPCJ.getNodeData().getNode0Socket(), messageByeCompleted);
             }
         }
     }
