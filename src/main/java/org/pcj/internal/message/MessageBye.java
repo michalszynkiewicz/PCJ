@@ -51,12 +51,9 @@ final public class MessageBye extends Message {
         Node0Data node0Data = InternalPCJ.getNodeData().getNode0Data();
         Bitmask bitmask = node0Data.getFinishedBitmask();
         synchronized (bitmask) {
-            System.out.println("bitmask before: " + bitmask);
             bitmask.set(physicalId);
-            System.out.println("bitmask: " + bitmask + " after adding physicalId"); // mstodo remove
 
             if (bitmask.isSet()) {
-                System.out.println("bitmask is set"); // mstodo remove
                 bitmask.clear();
                 MessageByeCompleted messageByeCompleted = new MessageByeCompleted();
 

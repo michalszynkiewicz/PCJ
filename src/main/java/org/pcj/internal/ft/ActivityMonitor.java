@@ -101,7 +101,6 @@ public class ActivityMonitor implements Runnable {
         long sinceLastPing = currentTimeMillis() - lastPingTime;
         if (sinceLastPing > Configuration.NODE_TIMEOUT * 1000L) {
             System.out.println("node: " + nodeId + " timed out after: " + sinceLastPing);
-//            LogUtils.log(getWorkerData().getPhysicalId(), "Child node timed out: " + nodeId);
             reportError(nodeId);
         }
     }

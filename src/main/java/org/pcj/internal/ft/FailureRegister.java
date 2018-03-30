@@ -105,8 +105,6 @@ public class FailureRegister {
     }
 
     public synchronized void failIfThreadFailed(int threadId) {
-        System.out.println("checking " + threadId + ", registered threadIds: " + failedThreadIds + " new: " + newFailedThreads);
-        System.out.println("registered nodes: " + failedPhysicalNodeIds + " new: " + newFailedNodes);
          if (failedThreadIds.contains(threadId) || newFailedThreads.contains(threadId)) {
              markFailuresRegistered();
              throwNFE();

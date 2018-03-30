@@ -25,7 +25,6 @@ public class NodeReconfigurator {
                     .filter(e -> e.getValue().equals(failedNodePhysicalId))
                     .map(Map.Entry::getKey)
                     .collect(Collectors.toList());
-            System.out.println("failed threads: " + failedThreadIds); // mstodo remove
             FailureRegister.get().addFailure(failedNodePhysicalId, failedThreadIds);
             getNodeData().getGlobalGroup().applyTreeUpdates(communicationUpdates);
 
@@ -49,9 +48,7 @@ public class NodeReconfigurator {
         getNodeData().getSocketChannelByPhysicalId().remove(failedNodePhysicalId);
 
         if (PCJ.getNodeId() == 0) {
-            System.out.println("setting " + failedNodePhysicalId + " in finished bitmask");                            // mstodo remove
             getNodeData().getNode0Data().getFinishedBitmask().set(failedNodePhysicalId);
-            System.out.println("bitmask after: " + getNodeData().getNode0Data().getFinishedBitmask()); // mstodo remove
         }
     }
 

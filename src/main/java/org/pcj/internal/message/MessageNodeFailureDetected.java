@@ -42,7 +42,7 @@ public class MessageNodeFailureDetected extends Message {
     @Override
     public void execute(SocketChannel sender, MessageDataInputStream in) throws IOException {
         if (PCJ.getNodeId() != 0) {
-            System.out.println("MessageNodeFailureDetected sent to a wrong node! " +
+            System.err.println("MessageNodeFailureDetected sent to a wrong node! " +
                     "Should be received by node 0 only");
         } else {
             failedNodePhysicalId = in.readInt();

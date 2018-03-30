@@ -45,7 +45,6 @@ public class FailurePropagator {
     }
 
     public void notifyAboutFailure(Integer failedPhysicalId, IOException e) {
-        System.out.println("Propagating failure of " + failedPhysicalId);
         if (e != null) { // mstodo prettify this
             e.printStackTrace();
         }
@@ -66,7 +65,7 @@ public class FailurePropagator {
                         sendToRootNode(prepareReconfigurationMessage(failedPhysicalId));
                         sendNodeFinish(failedPhysicalId);
                     } else {
-                        System.out.println("Received duplicate information about node failure " +
+                        System.out.println("Ignoring duplicate information about node failure " +
                                 "for node " + failedPhysicalId);
                     }
                 }

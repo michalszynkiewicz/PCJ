@@ -60,9 +60,7 @@ final public class MessageGroupBarrierGo extends BroadcastedMessage {
 
         InternalCommonGroup group = nodeData.getGroupById(groupId);
 
-        System.out.println("children nodes: " + group.getChildrenNodes()); // mstodo remove
         group.getChildrenNodes().stream()
-                .peek(n -> System.out.println("will send to node: " + n)) // mstodo remove
                 .map(nodeData.getSocketChannelByPhysicalId()::get)
                 .forEach(socket -> Emitter.get().sendAndPerformOnFailure(socket, this, this::handle));
 

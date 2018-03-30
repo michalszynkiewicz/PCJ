@@ -277,16 +277,12 @@ public class InternalCommonGroup {
         List<Integer> children = physicalTree.getChildrenNodes();
         int childIndex = update.getDirection().ordinal();
         while (childIndex >= children.size()) {
-            System.out.println("filling children with nulls to make place for index " + childIndex); // mstodo remove
             children.add(null);
         }
 
-//        mstodo: remove sout
-        System.out.println("Setting newChild at position " + childIndex + " value: " + newChild);
         physicalTree.getChildrenNodes().set(childIndex, newChild);
 
         while (!children.isEmpty() && children.get(children.size() - 1) == null) {
-            System.out.println("removing child at " + (children.size() - 1)); // mstodo remove
             children.remove(children.size() - 1);
         }
     }

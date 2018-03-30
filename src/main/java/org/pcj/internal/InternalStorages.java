@@ -8,7 +8,6 @@
  */
 package org.pcj.internal;
 
-import org.pcj.PCJ;
 import org.pcj.PcjRuntimeException;
 import org.pcj.Storage;
 import org.pcj.internal.ft.FailureRegister;
@@ -106,7 +105,6 @@ public class InternalStorages {
     }
 
     private Object registerStorage0(Class<? extends Enum<?>> storageEnumClass, Object storageObject) throws NoSuchFieldException, InstantiationException, IllegalAccessException, NoSuchMethodException, IllegalArgumentException, InvocationTargetException {
-        System.out.println("registering " + storageEnumClass + " on the node: " + PCJ.getNodeId()); // mstodo
         if (storageEnumClass.isEnum() == false) {
             throw new IllegalArgumentException("Class is not enum: " + storageEnumClass.getName());
         }

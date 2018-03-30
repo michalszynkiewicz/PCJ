@@ -42,6 +42,5 @@ public class CommunicationTree {
 
     public void removeNode(Integer removedNodeIdx) {
         children.remove(removedNodeIdx);
-        System.out.println("removed" + removedNodeIdx);
     }
 }
