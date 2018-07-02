@@ -56,11 +56,12 @@ public class CommunicationTreeFixer {
     }
 
     private static NodeWithDepth getDeepestLeaf(CommunicationNode root, int depth) {
-        if (root.isLeaf()) {
-            return new NodeWithDepth(root, depth);
-        }
-        NodeWithDepth left = getDeepestLeaf(root.getLeft(), depth + 1);
-        NodeWithDepth right = getDeepestLeaf(root.getRight(), depth + 1);
+        NodeWithDepth left = root.getLeft() == null
+                ? new NodeWithDepth(root, depth)
+                : getDeepestLeaf(root.getLeft(), depth + 1);
+        NodeWithDepth right = root.getRight() == null
+                ? new NodeWithDepth(root, depth)
+                : getDeepestLeaf(root.getRight(), depth + 1);
         return left.depth > right.depth ? left : right;
     }
 

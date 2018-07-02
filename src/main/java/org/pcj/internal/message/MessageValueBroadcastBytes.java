@@ -71,7 +71,7 @@ final public class MessageValueBroadcastBytes extends BroadcastedMessage {
     }
 
     @Override
-    public void execute(SocketChannel sender, MessageDataInputStream in) throws IOException {
+    protected void doExecute(SocketChannel sender, MessageDataInputStream in) throws IOException {
         read(in);
 
         handle();

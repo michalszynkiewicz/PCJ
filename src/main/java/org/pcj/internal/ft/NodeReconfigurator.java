@@ -6,7 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static org.pcj.internal.ConfigurationLock.runUnderWriteLock;
+import static org.pcj.StreamUtils.ONE_MATCHES;
+import static org.pcj.internal.ConfigurationLock.callUnderWriteLock;
 import static org.pcj.internal.InternalPCJ.getNodeData;
 
 /**
@@ -18,24 +19,29 @@ import static org.pcj.internal.InternalPCJ.getNodeData;
  */
 public class NodeReconfigurator {
 
-    public void handleNodeRemoved(int failedNodePhysicalId, List<SetChild> communicationUpdates) {
-        runUnderWriteLock(() -> {
+    public boolean handleNodeRemoved(int failedNodePhysicalId, List<SetChild> communicationUpdates) {
+        System.out.println("[" + PCJ.getNodeId() + "] handling removal of " + failedNodePhysicalId);
+        return callUnderWriteLock(() -> {
             List<Integer> failedThreadIds = PCJ.getNodeData().getPhysicalIdByThreadId()
                     .entrySet().stream()
                     .filter(e -> e.getValue().equals(failedNodePhysicalId))
                     .map(Map.Entry::getKey)
                     .collect(Collectors.toList());
             FailureRegister.get().addFailure(failedNodePhysicalId, failedThreadIds);
-            getNodeData().getGlobalGroup().applyTreeUpdates(communicationUpdates);
+            boolean result = getNodeData().getGlobalGroup().applyTreeUpdates(communicationUpdates);
 
             removeFromInternalStructures(failedNodePhysicalId);
-            removeFromGroups(failedNodePhysicalId, failedThreadIds);
+            result |= removeFromGroups(failedNodePhysicalId, failedThreadIds);
+
+            return result;
         });
     }
 
-    private void removeFromGroups(int physicalId, List<Integer> failedThreadIds) {
-        PCJ.getNodeData().getGroups()
-                .forEach(g -> g.removeNode(physicalId, failedThreadIds));
+    private boolean removeFromGroups(int physicalId, List<Integer> failedThreadIds) {
+        return PCJ.getNodeData().getGroups()
+                .stream()
+                .map(g -> g.removeNode(physicalId, failedThreadIds))
+                .reduce(false, ONE_MATCHES);
     }
 
     private void removeFromInternalStructures(int failedNodePhysicalId) {

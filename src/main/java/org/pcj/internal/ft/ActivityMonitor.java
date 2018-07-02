@@ -73,6 +73,7 @@ public class ActivityMonitor implements Runnable {
 
     private void pingParent() {
         Integer parentId = getGlobalGroup().getParentNode();
+//        System.out.println("[" + PCJ.getNodeId() + "]my parent is " + parentId + ". Pinging him");  // mstodo remove
         if (parentId >= 0) {
             Emitter.get().send(parentId, messagePing);
         }

@@ -11,12 +11,15 @@ package org.pcj.internal.ft;
 import org.pcj.internal.Configuration;
 import org.pcj.internal.message.ReliableMessage;
 
-import java.util.BitSet;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Caches messages that should be resent in case of a node failure
@@ -29,7 +32,7 @@ import java.util.stream.Collectors;
 public class ReliableMessageCache {
     public static final long timeToLive = Configuration.NODE_TIMEOUT * 10; //TODO: move to configuration?
     private List<ReliableMessageData> entries = new LinkedList<>();
-    private BitSet processedMessages = new BitSet();
+    private Set<MessageId> messageIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     // mstodo: thread-safety
 
@@ -43,29 +46,31 @@ public class ReliableMessageCache {
         long now = getNow();
         removeOldOnes(now);
         entries.add(new ReliableMessageData(message, getNow()));
-        processedMessages.set(message.getMessageId());
     }
 
     public void add(ReliableMessage message, Runnable failureHandler) {
         long now = getNow();
         removeOldOnes(now);
         entries.add(new ReliableMessageData(message, failureHandler, getNow()));
-        processedMessages.set(message.getMessageId());
+    }
+
+    public void markProcessed(ReliableMessage message) {
+        messageIds.add(new MessageId(message));
     }
 
     private long getNow() {
         return new Date().getTime();
     }
 
-    public List<ReliableMessage> getList() {
+    private List<ReliableMessageData> getList() {
         long now = getNow();
         removeOldOnes(now);
 
-        return entries.stream().map(e -> e.message).collect(Collectors.toList());
+        return new ArrayList<>(entries); // mstodo might be unnecessary
     }
 
     public boolean isProcessed(ReliableMessage message) {
-        return processedMessages.get(message.getMessageId());
+        return messageIds.contains(new MessageId(message));
     }
 
     private void removeOldOnes(long now) {
@@ -82,7 +87,12 @@ public class ReliableMessageCache {
 
     }
 
+    public void replay() {
+         getList().forEach(ReliableMessageData::handle);
+    }
+
     private static class ReliableMessageData {
+        // mstodo do nothing makes no sense, a reasonable default should probably be "send to children"
         private static final Runnable DO_NOTHING = () -> {
         };
 
@@ -100,6 +110,41 @@ public class ReliableMessageCache {
 
         private ReliableMessageData(ReliableMessage message, long time) {
             this(message, DO_NOTHING, time);
+        }
+
+        private void handle() {
+            handler.run();
+        }
+    }
+
+    private static class MessageId {
+        private final Integer messageId;
+        private final Integer originator;
+        private MessageId(ReliableMessage message) {
+            messageId = message.getMessageId();
+            originator = message.getOriginator();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            MessageId messageId1 = (MessageId) o;
+            return Objects.equals(messageId, messageId1.messageId) &&
+                    Objects.equals(originator, messageId1.originator);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(messageId, originator);
+        }
+
+        @Override
+        public String toString() {
+            return "MessageId{" +
+                    "messageId=" + messageId +
+                    ", originator=" + originator +
+                    '}';
         }
     }
 }

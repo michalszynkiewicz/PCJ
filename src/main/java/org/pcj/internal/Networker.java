@@ -152,6 +152,7 @@ final public class Networker {
             LOGGER.log(Level.FINEST, "Received message {0} from {1}", new Object[]{message.getType(), socket});
         }
 
+
         workers.submit(new WorkerTask(socket, message, messageDataInputStream));
     }
 

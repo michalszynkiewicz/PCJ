@@ -9,7 +9,10 @@
 
 package org.pcj.internal.message;
 
+import org.pcj.PCJ;
+import org.pcj.internal.ft.Emitter;
 import org.pcj.internal.ft.NodeReconfigurator;
+import org.pcj.internal.ft.ReliableMessageCache;
 import org.pcj.internal.ft.SetChild;
 import org.pcj.internal.network.MessageDataInputStream;
 import org.pcj.internal.network.MessageDataOutputStream;
@@ -18,6 +21,8 @@ import java.io.IOException;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.pcj.internal.InternalPCJ.getNodeData;
 
 /**
  * @author Michal Szynkiewicz, michal.l.szynkiewicz@gmail.com
@@ -58,15 +63,29 @@ public class MessageNodeRemoved extends ReliableMessage {
     }
 
     @Override
-    public void execute(SocketChannel sender, MessageDataInputStream in) throws IOException {
+    protected void doExecute(SocketChannel sender, MessageDataInputStream in) throws IOException {
         readFTData(in);
         try {
             failedNodePhysicalId = in.readInt();
             communicationUpdates = (List<SetChild>) in.readObject();
-            NodeReconfigurator.get().handleNodeRemoved(failedNodePhysicalId, communicationUpdates);
+            boolean shouldReplay =
+                    NodeReconfigurator.get().handleNodeRemoved(failedNodePhysicalId, communicationUpdates);
+            if (shouldReplay) {
+                System.out.println("[" + PCJ.getNodeId() + "] will replay messages");
+                ReliableMessageCache.get().replay();
+            }
+            sendOut();
         } catch (ClassNotFoundException e) {
             throw new RuntimeException("Unable to find class to read MessageNodeRemoved", e);
         }
+    }
+
+    private void sendOut() {
+        getNodeData().getGlobalGroup().getChildrenNodes()
+                .forEach(nodeId -> {
+                    System.out.println("[" + PCJ.getNodeId() + "] (re?)emitting node removed to " + nodeId); // mstodo remove
+                    Emitter.get().sendAndPerformOnFailure(nodeId, this, this::sendOut);
+                });
     }
 
     @Override

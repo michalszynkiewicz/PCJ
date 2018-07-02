@@ -9,10 +9,12 @@
 package org.pcj.internal.message;
 
 import org.pcj.PCJ;
+import org.pcj.internal.ft.ReliableMessageCache;
 import org.pcj.internal.network.MessageDataInputStream;
 import org.pcj.internal.network.MessageDataOutputStream;
 
 import java.io.IOException;
+import java.nio.channels.SocketChannel;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -51,4 +53,17 @@ public abstract class ReliableMessage extends Message {
         messageId.set(in.readInt());
         originator = in.readInt();
     }
+
+    @Override
+    public final void execute(SocketChannel sender, MessageDataInputStream in) throws IOException {
+        System.out.println(PCJ.getNodeId() + "] looking at message " + this); // mstodo remove all souts
+        if (!ReliableMessageCache.get().isProcessed(this)) {
+            doExecute(sender, in);
+            ReliableMessageCache.get().markProcessed(this);
+        } else {
+            System.out.println(PCJ.getNodeId() + "] skipping processed message " + this);
+        }
+    }
+
+    protected abstract void doExecute(SocketChannel sender, MessageDataInputStream in) throws IOException;
 }

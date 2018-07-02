@@ -10,7 +10,6 @@ package org.pcj.internal.ft;
 
 import org.pcj.PCJ;
 import org.pcj.internal.InternalPCJ;
-import org.pcj.internal.message.BroadcastedMessage;
 import org.pcj.internal.message.Message;
 import org.pcj.internal.message.ReliableMessage;
 
@@ -50,7 +49,7 @@ public class Emitter {
      */
     public void send(SocketChannel socket, Message message) {
         if (message instanceof ReliableMessage) {
-            ReliableMessageCache.get().add((BroadcastedMessage) message);
+            ReliableMessageCache.get().add((ReliableMessage) message);
         }
         doSend(socket, message);
     }
@@ -59,9 +58,22 @@ public class Emitter {
      * Sends a message to the socket and registers a callback to be called when some node fails.
      * If sending fails, the method succeeds, but the failure is propagated.
      *
+     * @param physicalNodeId target node id
+     * @param message message to send
+     * @param failureHandler callback to execute when the message should be resent
+     */
+    public void sendAndPerformOnFailure(Integer physicalNodeId, Message message, Runnable failureHandler) {
+        SocketChannel socket = PCJ.getNodeData().getSocketChannelByPhysicalId().get(physicalNodeId);
+        sendAndPerformOnFailure(socket, message, failureHandler);
+    }
+
+    /**
+     * Sends a message to the socket and registers a callback to be called when some node fails.
+     * If sending fails, the method succeeds, but the failure is propagated.
+     *
      * @param socket target socket
      * @param message message to send
-     * @param failureHandler callback to execute when the message should be resend
+     * @param failureHandler callback to execute when the message should be resent
      */
     public void sendAndPerformOnFailure(SocketChannel socket, Message message, Runnable failureHandler) {
         if (message instanceof ReliableMessage) {

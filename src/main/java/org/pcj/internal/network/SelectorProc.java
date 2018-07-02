@@ -8,6 +8,7 @@
  */
 package org.pcj.internal.network;
 
+import org.pcj.PCJ;
 import org.pcj.internal.Configuration;
 import org.pcj.internal.InternalPCJ;
 import org.pcj.internal.ft.FailurePropagator;
@@ -166,11 +167,15 @@ public class SelectorProc implements Runnable {
     @Override
     public void run() {
         for (;;) {
+            InterestChange interestChange;
             try {
-                InterestChange interestChange;
                 while ((interestChange = interestChanges.poll()) != null) {
                     SelectableChannel channel = interestChange.channel;
-                    channel.register(selector, interestChange.interestOps);
+                    try {
+                        channel.register(selector, interestChange.interestOps);
+                    } catch (ClosedChannelException e) {
+                        throw e;
+                    }
                 }
 
                 if (Thread.interrupted()) {
@@ -230,7 +235,8 @@ public class SelectorProc implements Runnable {
 
                 }
             } catch (Exception ex) {
-                LOGGER.log(Level.SEVERE, "Exception in SelectorProc.", ex);
+                LOGGER.log(Level.SEVERE, "[" + PCJ.getNodeId() + "] Exception in SelectorProc.", ex);
+
             }
         }
     }

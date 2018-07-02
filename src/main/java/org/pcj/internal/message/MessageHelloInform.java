@@ -60,7 +60,7 @@ final public class MessageHelloInform extends BroadcastedMessage {
     }
 
     @Override
-    public void execute(SocketChannel sender, MessageDataInputStream in) throws IOException {
+    protected void doExecute(SocketChannel sender, MessageDataInputStream in) throws IOException {
         readFTData(in);
         physicalId = in.readInt();
         try {

@@ -8,6 +8,7 @@
  */
 package org.pcj.internal;
 
+import org.pcj.PCJ;
 import org.pcj.internal.ft.SetChild;
 import org.pcj.internal.futures.GroupBarrierState;
 import org.pcj.internal.futures.GroupJoinState;
@@ -26,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.pcj.PCJ.getNodeId;
+import static org.pcj.StreamUtils.ONE_MATCHES;
 
 /**
  * Internal (with common ClassLoader) representation of Group. It contains
@@ -212,6 +214,7 @@ public class InternalCommonGroup {
 
     final protected GroupBarrierState barrier(int threadId, int barrierRound) {
         GroupBarrierState barrierState = getBarrierState(barrierRound);
+        System.out.println("[" + PCJ.getNodeId() + "/" + threadId + "] reached barrier " + barrierRound + ", " + barrierState);
         barrierState.processLocal(threadId);
 
         return barrierState;
@@ -258,18 +261,27 @@ public class InternalCommonGroup {
         return removed;
     }
 
-    public void applyTreeUpdates(List<SetChild> communicationUpdates) {
-        communicationUpdates.forEach(
+    /**
+     * if this node of the communication tree is involved in any update
+     * required to fix the tree, apply the updates.
+     * @param communicationUpdates list of all updates, not only corresponding to this node
+     * @return true if one of the children of current node was modified
+     */
+    public boolean applyTreeUpdates(List<SetChild> communicationUpdates) {
+        return communicationUpdates.stream().map(
                 update -> {
                     if (update.touches(getNodeId())) {
                         if (update.isNewChild(getNodeId())) {
                             physicalTree.setParentNode(update.getParent());
                         } else if (update.getParent().equals(getNodeId())) {
                             updateChild(update);
+                            return true;
                         }
                     }
+                    return false;
                 }
-        );
+                // if there's any true - return true
+        ).reduce(false, ONE_MATCHES);
     }
 
     private void updateChild(SetChild update) {

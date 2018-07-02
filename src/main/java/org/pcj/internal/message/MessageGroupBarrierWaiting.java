@@ -45,7 +45,7 @@ final public class MessageGroupBarrierWaiting extends ReliableMessage {
     }
 
     @Override
-    public void execute(SocketChannel sender, MessageDataInputStream in) throws IOException {
+    protected void doExecute(SocketChannel sender, MessageDataInputStream in) throws IOException {
         readFTData(in);
         groupId = in.readInt();
         barrierRound = in.readInt();

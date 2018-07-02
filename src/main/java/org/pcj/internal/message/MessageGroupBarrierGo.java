@@ -8,6 +8,7 @@
  */
 package org.pcj.internal.message;
 
+import org.pcj.PCJ;
 import org.pcj.internal.InternalCommonGroup;
 import org.pcj.internal.InternalPCJ;
 import org.pcj.internal.NodeData;
@@ -48,7 +49,7 @@ final public class MessageGroupBarrierGo extends BroadcastedMessage {
     }
 
     @Override
-    public void execute(SocketChannel sender, MessageDataInputStream in) throws IOException {
+    protected void doExecute(SocketChannel sender, MessageDataInputStream in) throws IOException {
         readFTData(in);
         groupId = in.readInt();
         barrierRound = in.readInt();
@@ -61,10 +62,17 @@ final public class MessageGroupBarrierGo extends BroadcastedMessage {
         InternalCommonGroup group = nodeData.getGroupById(groupId);
 
         group.getChildrenNodes().stream()
+                .peek(nodeId -> System.out.println("[" + PCJ.getNodeId() + "] resending to: " + nodeId))
                 .map(nodeData.getSocketChannelByPhysicalId()::get)
                 .forEach(socket -> Emitter.get().sendAndPerformOnFailure(socket, this, this::handle));
+        // mstodo check if the group children are set properly here
 
         GroupBarrierState barrier = group.removeBarrierState(barrierRound);
-        barrier.signalDone();
+        if (barrier == null) {
+            System.out.println("attempt to signal done a non-existing barrier, probably due to message replay");
+        } else {
+            System.out.println("[" + PCJ.getNodeId() + "] signalling " + barrierRound);
+            barrier.signalDone();
+        }
     }
 }

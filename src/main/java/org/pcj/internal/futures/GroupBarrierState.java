@@ -5,6 +5,7 @@
  */
 package org.pcj.internal.futures;
 
+import org.pcj.PCJ;
 import org.pcj.PcjFuture;
 import org.pcj.PcjRuntimeException;
 import org.pcj.internal.Bitmask;
@@ -93,12 +94,14 @@ public class GroupBarrierState extends InternalFuture<Void> implements PcjFuture
 
     public synchronized void processPhysical(int physicalId) {
         this.setPhysical(physicalId);
+        System.out.println("[" + PCJ.getNodeId() + "] processing physical: " + physicalId);
 
         process();
     }
 
     public synchronized void processLocal(int threadId) {
         this.setLocal(threadId);
+        System.out.println("[" + PCJ.getNodeId() + "] processing local: " + threadId);
 
         process();
     }
@@ -123,5 +126,15 @@ public class GroupBarrierState extends InternalFuture<Void> implements PcjFuture
             }
             Emitter.get().sendAndPerformOnFailure(socket, message, this::process);
         }
+        System.out.println("[" + PCJ.getNodeId() + "] barrier state: local: " + localBarrierBitmask + ", physical has: " + childrenSet + " left");
+    }
+
+    @Override
+    public String toString() {
+        return "GroupBarrierState{" +
+                "childrenSet=" + childrenSet +
+                ", localBarrierBitmask=" + localBarrierBitmask +
+                ", localBarrierMaskBitmask=" + localBarrierMaskBitmask +
+                '}';
     }
 }
