@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (c) 2011-2016, PCJ Library, Marek Nowicki
  * All rights reserved.
  *
@@ -242,14 +242,14 @@ public class InternalCommonGroup {
         return physicalTree;
     }
 
-    public boolean removeNode(Integer physicalId, Collection<Integer> threadIds) {
+    public boolean removeNode(Integer physicalId, Collection<Integer> threadIds, Collection<SetChild> treeUpdates) {
         // mstodo: finish
         boolean removed = physicalIds.remove(physicalId) || localIds.removeAll(threadIds);
 
         if (removed) {
             if (getGroupMasterNode() == getNodeId()) {
                 barrierStateMap.values()
-                        .forEach(state -> state.processPhysical(physicalId));
+                        .forEach(state -> updateBarrierState(state, physicalId, treeUpdates));
             }
             List<Integer> failedGroupThreadIds = threadsMapping.entrySet().stream()
                     .filter(e -> threadIds.contains(e.getValue()))
@@ -261,9 +261,18 @@ public class InternalCommonGroup {
         return removed;
     }
 
+    private void updateBarrierState(GroupBarrierState state, Integer physicalId, Collection<SetChild> treeUpdates) {
+        state.processPhysical(physicalId);
+        treeUpdates.stream()
+                .filter(update -> update.getParent().equals(PCJ.getNodeId()))
+                .map(SetChild::getChild)
+                .forEach(state::addChild);
+    }
+
     /**
      * if this node of the communication tree is involved in any update
      * required to fix the tree, apply the updates.
+     *
      * @param communicationUpdates list of all updates, not only corresponding to this node
      * @return true if one of the children of current node was modified
      */
@@ -301,5 +310,9 @@ public class InternalCommonGroup {
 
     public Collection<Integer> getThreadIds() {
         return threadsMapping.values();
+    }
+
+    public ConcurrentMap<Integer, GroupBarrierState> getBarrierStateMap() {
+        return barrierStateMap;
     }
 }

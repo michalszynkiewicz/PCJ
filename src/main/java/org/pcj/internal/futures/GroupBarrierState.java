@@ -106,7 +106,7 @@ public class GroupBarrierState extends InternalFuture<Void> implements PcjFuture
         process();
     }
 
-    private synchronized void process() {
+    public synchronized void process() {
         if (this.isLocalSet() && this.isPhysicalSet()) {
             Message message;
             SocketChannel socket;
@@ -136,5 +136,9 @@ public class GroupBarrierState extends InternalFuture<Void> implements PcjFuture
                 ", localBarrierBitmask=" + localBarrierBitmask +
                 ", localBarrierMaskBitmask=" + localBarrierMaskBitmask +
                 '}';
+    }
+
+    public void addChild(Integer childId) {
+        childrenSet.add(childId);
     }
 }

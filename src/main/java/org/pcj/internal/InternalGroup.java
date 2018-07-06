@@ -14,7 +14,6 @@ import org.pcj.PcjFuture;
 import org.pcj.internal.ft.Emitter;
 import org.pcj.internal.ft.FailureRegister;
 import org.pcj.internal.ft.FaultToleranceHandler;
-import org.pcj.internal.ft.NodeFailedException;
 import org.pcj.internal.futures.AsyncAtExecution;
 import org.pcj.internal.futures.BroadcastState;
 import org.pcj.internal.futures.GetVariable;
@@ -28,8 +27,6 @@ import org.pcj.internal.message.MessageValueGetRequest;
 import org.pcj.internal.message.MessageValuePutRequest;
 
 import java.nio.channels.SocketChannel;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -214,27 +211,4 @@ final public class InternalGroup extends InternalCommonGroup implements Group {
         return broadcastStateMap.remove(requestNum);
     }
 
-    @Override
-    public boolean removeNode(Integer physicalId, Collection<Integer> threadIds) {
-        if (super.removeNode(physicalId, threadIds)) {
-           getVariableMap.values().forEach(
-                   variable -> {
-                       if (threadIds.contains(variable.getThreadId())) {
-                           variable.signalException(new NodeFailedException(Collections.singleton(physicalId), threadIds));
-                       }
-                   }
-           );
-
-           /*  mstodo: 
-    private final AtomicInteger putVariableCounter;
-    private final ConcurrentMap<Integer, PutVariable> putVariableMap;
-    private final AtomicInteger asyncAtExecutionCounter;
-    private final ConcurrentMap<Integer, AsyncAtExecution> asyncAtExecutionMap;
-    private final AtomicInteger broadcastCounter;
-    private final ConcurrentMap<Integer, BroadcastState> broadcastStateMap;
-    private final ConcurrentMap<Integer, PeerBarrierState> peerBarrierStateMap;*/
-           return true;
-        }
-        return false;
-    }
 }
