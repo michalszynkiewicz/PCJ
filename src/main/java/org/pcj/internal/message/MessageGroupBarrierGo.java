@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (c) 2011-2016, PCJ Library, Marek Nowicki
  * All rights reserved.
  *
@@ -13,19 +13,21 @@ import org.pcj.internal.InternalCommonGroup;
 import org.pcj.internal.InternalPCJ;
 import org.pcj.internal.NodeData;
 import org.pcj.internal.ft.Emitter;
+import org.pcj.internal.ft.ReliableMessageCache;
 import org.pcj.internal.futures.GroupBarrierState;
 import org.pcj.internal.network.MessageDataInputStream;
 import org.pcj.internal.network.MessageDataOutputStream;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
+import java.util.List;
 
 /**
  * ....
  *
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
-final public class MessageGroupBarrierGo extends BroadcastedMessage {
+final public class MessageGroupBarrierGo extends ReliableMessage {
 
     private int groupId;
     private int barrierRound;
@@ -61,10 +63,13 @@ final public class MessageGroupBarrierGo extends BroadcastedMessage {
 
         InternalCommonGroup group = nodeData.getGroupById(groupId);
 
-        group.getChildrenNodes().stream()
+        List<Integer> childrenNodes = group.getChildrenNodes();
+        System.out.println("[" + PCJ.getNodeId() + "] handling group go " + barrierRound + ", children: " + group.getChildrenNodes());
+        ReliableMessageCache.get().add(this, this::handle);
+        childrenNodes.stream()
                 .peek(nodeId -> System.out.println("[" + PCJ.getNodeId() + "] resending to: " + nodeId))
                 .map(nodeData.getSocketChannelByPhysicalId()::get)
-                .forEach(socket -> Emitter.get().sendAndPerformOnFailure(socket, this, this::handle));
+                .forEach(socket -> Emitter.get().send(socket, this));
         // mstodo check if the group children are set properly here
 
         GroupBarrierState barrier = group.removeBarrierState(barrierRound);

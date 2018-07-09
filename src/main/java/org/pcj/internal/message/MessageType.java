@@ -216,6 +216,12 @@ public enum MessageType {
             return new MessagePing();
         }
     },
+    BARRIER_REACHED((byte) 53) {
+        @Override
+        public MessageBarrierReached create() {
+            return new MessageBarrierReached();
+        }
+    },
     /**
      * @see MessageUnknown
      */

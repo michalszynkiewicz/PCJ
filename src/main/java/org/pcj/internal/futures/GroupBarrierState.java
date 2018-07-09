@@ -25,7 +25,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- *
  * @author faramir
  */
 public class GroupBarrierState extends InternalFuture<Void> implements PcjFuture<Void> {
@@ -126,7 +125,8 @@ public class GroupBarrierState extends InternalFuture<Void> implements PcjFuture
             }
             Emitter.get().sendAndPerformOnFailure(socket, message, this::process);
         }
-        System.out.println("[" + PCJ.getNodeId() + "] barrier state: local: " + localBarrierBitmask + ", physical has: " + childrenSet + " left");
+        System.out.println("[" + PCJ.getNodeId() + "] barrier state: round: " + barrierRound + " local: " + localBarrierBitmask + ", local set: " + isLocalSet() + " physical has: " + childrenSet + " left");
+        // mstodo barrier go are not reemited!
     }
 
     @Override

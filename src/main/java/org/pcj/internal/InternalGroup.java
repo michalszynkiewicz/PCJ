@@ -39,7 +39,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 final public class InternalGroup extends InternalCommonGroup implements Group {
 
     private final int myThreadId;
-    private final AtomicInteger barrierRoundCounter;
     private final AtomicInteger getVariableCounter;
     private final ConcurrentMap<Integer, GetVariable> getVariableMap;
     private final AtomicInteger putVariableCounter;
@@ -55,8 +54,6 @@ final public class InternalGroup extends InternalCommonGroup implements Group {
         super(internalGroup);
 
         this.myThreadId = threadId;
-
-        barrierRoundCounter = new AtomicInteger(0);
 
         getVariableCounter = new AtomicInteger(0);
         getVariableMap = new ConcurrentHashMap<>();
@@ -80,7 +77,7 @@ final public class InternalGroup extends InternalCommonGroup implements Group {
 
     @Override
     public PcjFuture<Void> asyncBarrier() {
-        return super.barrier(myThreadId, barrierRoundCounter.incrementAndGet());
+        return super.barrier(myThreadId);
     }
 
     @Override

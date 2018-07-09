@@ -8,6 +8,7 @@
  */
 package org.pcj.internal.ft;
 
+import org.pcj.PCJ;
 import org.pcj.internal.Configuration;
 import org.pcj.internal.message.ReliableMessage;
 
@@ -113,6 +114,7 @@ public class ReliableMessageCache {
         }
 
         private void handle() {
+            System.out.println("[" + PCJ.getNodeId() +"] resending message " + message);
             handler.run();
         }
     }

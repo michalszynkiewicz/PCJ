@@ -50,10 +50,12 @@ public class InternalCommonGroup {
     private final Bitmask physicalBitmask;
     private final ConcurrentMap<Integer, GroupBarrierState> barrierStateMap;
     private final ConcurrentMap<List<Integer>, GroupJoinState> groupJoinStateMap;
+    final AtomicInteger barrierRoundCounter;
     final private AtomicInteger threadsCounter;
     final private CommunicationTree physicalTree;
 
     public InternalCommonGroup(InternalCommonGroup g) {
+        this.barrierRoundCounter = new AtomicInteger(0);
         this.groupId = g.groupId;
         this.groupName = g.groupName;
         this.physicalTree = g.physicalTree;
@@ -73,6 +75,7 @@ public class InternalCommonGroup {
     }
 
     public InternalCommonGroup(int groupMaster, int groupId, String groupName) {
+        this.barrierRoundCounter = new AtomicInteger(0);
         this.groupId = groupId;
         this.groupName = groupName;
         physicalTree = new CommunicationTree(groupMaster);
@@ -212,17 +215,22 @@ public class InternalCommonGroup {
         return Collections.unmodifiableMap(threadsMapping);
     }
 
-    final protected GroupBarrierState barrier(int threadId, int barrierRound) {
-        GroupBarrierState barrierState = getBarrierState(barrierRound);
-        System.out.println("[" + PCJ.getNodeId() + "/" + threadId + "] reached barrier " + barrierRound + ", " + barrierState);
+    final protected GroupBarrierState barrier(int threadId) {
+        int round = barrierRoundCounter.incrementAndGet();
+        GroupBarrierState barrierState = getBarrierState(round, true);
+        System.out.println("[" + PCJ.getNodeId() + "/" + threadId + "] reached barrier " + round + ", " + barrierState);
         barrierState.processLocal(threadId);
 
         return barrierState;
     }
 
-    final public GroupBarrierState getBarrierState(int barrierRound) {
-        return barrierStateMap.computeIfAbsent(barrierRound,
-                round -> new GroupBarrierState(groupId, round, localBitmask, getChildrenNodes()));
+    final public GroupBarrierState getBarrierState(int barrierRound, boolean isInitializing) {
+        if (!isInitializing && barrierRound <= this.barrierRoundCounter.get()){
+            return barrierStateMap.get(barrierRound);
+        } else {
+            return barrierStateMap.computeIfAbsent(barrierRound,
+                    round -> new GroupBarrierState(groupId, round, localBitmask, getChildrenNodes()));
+        }
     }
 
     final public GroupBarrierState removeBarrierState(int barrierRound) {
@@ -266,6 +274,7 @@ public class InternalCommonGroup {
         treeUpdates.stream()
                 .filter(update -> update.getParent().equals(PCJ.getNodeId()))
                 .map(SetChild::getChild)
+                .peek(child -> System.out.println("[" + PCJ.getNodeId() + "] adding to barrier a child " + child))
                 .forEach(state::addChild);
     }
 
@@ -314,5 +323,26 @@ public class InternalCommonGroup {
 
     public ConcurrentMap<Integer, GroupBarrierState> getBarrierStateMap() {
         return barrierStateMap;
+    }
+
+    public void markBarrierReached(int latestReachedBarrier, boolean barrierFinished, int senderId) {
+        barrierStateMap
+                .forEach(
+                        (round, barrier) -> {
+                            if (round < latestReachedBarrier) {
+                                barrier.processPhysical(senderId);
+                            }
+                            if (round == latestReachedBarrier && barrierFinished) {
+                                barrier.processPhysical(senderId);
+                            }
+                        }
+                );
+
+        getBarrierState(latestReachedBarrier, false);
+
+    }
+
+    public Integer getLatestBarrierRound() {
+        return barrierRoundCounter.get();
     }
 }

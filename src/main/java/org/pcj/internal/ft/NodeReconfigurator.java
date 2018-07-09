@@ -2,6 +2,7 @@ package org.pcj.internal.ft;
 
 import org.pcj.PCJ;
 import org.pcj.internal.futures.GroupBarrierState;
+import org.pcj.internal.message.MessageBarrierReached;
 
 import java.util.Collection;
 import java.util.List;
@@ -44,18 +45,29 @@ public class NodeReconfigurator {
                 .filter(update -> update.getChild() != null && update.getChild().equals(PCJ.getNodeId()))
                 .findFirst();
 
-        if (parentUpdate.isPresent()) {
-            runUnderReadLock(() -> resendBarrierReachedMessages());
-        }
+        parentUpdate.ifPresent(
+                update -> runUnderReadLock(() -> describedReachedBarriers(update.getParent()))
+        );
 
         return result;
     }
 
-    private void resendBarrierReachedMessages() {
+    private void describedReachedBarriers(Integer newParentId) {
         PCJ.getNodeData().getGroups()
-                .stream()
-                .flatMap(group -> group.getBarrierStateMap().values().stream())
-                .forEach(GroupBarrierState::process);
+                .forEach(
+                        group -> {
+                            Integer round = group.getLatestBarrierRound();
+                            GroupBarrierState state = group.getBarrierState(round, false);
+                            boolean finished = state == null || state.isDone();
+
+                            MessageBarrierReached message = new MessageBarrierReached();
+                            message.setRound(round);
+                            message.setFinished(finished);
+                            message.setGroupName(group.getGroupName());
+
+                            Emitter.get().send(newParentId, message);
+                        }
+                );
     }
 
     private boolean removeFromGroups(int physicalId, List<Integer> failedThreadIds, Collection<SetChild> treeUpdates) {
