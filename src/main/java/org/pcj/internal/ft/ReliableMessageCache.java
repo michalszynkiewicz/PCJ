@@ -31,31 +31,33 @@ import java.util.concurrent.ConcurrentHashMap;
  * Date: 2/12/18
  */
 public class ReliableMessageCache {
-    public static final long timeToLive = Configuration.NODE_TIMEOUT * 10; //TODO: move to configuration?
+    public static final long timeToLive = Configuration.NODE_TIMEOUT * 10 * 1000L; //TODO: move to configuration?
     private List<ReliableMessageData> entries = new LinkedList<>();
     private Set<MessageId> messageIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     // mstodo: thread-safety
+    // mstodo try to remove synchronzied
 
-    private static ReliableMessageCache instance = new ReliableMessageCache();
+    private static final ReliableMessageCache instance = new ReliableMessageCache();
 
     public static ReliableMessageCache get() {
         return instance;
     }
 
-    public void add(ReliableMessage message) {
+    public synchronized void add(ReliableMessage message) {
         long now = getNow();
         removeOldOnes(now);
         entries.add(new ReliableMessageData(message, getNow()));
     }
 
-    public void add(ReliableMessage message, Runnable failureHandler) {
+    public synchronized void add(ReliableMessage message, Runnable failureHandler) {
         long now = getNow();
         removeOldOnes(now);
+        System.out.println("[" + PCJ.getNodeId() + "] Adding " + message);
         entries.add(new ReliableMessageData(message, failureHandler, getNow()));
     }
 
-    public void markProcessed(ReliableMessage message) {
+    public synchronized void markProcessed(ReliableMessage message) {
         messageIds.add(new MessageId(message));
     }
 
@@ -74,12 +76,13 @@ public class ReliableMessageCache {
         return messageIds.contains(new MessageId(message));
     }
 
-    private void removeOldOnes(long now) {
+    private synchronized void removeOldOnes(long now) {
         long expiryDate = now - timeToLive;
         Iterator<ReliableMessageData> iterator = entries.iterator();
         while (iterator.hasNext()) {
             ReliableMessageData entry = iterator.next();
             if (entry.time < expiryDate) {
+                System.out.println("[" + PCJ.getNodeId() + "] removing entry: " + entry);
                 iterator.remove();
             } else {
                 break;
@@ -112,10 +115,15 @@ public class ReliableMessageCache {
         private ReliableMessageData(ReliableMessage message, long time) {
             this(message, DO_NOTHING, time);
         }
-
+                                                      // mstodo group barrier go is not resent!
         private void handle() {
             System.out.println("[" + PCJ.getNodeId() +"] resending message " + message);
             handler.run();
+        }
+
+        @Override
+        public String toString() {
+            return "cache entry[" + message + "]";
         }
     }
 

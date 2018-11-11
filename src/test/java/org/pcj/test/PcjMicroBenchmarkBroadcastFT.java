@@ -10,6 +10,7 @@ package org.pcj.test;
 
 /*
  * @author Piotr
+ * @author Michał
  */
 
 import org.pcj.NodesDescription;
@@ -81,6 +82,7 @@ public class PcjMicroBenchmarkBroadcastFT implements StartPoint {
 
             time = System.nanoTime() - time;
             double dtime = (time / (double) ntimes) * 1e-9;
+            System.out.println("(" + PCJ.getNodeId() + "] before last barrier");
             PCJ.barrier();
             System.out.println("(" + PCJ.getNodeId() + "] after last barrier");
 
@@ -90,12 +92,13 @@ public class PcjMicroBenchmarkBroadcastFT implements StartPoint {
                         PCJ.threadCount(), (double) n / 128, dtime);
             }
         }
+        System.out.println("done");
     }
 
     public static void main(String[] args) {
         Level level = Level.CONFIG;
 //        Level level = Level.FINEST;
-        Logger logger = Logger.getLogger("");
+        Logger logger = Logger.getLogger("PcjMicroBenchmarkBroadcastFT");
         Arrays.stream(logger.getHandlers()).forEach(handler -> handler.setLevel(level));
         logger.setLevel(level);
 

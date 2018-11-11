@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (c) 2011-2016, PCJ Library, Marek Nowicki
  * All rights reserved.
  *
@@ -8,13 +8,15 @@
  */
 package org.pcj.internal.futures;
 
+import org.pcj.PCJ;
+import org.pcj.PcjFuture;
+import org.pcj.PcjRuntimeException;
+import org.pcj.internal.Bitmask;
+
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.pcj.PcjFuture;
-import org.pcj.PcjRuntimeException;
-import org.pcj.internal.Bitmask;
 
 /**
  *
@@ -23,13 +25,15 @@ import org.pcj.internal.Bitmask;
 public class BroadcastState extends InternalFuture<Void> implements PcjFuture<Void> {
 
     private final Queue<Exception> exceptions;
-    private final Bitmask physicalBarrierBitmask;
-    private final Bitmask physicalBarrierMaskBitmask;
+    private final Bitmask physicalBitmask;
+    private final Bitmask physicalMaskBitmask;
     private Exception exception;
 
     public BroadcastState(Bitmask physicalBitmask) {
-        physicalBarrierBitmask = new Bitmask(physicalBitmask.getSize());
-        physicalBarrierMaskBitmask = new Bitmask(physicalBitmask);
+        System.out.println("Initializing broadcast state, " + physicalBitmask);
+        Thread.dumpStack();
+        this.physicalBitmask = new Bitmask(physicalBitmask.getSize());
+        physicalMaskBitmask = new Bitmask(physicalBitmask);
 
         this.exceptions = new ConcurrentLinkedDeque<>();
     }
@@ -45,7 +49,9 @@ public class BroadcastState extends InternalFuture<Void> implements PcjFuture<Vo
 
     @Override
     public void signalDone() {
+        System.out.println("[" + PCJ.getNodeId() + "] will signal done");
         super.signalDone();
+        System.out.println("[" + PCJ.getNodeId() + "] signaled done");
     }
 
     @Override
@@ -80,16 +86,32 @@ public class BroadcastState extends InternalFuture<Void> implements PcjFuture<Vo
     }
 
     private void setPhysical(int physicalId) {
-        physicalBarrierBitmask.set(physicalId);
+        physicalBitmask.set(physicalId);
     }
 
     private boolean isPhysicalSet() {
-        return physicalBarrierBitmask.isSet(physicalBarrierMaskBitmask);
+        return physicalBitmask.isSet(physicalMaskBitmask);
     }
 
-    public synchronized boolean processPhysical(int physicalId) {
+    public synchronized void processPhysical(int physicalId) {
         this.setPhysical(physicalId);
-        return isPhysicalSet();
+        System.out.println("[" + PCJ.getNodeId() + "] broadcast state setting physical: " + physicalId + ", physicalset: " + isPhysicalSet());// mstodo remove
+        if (isPhysicalSet()) {
+            System.out.println("[" + PCJ.getNodeId() + "] physical set, will signal done");// mstodo remove
+            if (!isExceptionOccurs()) {
+                signalDone();
+            } else {
+                RuntimeException ex = new RuntimeException("Exception while broadcasting value.");
+                getExceptions().forEach(ex::addSuppressed);
+
+                System.out.println("[" + PCJ.getNodeId() + "] done with exception");// mstodo remove
+                signalException(ex);
+            }
+        } else {
+            System.out.println("[" + PCJ.getNodeId() + "] still not done, ");// mstodo remove
+        }
+        System.out.println("[" + PCJ.getNodeId() + "] state: " + physicalBitmask + ", mask: " + physicalMaskBitmask
+                + " is done: " + isPhysicalSet() + ", is exception: " + isExceptionOccurs());
     }
 
     public boolean isExceptionOccurs() {

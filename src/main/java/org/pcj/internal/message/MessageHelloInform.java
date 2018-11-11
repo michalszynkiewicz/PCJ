@@ -14,7 +14,6 @@ import org.pcj.internal.InternalPCJ;
 import org.pcj.internal.Networker;
 import org.pcj.internal.NodeData;
 import org.pcj.internal.NodeInfo;
-import org.pcj.internal.ft.Emitter;
 import org.pcj.internal.network.MessageDataInputStream;
 import org.pcj.internal.network.MessageDataOutputStream;
 
@@ -36,7 +35,7 @@ import java.util.logging.Level;
  *
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
-final public class MessageHelloInform extends BroadcastedMessage {
+final public class MessageHelloInform extends Message {
 
     private int physicalId;
     private Map<Integer, NodeInfo> nodeInfoByPhysicalId;
@@ -54,14 +53,12 @@ final public class MessageHelloInform extends BroadcastedMessage {
 
     @Override
     public void write(MessageDataOutputStream out) throws IOException {
-        writeFTData(out);
         out.writeInt(physicalId);
         out.writeObject(nodeInfoByPhysicalId);
     }
 
     @Override
-    protected void doExecute(SocketChannel sender, MessageDataInputStream in) throws IOException {
-        readFTData(in);
+    public void execute(SocketChannel sender, MessageDataInputStream in) throws IOException {
         physicalId = in.readInt();
         try {
             Object obj = in.readObject();
@@ -96,15 +93,14 @@ final public class MessageHelloInform extends BroadcastedMessage {
                 SocketChannel socketChannel = connectToNode(nodeInfo.getHostname(), nodeInfo.getPort());
                 nodeData.getSocketChannelByPhysicalId().put(currentPhysicalId, socketChannel);
 
-                // TODO: MSTODO: not fault tolerant!
-                Emitter.get().send(socketChannel, new MessageHelloBonjour(physicalId));
+                networker.send(socketChannel, new MessageHelloBonjour(physicalId));
             }
         }
 
         nodeData.getSocketChannelByPhysicalId().put(physicalId, InternalPCJ.getLoopbackSocketChannel());
 
         if (nodeData.getSocketChannelByPhysicalId().size() == nodeData.getTotalNodeCount()) {
-            Emitter.get().send(InternalPCJ.getNodeData().getNode0Socket(),
+            InternalPCJ.getNetworker().send(InternalPCJ.getNodeData().getNode0Socket(),
                     new MessageHelloCompleted(nodeData.getPhysicalId()));
         }
     }

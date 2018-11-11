@@ -8,6 +8,8 @@
  */
 package org.pcj.internal.futures;
 
+import org.pcj.PCJ;
+
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -39,9 +41,13 @@ public abstract class InternalFuture<T> {
     }
 
     protected void await() throws InterruptedException {
+        System.out.println("[" + PCJ.getNodeId() + "] awaiting  barrier" );
         synchronized (lock) {
+            System.out.println("[" + PCJ.getNodeId() + "] in the barrier lock" );
             while (signaled == false) {
+                System.out.println("[" + PCJ.getNodeId() + "] waitin" );
                 lock.wait();
+                System.out.println("[" + PCJ.getNodeId() + "] finished waitin" );
             }
         }
     }

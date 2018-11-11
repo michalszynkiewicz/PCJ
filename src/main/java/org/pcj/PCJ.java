@@ -486,7 +486,8 @@ final public class PCJ extends InternalPCJ {
      * @param indices (optional) indices for array variable
      */
     public static <T> void broadcast(T newValue, Enum<?> variable, int... indices) {
-        runUnderReadLock(() -> PCJ.<T>asyncBroadcast(newValue, variable, indices).get());
+        System.out.println("firing broadcast");   // mstodo remove
+        PCJ.<T>asyncBroadcast(newValue, variable, indices).get();
     }
 
     /**

@@ -14,6 +14,7 @@ import org.pcj.internal.InternalStorages;
 import org.pcj.internal.NodeData;
 import org.pcj.internal.PcjThread;
 import org.pcj.internal.ft.Emitter;
+import org.pcj.internal.ft.ReliableMessageCache;
 import org.pcj.internal.network.CloneInputStream;
 import org.pcj.internal.network.MessageDataInputStream;
 import org.pcj.internal.network.MessageDataOutputStream;
@@ -82,16 +83,34 @@ final public class MessageValueBroadcastBytes extends BroadcastedMessage {
         NodeData nodeData = InternalPCJ.getNodeData();
         InternalCommonGroup group = nodeData.getGroupById(groupId);
 
-        List<Integer> children = group.getChildrenNodes();
 
-        MessageValueBroadcastBytes message
+        MessageValueBroadcastBytes message                    // mstodo: should be easy to send this
                 = new MessageValueBroadcastBytes(groupId, requestNum, requesterThreadId,
                         sharedEnumClassName, name, indices, clonedData);
 
-        children.stream().map(nodeData.getSocketChannelByPhysicalId()::get)
-                .forEach(socket -> Emitter.get().send(socket, message));
+        propagateExternally(nodeData, message);
 
         Queue<Exception> exceptionsQueue = new LinkedList<>();
+        propagateLocally(nodeData, group, exceptionsQueue);
+        ReliableMessageCache.get().add(message, () -> propagateExternally(InternalPCJ.getNodeData(), message));
+
+        int globalThreadId = group.getGlobalThreadId(requesterThreadId);
+        int requesterPhysicalId = nodeData.getPhysicalId(globalThreadId);
+        SocketChannel socket = InternalPCJ.getNodeData().getSocketChannelByPhysicalId().get(requesterPhysicalId);
+
+        MessageValueBroadcastInform messageInform = new MessageValueBroadcastInform(groupId, requestNum, requesterThreadId,
+                nodeData.getPhysicalId(), exceptionsQueue);
+        Emitter.get().send(socket, messageInform);
+    }
+
+    private void propagateExternally(NodeData nodeData, MessageValueBroadcastBytes message) {
+        InternalCommonGroup group = nodeData.getGroupById(groupId);
+        List<Integer> children = group.getChildrenNodes();
+        children.stream().map(nodeData.getSocketChannelByPhysicalId()::get)
+                .forEach(socket -> Emitter.get().send(socket, message));
+    }
+
+    private void propagateLocally(NodeData nodeData, InternalCommonGroup group, Queue<Exception> exceptionsQueue) {
         int[] threadsId = group.getLocalThreadsId();
         for (int threadId : threadsId) {
             try {
@@ -107,14 +126,6 @@ final public class MessageValueBroadcastBytes extends BroadcastedMessage {
                 exceptionsQueue.add(ex);
             }
         }
-
-        int globalThreadId = group.getGlobalThreadId(requesterThreadId);
-        int requesterPhysicalId = nodeData.getPhysicalId(globalThreadId);
-        SocketChannel socket = InternalPCJ.getNodeData().getSocketChannelByPhysicalId().get(requesterPhysicalId);
-
-        MessageValueBroadcastInform messageInform = new MessageValueBroadcastInform(groupId, requestNum, requesterThreadId,
-                nodeData.getPhysicalId(), exceptionsQueue);
-        Emitter.get().send(socket, messageInform);
     }
 
     private void read(MessageDataInputStream in) throws IOException {

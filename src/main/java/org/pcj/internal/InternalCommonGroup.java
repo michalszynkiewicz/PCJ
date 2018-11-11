@@ -10,6 +10,7 @@ package org.pcj.internal;
 
 import org.pcj.PCJ;
 import org.pcj.internal.ft.SetChild;
+import org.pcj.internal.futures.BroadcastState;
 import org.pcj.internal.futures.GroupBarrierState;
 import org.pcj.internal.futures.GroupJoinState;
 
@@ -20,11 +21,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 import static org.pcj.PCJ.getNodeId;
 import static org.pcj.StreamUtils.ONE_MATCHES;
@@ -41,6 +42,7 @@ public class InternalCommonGroup {
     public static final String GLOBAL_GROUP_NAME = "";
 
     private final ConcurrentMap<Integer, Integer> threadsMapping; // groupThreadId, globalThreadId
+    private final ConcurrentMap<Integer, Integer> activeThreadsMapping; // above excluding failed threads
     private final Object joinGroupSynchronizer;
     private final int groupId;
     private final String groupName;
@@ -53,14 +55,17 @@ public class InternalCommonGroup {
     final AtomicInteger barrierRoundCounter;
     final private AtomicInteger threadsCounter;
     final private CommunicationTree physicalTree;
+    private final ConcurrentMap<Integer, BroadcastState> broadcastStateMap;
 
     public InternalCommonGroup(InternalCommonGroup g) {
+        this.broadcastStateMap = g.broadcastStateMap;
         this.barrierRoundCounter = new AtomicInteger(0);
         this.groupId = g.groupId;
         this.groupName = g.groupName;
         this.physicalTree = g.physicalTree;
 
         this.threadsMapping = g.threadsMapping;
+        this.activeThreadsMapping = g.activeThreadsMapping;
         this.localBitmask = g.localBitmask;
         this.physicalBitmask = g.physicalBitmask;
         this.barrierStateMap = g.barrierStateMap;
@@ -81,6 +86,7 @@ public class InternalCommonGroup {
         physicalTree = new CommunicationTree(groupMaster);
 
         threadsMapping = new ConcurrentHashMap<>();
+        activeThreadsMapping = new ConcurrentHashMap<>();
 
         localBitmask = new Bitmask();
         physicalBitmask = new Bitmask();
@@ -93,6 +99,7 @@ public class InternalCommonGroup {
 
         threadsCounter = new AtomicInteger(0);
         joinGroupSynchronizer = new Object();
+        this.broadcastStateMap = new ConcurrentHashMap<>();
     }
 
     final protected int getGroupId() {
@@ -124,7 +131,7 @@ public class InternalCommonGroup {
     }
 
     final public int threadCount() {
-        return threadsMapping.size();
+        return activeThreadsMapping.size();
     }
 
     final public int[] getLocalThreadsId() {
@@ -132,16 +139,21 @@ public class InternalCommonGroup {
     }
 
     final public int getGlobalThreadId(int groupThreadId) throws NoSuchElementException {
-        Integer globalThreadId = threadsMapping.get(groupThreadId);
+        Integer globalThreadId = activeThreadsMapping.get(groupThreadId);
         if (globalThreadId == null) {
             throw new NoSuchElementException("Group threadId not found: " + groupThreadId);
         }
         return globalThreadId;
     }
 
+    final public int getGlobalThreadIdInclFailed(int groupThreadId) {
+        return Optional.ofNullable(threadsMapping.get(groupThreadId))
+                .orElseThrow(() -> new NoSuchElementException("Group threadId not found: " + groupThreadId));
+    }
+
     final public int getGroupThreadId(int globalThreadId) throws NoSuchElementException {
-        if (threadsMapping.containsValue(globalThreadId)) {
-            for (Map.Entry<Integer, Integer> entry : threadsMapping.entrySet()) {
+        if (activeThreadsMapping.containsValue(globalThreadId)) {
+            for (Map.Entry<Integer, Integer> entry : activeThreadsMapping.entrySet()) {
                 if (entry.getValue() == globalThreadId) {
                     return entry.getKey();
                 }
@@ -156,7 +168,9 @@ public class InternalCommonGroup {
         synchronized (joinGroupSynchronizer) {
             do {
                 groupThreadId = threadsCounter.getAndIncrement();
-            } while (threadsMapping.putIfAbsent(groupThreadId, globalThreadId) != null);
+            } while (activeThreadsMapping.putIfAbsent(groupThreadId, globalThreadId) != null);
+
+            threadsMapping.putAll(activeThreadsMapping);// TODO: mods required on adding threads
 
             updateCommunicationTree(physicalId);
             updateLocalBitmask(physicalId, groupThreadId);
@@ -168,9 +182,10 @@ public class InternalCommonGroup {
     final public void addThread(int globalThreadId, int groupThreadId) {
         int physicalId = InternalPCJ.getNodeData().getPhysicalId(globalThreadId);
         synchronized (joinGroupSynchronizer) {
-            if (threadsMapping.putIfAbsent(groupThreadId, globalThreadId) != null) {
+            if (activeThreadsMapping.putIfAbsent(groupThreadId, globalThreadId) != null) {
                 return;
             }
+            threadsMapping.putAll(activeThreadsMapping);// TODO: mods required on adding threads
 
             updateCommunicationTree(physicalId);
             updateLocalBitmask(physicalId, groupThreadId);
@@ -212,7 +227,7 @@ public class InternalCommonGroup {
     }
 
     public Map<Integer, Integer> getThreadsMapping() {
-        return Collections.unmodifiableMap(threadsMapping);
+        return Collections.unmodifiableMap(activeThreadsMapping);
     }
 
     final protected GroupBarrierState barrier(int threadId) {
@@ -253,17 +268,30 @@ public class InternalCommonGroup {
     public boolean removeNode(Integer physicalId, Collection<Integer> threadIds, Collection<SetChild> treeUpdates) {
         // mstodo: finish
         boolean removed = physicalIds.remove(physicalId) || localIds.removeAll(threadIds);
+        System.out.println("invoked removeNode, removed: " + removed);
 
         if (removed) {
             if (getGroupMasterNode() == getNodeId()) {
                 barrierStateMap.values()
                         .forEach(state -> updateBarrierState(state, physicalId, treeUpdates));
             }
-            List<Integer> failedGroupThreadIds = threadsMapping.entrySet().stream()
+
+            System.out.println("[" + PCJ.getNodeId() + "] will remove states");
+            // mstodo might be good to add an exception to the broadcast state
+            
+            broadcastStateMap.values()
+                    .stream()
+                    .peek(state -> System.out.println("[" + PCJ.getNodeId() + "] processing state: " + state))
+                    .forEach(state -> state.processPhysical(physicalId));
+
+            physicalBitmask.clear(physicalId);
+
+            threadsMapping.entrySet().stream()
                     .filter(e -> threadIds.contains(e.getValue()))
                     .map(Map.Entry::getKey)
-                    .collect(Collectors.toList());
-            failedGroupThreadIds.forEach(threadsMapping::remove);
+                    .forEach(activeThreadsMapping::remove);
+
+
         }
 
         return removed;
@@ -288,9 +316,13 @@ public class InternalCommonGroup {
     public boolean applyTreeUpdates(List<SetChild> communicationUpdates) {
         return communicationUpdates.stream().map(
                 update -> {
+                    System.out.println("[" + getNodeId() + "] applying tree updates");
                     if (update.touches(getNodeId())) {
+                        System.out.println("[" + getNodeId() + "] touched by " + update);
                         if (update.isNewChild(getNodeId())) {
                             physicalTree.setParentNode(update.getParent());
+                            System.out.println("[" + getNodeId() + "] I'ma new child ");
+                            return true;
                         } else if (update.getParent().equals(getNodeId())) {
                             updateChild(update);
                             return true;
@@ -311,10 +343,12 @@ public class InternalCommonGroup {
         }
 
         physicalTree.getChildrenNodes().set(childIndex, newChild);
+        System.out.println("[" + PCJ.getNodeId() + "] glogro set new child: " + newChild);
 
         while (!children.isEmpty() && children.get(children.size() - 1) == null) {
             children.remove(children.size() - 1);
         }
+        System.out.println("[" + PCJ.getNodeId() + "] nodes after update: " + getChildrenNodes());
     }
 
     public Collection<Integer> getThreadIds() {
@@ -344,5 +378,20 @@ public class InternalCommonGroup {
 
     public Integer getLatestBarrierRound() {
         return barrierRoundCounter.get();
+    }
+
+    public final BroadcastState getBroadcastState(int requestNum) {
+        System.out.println("[" + PCJ.getNodeId() + "] getting broadcast state");
+        BroadcastState state = broadcastStateMap.computeIfAbsent(requestNum,
+                key -> {
+                    System.out.println("adding new state");
+                    return new BroadcastState(getPhysicalBitmask());
+                });
+        System.out.println("states amount: " + barrierStateMap.size());
+        return state;
+    }
+
+    public BroadcastState removeBroadcastState(int requestNum) {
+        return broadcastStateMap.remove(requestNum);
     }
 }

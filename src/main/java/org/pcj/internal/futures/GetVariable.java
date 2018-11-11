@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (c) 2011-2016, PCJ Library, Marek Nowicki
  * All rights reserved.
  *
@@ -8,8 +8,10 @@
  */
 package org.pcj.internal.futures;
 
+import org.pcj.PCJ;
 import org.pcj.PcjFuture;
 import org.pcj.PcjRuntimeException;
+import org.pcj.internal.ft.NodeFailedException;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -25,7 +27,7 @@ public class GetVariable<T> extends InternalFuture<T> implements PcjFuture<T> {
     private Exception exception;
 
     public GetVariable(int threadId) {
-        // TODO: Customise this generated block
+        this.threadId = threadId;
     }
 
     @SuppressWarnings("unchecked")
@@ -55,12 +57,19 @@ public class GetVariable<T> extends InternalFuture<T> implements PcjFuture<T> {
     @Override
     public T get() throws PcjRuntimeException {
         try {
+            System.out.println("[" + PCJ.getNodeId() + "] GVar will wait from " + threadId);
             super.await();
+            System.out.println("[" + PCJ.getNodeId() + "] GVar finished from " + threadId);
         } catch (InterruptedException ex) {
+            System.out.println("[" + PCJ.getNodeId() + "] GVar interrupted");
             throw new PcjRuntimeException(ex);
         }
         if (exception != null) {
-            throw new PcjRuntimeException(exception);
+            if (exception instanceof NodeFailedException) {
+                throw (NodeFailedException) exception;
+            } else {
+                throw new PcjRuntimeException(exception);
+            }
         }
         return variableValue;
     }
@@ -73,7 +82,11 @@ public class GetVariable<T> extends InternalFuture<T> implements PcjFuture<T> {
             throw new PcjRuntimeException(ex);
         }
         if (exception != null) {
-            throw new PcjRuntimeException(exception);
+            if (exception instanceof NodeFailedException) {
+                throw (NodeFailedException) exception;
+            } else {
+                throw new PcjRuntimeException(exception);
+            }
         }
         return variableValue;
     }

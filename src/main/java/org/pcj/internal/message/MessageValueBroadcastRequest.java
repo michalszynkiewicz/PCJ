@@ -8,6 +8,7 @@
  */
 package org.pcj.internal.message;
 
+import org.pcj.PCJ;
 import org.pcj.internal.InternalCommonGroup;
 import org.pcj.internal.InternalPCJ;
 import org.pcj.internal.InternalStorages;
@@ -102,6 +103,7 @@ final public class MessageValueBroadcastRequest extends Message {
 
         int globalThreadId = group.getGlobalThreadId(requesterThreadId);
         int requesterPhysicalId = nodeData.getPhysicalId(globalThreadId);
+        System.out.println("[" + PCJ.getNodeId() + "] sending inform to " + requesterPhysicalId);
         SocketChannel socket = InternalPCJ.getNodeData()
                 .getSocketChannelByPhysicalId()
                 .get(requesterPhysicalId);

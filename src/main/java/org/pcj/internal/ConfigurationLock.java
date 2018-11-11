@@ -30,7 +30,7 @@ public class ConfigurationLock {
             return null;
         });
     }
-    // mstodo verify that returned value is needed
+
     public static <V> V callUnderReadLock(Supplier<V> stuff) {
         readLock();
         try {

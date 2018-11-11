@@ -46,7 +46,6 @@ final public class InternalGroup extends InternalCommonGroup implements Group {
     private final AtomicInteger asyncAtExecutionCounter;
     private final ConcurrentMap<Integer, AsyncAtExecution> asyncAtExecutionMap;
     private final AtomicInteger broadcastCounter;
-    private final ConcurrentMap<Integer, BroadcastState> broadcastStateMap;
     private final ConcurrentMap<Integer, PeerBarrierState> peerBarrierStateMap;
     private final FaultToleranceHandler faultToleranceHandler = FaultToleranceHandler.get();
 
@@ -65,7 +64,6 @@ final public class InternalGroup extends InternalCommonGroup implements Group {
         asyncAtExecutionMap = new ConcurrentHashMap<>();
 
         broadcastCounter = new AtomicInteger(0);
-        broadcastStateMap = new ConcurrentHashMap<>();
 
         peerBarrierStateMap = new ConcurrentHashMap<>();
     }
@@ -107,19 +105,21 @@ final public class InternalGroup extends InternalCommonGroup implements Group {
         GetVariable<T> getVariable = new GetVariable<>(threadId);
         getVariableMap.put(requestNum, getVariable);
 
-        int globalThreadId = super.getGlobalThreadId(threadId);
+        int globalThreadId = super.getGlobalThreadIdInclFailed(threadId);
 
-        FailureRegister.get().failIfThreadFailed(globalThreadId);
+        if (FailureRegister.get().isThreadFailed(threadId)) {
+            getVariable.signalException(FailureRegister.get().createNFE());
+            removeGetVariable(requestNum);
+        } else {
+            Integer physicalId = InternalPCJ.getNodeData().getPhysicalId(globalThreadId);
 
-        Integer physicalId = InternalPCJ.getNodeData().getPhysicalId(globalThreadId);
+            MessageValueGetRequest message
+                    = new MessageValueGetRequest(
+                    super.getGroupId(), requestNum, myThreadId, threadId,
+                    variable.getDeclaringClass().getName(), variable.name(), indices);
 
-        MessageValueGetRequest message
-                = new MessageValueGetRequest(
-                        super.getGroupId(), requestNum, myThreadId, threadId,
-                        variable.getDeclaringClass().getName(), variable.name(), indices);
-
-        send(physicalId, message);
-
+            send(physicalId, message);
+        }
         return getVariable;
     }
 
@@ -198,14 +198,4 @@ final public class InternalGroup extends InternalCommonGroup implements Group {
         }
         Emitter.get().send(masterSocket, message);
     }
-
-    final public BroadcastState getBroadcastState(int requestNum) {
-        return broadcastStateMap.computeIfAbsent(requestNum,
-                key -> new BroadcastState(super.getPhysicalBitmask()));
-    }
-
-    public BroadcastState removeBroadcastState(int requestNum) {
-        return broadcastStateMap.remove(requestNum);
-    }
-
 }

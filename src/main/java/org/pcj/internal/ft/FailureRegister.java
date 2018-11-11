@@ -105,13 +105,20 @@ public class FailureRegister {
     }
 
     public synchronized void failIfThreadFailed(int threadId) {
-         if (failedThreadIds.contains(threadId) || newFailedThreads.contains(threadId)) {
-             markFailuresRegistered();
+        if (isThreadFailed(threadId)) {
              throwNFE();
          }
     }
 
+    public boolean isThreadFailed(int threadId) {
+        return failedThreadIds.contains(threadId) || newFailedThreads.contains(threadId);
+    }
+
     private void throwNFE() {
-        throw new NodeFailedException(failedPhysicalNodeIds, failedThreadIds);
+        throw createNFE();
+    }
+
+    public NodeFailedException createNFE() {
+        return new NodeFailedException(failedPhysicalNodeIds, failedThreadIds);
     }
 }

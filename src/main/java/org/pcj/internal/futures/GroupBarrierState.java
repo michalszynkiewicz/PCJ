@@ -43,6 +43,8 @@ public class GroupBarrierState extends InternalFuture<Void> implements PcjFuture
 
         this.localBarrierBitmask = new Bitmask(localBitmask.getSize());
         this.localBarrierMaskBitmask = new Bitmask(localBitmask);
+
+        System.out.println("["  + PCJ.getNodeId() + "] initialized barrier state with childrenNodes: " + childrenNodes);
     }
 
     @Override
@@ -139,6 +141,8 @@ public class GroupBarrierState extends InternalFuture<Void> implements PcjFuture
     }
 
     public void addChild(Integer childId) {
-        childrenSet.add(childId);
+        if (childId != null) {
+            childrenSet.add(childId);
+        }
     }
 }
