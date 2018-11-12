@@ -8,10 +8,11 @@
  */
 package org.pcj.internal.futures;
 
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import org.pcj.PcjFuture;
 import org.pcj.PcjRuntimeException;
+
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  *
@@ -21,6 +22,11 @@ public class AsyncAtExecution<T> extends InternalFuture<T> implements PcjFuture<
 
     private T variableValue;
     private Exception exception;
+    private Integer threadId;
+
+    public AsyncAtExecution(Integer threadId) {
+        this.threadId = threadId;
+    }
 
     @SuppressWarnings("unchecked")
     public void signalDone(Object variableValue) {
@@ -62,5 +68,9 @@ public class AsyncAtExecution<T> extends InternalFuture<T> implements PcjFuture<
             throw new PcjRuntimeException(exception);
         }
         return variableValue;
+    }
+
+    public Integer getThreadId() {
+        return threadId;
     }
 }

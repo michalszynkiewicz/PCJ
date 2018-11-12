@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -52,35 +53,13 @@ public class InternalCommonGroup {
     private final Bitmask physicalBitmask;
     private final ConcurrentMap<Integer, GroupBarrierState> barrierStateMap;
     private final ConcurrentMap<List<Integer>, GroupJoinState> groupJoinStateMap;
-    final AtomicInteger barrierRoundCounter;
     final private AtomicInteger threadsCounter;
     final private CommunicationTree physicalTree;
     private final ConcurrentMap<Integer, BroadcastState> broadcastStateMap;
-
-    public InternalCommonGroup(InternalCommonGroup g) {
-        this.broadcastStateMap = g.broadcastStateMap;
-        this.barrierRoundCounter = new AtomicInteger(0);
-        this.groupId = g.groupId;
-        this.groupName = g.groupName;
-        this.physicalTree = g.physicalTree;
-
-        this.threadsMapping = g.threadsMapping;
-        this.activeThreadsMapping = g.activeThreadsMapping;
-        this.localBitmask = g.localBitmask;
-        this.physicalBitmask = g.physicalBitmask;
-        this.barrierStateMap = g.barrierStateMap;
-
-        this.groupJoinStateMap = g.groupJoinStateMap;
-
-        this.localIds = g.localIds;
-        this.physicalIds = g.physicalIds;
-
-        this.threadsCounter = g.threadsCounter;
-        this.joinGroupSynchronizer = g.joinGroupSynchronizer;
-    }
+    private final Set<InternalGroup> threadGroups;
 
     public InternalCommonGroup(int groupMaster, int groupId, String groupName) {
-        this.barrierRoundCounter = new AtomicInteger(0);
+        this.threadGroups = Collections.newSetFromMap(new ConcurrentHashMap<>());
         this.groupId = groupId;
         this.groupName = groupName;
         physicalTree = new CommunicationTree(groupMaster);
@@ -230,17 +209,15 @@ public class InternalCommonGroup {
         return Collections.unmodifiableMap(activeThreadsMapping);
     }
 
-    final protected GroupBarrierState barrier(int threadId) {
-        int round = barrierRoundCounter.incrementAndGet();
-        GroupBarrierState barrierState = getBarrierState(round, true);
-        System.out.println("[" + PCJ.getNodeId() + "/" + threadId + "] reached barrier " + round + ", " + barrierState);
+    final protected GroupBarrierState barrier(int threadId, int barrierRound) {
+        GroupBarrierState barrierState = getBarrierState(barrierRound, true);
         barrierState.processLocal(threadId);
 
         return barrierState;
     }
 
     final public GroupBarrierState getBarrierState(int barrierRound, boolean isInitializing) {
-        if (!isInitializing && barrierRound <= this.barrierRoundCounter.get()){
+        if (!isInitializing && barrierRound <= getLatestBarrierRound()){
             return barrierStateMap.get(barrierRound);
         } else {
             return barrierStateMap.computeIfAbsent(barrierRound,
@@ -291,7 +268,7 @@ public class InternalCommonGroup {
                     .map(Map.Entry::getKey)
                     .forEach(activeThreadsMapping::remove);
 
-
+            threadGroups.forEach(group -> group.removeNode(threadIds));
         }
 
         return removed;
@@ -377,7 +354,10 @@ public class InternalCommonGroup {
     }
 
     public Integer getLatestBarrierRound() {
-        return barrierRoundCounter.get();
+        return threadGroups.stream()
+                .map(InternalGroup::getLatestBarrierRound)
+                .max(Integer::compare)
+                .orElse(0);
     }
 
     public final BroadcastState getBroadcastState(int requestNum) {
@@ -393,5 +373,9 @@ public class InternalCommonGroup {
 
     public BroadcastState removeBroadcastState(int requestNum) {
         return broadcastStateMap.remove(requestNum);
+    }
+
+    public void addThreadGroup(InternalGroup internalGroup) {
+        threadGroups.add(internalGroup);
     }
 }

@@ -53,7 +53,7 @@ final public class MessageGroupBarrierWaiting extends ReliableMessage {
 
         InternalCommonGroup group = InternalPCJ.getNodeData().getGroupById(groupId);
 
-        GroupBarrierState barrierState = group.getBarrierState(barrierRound, false);
+        GroupBarrierState barrierState = group.getBarrierState(barrierRound, true);
         barrierState.processPhysical(physicalId);
     }
 }

@@ -69,7 +69,7 @@ public class PcjExamplePiMCFT implements StartPoint {
         time = System.nanoTime() - time;
 // Print results         
         if (PCJ.myId() == 0) {
-            System.out.println(pi + " " + time * 1.0E-9 + "s " + (pi - Math.PI));
+            System.out.println("Finished, " + pi + " " + time * 1.0E-9 + "s " + (pi - Math.PI));
         }
     }
 

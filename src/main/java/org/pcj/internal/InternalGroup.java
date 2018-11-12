@@ -27,6 +27,8 @@ import org.pcj.internal.message.MessageValueGetRequest;
 import org.pcj.internal.message.MessageValuePutRequest;
 
 import java.nio.channels.SocketChannel;
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -36,9 +38,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author Marek Nowicki (faramir@mat.umk.pl)
  */
-final public class InternalGroup extends InternalCommonGroup implements Group {
+final public class InternalGroup implements Group {
 
     private final int myThreadId;
+    private final AtomicInteger barrierRoundCounter;
     private final AtomicInteger getVariableCounter;
     private final ConcurrentMap<Integer, GetVariable> getVariableMap;
     private final AtomicInteger putVariableCounter;
@@ -47,12 +50,17 @@ final public class InternalGroup extends InternalCommonGroup implements Group {
     private final ConcurrentMap<Integer, AsyncAtExecution> asyncAtExecutionMap;
     private final AtomicInteger broadcastCounter;
     private final ConcurrentMap<Integer, PeerBarrierState> peerBarrierStateMap;
+    private final ConcurrentMap<Integer, BroadcastState> broadcastStateMap;
     private final FaultToleranceHandler faultToleranceHandler = FaultToleranceHandler.get();
 
+    private final InternalCommonGroup commonGroup;
+
     public InternalGroup(int threadId, InternalCommonGroup internalGroup) {
-        super(internalGroup);
+        commonGroup = internalGroup;
 
         this.myThreadId = threadId;
+
+        barrierRoundCounter = new AtomicInteger(0);
 
         getVariableCounter = new AtomicInteger(0);
         getVariableMap = new ConcurrentHashMap<>();
@@ -64,8 +72,11 @@ final public class InternalGroup extends InternalCommonGroup implements Group {
         asyncAtExecutionMap = new ConcurrentHashMap<>();
 
         broadcastCounter = new AtomicInteger(0);
+        broadcastStateMap = new ConcurrentHashMap<>();
 
         peerBarrierStateMap = new ConcurrentHashMap<>();
+
+        commonGroup.addThreadGroup(this);
     }
 
     @Override
@@ -74,8 +85,18 @@ final public class InternalGroup extends InternalCommonGroup implements Group {
     }
 
     @Override
+    public int threadCount() {
+        return commonGroup.threadCount();
+    }
+
+    @Override
+    public String getGroupName() {
+        return commonGroup.getGroupName();
+    }
+
+    @Override
     public PcjFuture<Void> asyncBarrier() {
-        return super.barrier(myThreadId);
+        return commonGroup.barrier(myThreadId, barrierRoundCounter.incrementAndGet());
     }
 
     @Override
@@ -86,10 +107,10 @@ final public class InternalGroup extends InternalCommonGroup implements Group {
 
         PeerBarrierState peerBarrierState = getPeerBarrierState(threadId);
 
-        int globalThreadId = super.getGlobalThreadId(threadId);
+        int globalThreadId = commonGroup.getGlobalThreadId(threadId);
         int physicalId = InternalPCJ.getNodeData().getPhysicalId(globalThreadId);
 
-        MessagePeerBarrier message = new MessagePeerBarrier(super.getGroupId(), myThreadId, threadId);
+        MessagePeerBarrier message = new MessagePeerBarrier(commonGroup.getGroupId(), myThreadId, threadId);
         send(physicalId, message);
 
         return peerBarrierState.mineBarrier();
@@ -105,7 +126,7 @@ final public class InternalGroup extends InternalCommonGroup implements Group {
         GetVariable<T> getVariable = new GetVariable<>(threadId);
         getVariableMap.put(requestNum, getVariable);
 
-        int globalThreadId = super.getGlobalThreadIdInclFailed(threadId);
+        int globalThreadId = commonGroup.getGlobalThreadIdInclFailed(threadId);
 
         if (FailureRegister.get().isThreadFailed(threadId)) {
             getVariable.signalException(FailureRegister.get().createNFE());
@@ -115,7 +136,7 @@ final public class InternalGroup extends InternalCommonGroup implements Group {
 
             MessageValueGetRequest message
                     = new MessageValueGetRequest(
-                    super.getGroupId(), requestNum, myThreadId, threadId,
+                    commonGroup.getGroupId(), requestNum, myThreadId, threadId,
                     variable.getDeclaringClass().getName(), variable.name(), indices);
 
             send(physicalId, message);
@@ -133,12 +154,12 @@ final public class InternalGroup extends InternalCommonGroup implements Group {
         PutVariable putVariable = new PutVariable();
         putVariableMap.put(requestNum, putVariable);
 
-        int globalThreadId = super.getGlobalThreadId(threadId);
+        int globalThreadId = commonGroup.getGlobalThreadId(threadId);
         int physicalId = InternalPCJ.getNodeData().getPhysicalId(globalThreadId);
 
         MessageValuePutRequest message
                 = new MessageValuePutRequest(
-                        super.getGroupId(), requestNum, myThreadId, threadId,
+                commonGroup.getGroupId(), requestNum, myThreadId, threadId,
                         variable.getDeclaringClass().getName(), variable.name(), indices, newValue);
 
         send(physicalId, message);
@@ -154,17 +175,17 @@ final public class InternalGroup extends InternalCommonGroup implements Group {
     @Override
     public <T> PcjFuture<T> asyncAt(int threadId, AsyncTask<T> asyncTask) {
         int requestNum = asyncAtExecutionCounter.incrementAndGet();
-        AsyncAtExecution asyncAtExecution = new AsyncAtExecution();
+        int globalThreadId = commonGroup.getGlobalThreadId(threadId);
+
+        AsyncAtExecution asyncAtExecution = new AsyncAtExecution(globalThreadId);
         asyncAtExecutionMap.put(requestNum, asyncAtExecution);
 
-        int globalThreadId = super.getGlobalThreadId(threadId);
         int physicalId = InternalPCJ.getNodeData().getPhysicalId(globalThreadId);
 
         MessageAsyncAtRequest<T> message
                 = new MessageAsyncAtRequest<>(
-                        super.getGroupId(), requestNum, myThreadId, threadId,
+                commonGroup.getGroupId(), requestNum, myThreadId, threadId,
                         asyncTask);
-
 
         send(physicalId, message);
 
@@ -180,14 +201,33 @@ final public class InternalGroup extends InternalCommonGroup implements Group {
         int requestNum = broadcastCounter.incrementAndGet();
         BroadcastState broadcastState = getBroadcastState(requestNum);
 
-        int physicalMasterId = super.getGroupMasterNode();
+        int physicalMasterId = commonGroup.getGroupMasterNode();
 
         MessageValueBroadcastRequest message
-                = new MessageValueBroadcastRequest(super.getGroupId(), requestNum, myThreadId,
+                = new MessageValueBroadcastRequest(commonGroup.getGroupId(), requestNum, myThreadId,
                         variable.getDeclaringClass().getName(), variable.name(), indices, newValue);
         send(physicalMasterId, message);
 
         return broadcastState;
+    }
+
+    @Override
+    public Collection<Integer> getThreadIds() {
+        return commonGroup.getThreadIds();
+    }
+
+    @Override
+    public List<Integer> getChildrenNodes() {
+        return commonGroup.getChildrenNodes();
+    }
+
+    final public BroadcastState getBroadcastState(int requestNum) {
+        return broadcastStateMap.computeIfAbsent(requestNum,
+                key -> new BroadcastState(commonGroup.getPhysicalBitmask()));
+    }
+
+    public BroadcastState removeBroadcastState(int requestNum) {
+        return broadcastStateMap.remove(requestNum);
     }
 
     private void send(int physicalNodeId, Message message) {
@@ -197,5 +237,31 @@ final public class InternalGroup extends InternalCommonGroup implements Group {
             faultToleranceHandler.fail(physicalNodeId);
         }
         Emitter.get().send(masterSocket, message);
+    }
+
+    public Integer getLatestBarrierRound() {
+        return barrierRoundCounter.get();
+    }
+
+    public void removeNode(Collection<Integer> threadIds) {
+        getVariableMap.entrySet()
+                .stream()
+                .filter(g -> threadIds.contains(g.getValue().getThreadId()))
+                .forEach(g -> {
+                    g.getValue().signalException(FailureRegister.get().createNFE());
+                    removeGetVariable(g.getKey());
+                });
+
+        asyncAtExecutionMap.entrySet()
+                .stream()
+                .filter(a -> threadIds.contains(a.getValue().getThreadId()))
+                .forEach(a -> {
+                    a.getValue().signalException(FailureRegister.get().createNFE());
+                    removeAsyncAtExecution(a.getKey());
+                });
+    }
+
+    public Integer getGroupId() {
+        return commonGroup.getGroupId();
     }
 }
