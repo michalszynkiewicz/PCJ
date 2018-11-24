@@ -31,7 +31,6 @@ public class BroadcastState extends InternalFuture<Void> implements PcjFuture<Vo
 
     public BroadcastState(Bitmask physicalBitmask) {
         System.out.println("Initializing broadcast state, " + physicalBitmask);
-        Thread.dumpStack();
         this.physicalBitmask = new Bitmask(physicalBitmask.getSize());
         physicalMaskBitmask = new Bitmask(physicalBitmask);
 

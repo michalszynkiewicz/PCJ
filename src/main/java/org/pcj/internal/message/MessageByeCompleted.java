@@ -30,14 +30,12 @@ final public class MessageByeCompleted extends BroadcastedMessage {
     }
 
     @Override
-    public void write(MessageDataOutputStream out) throws IOException {
-        writeFTData(out);
+    public void doWrite(MessageDataOutputStream out) throws IOException {
+
     }
 
     @Override
     protected void doExecute(SocketChannel sender, MessageDataInputStream in) throws IOException {
-        readFTData(in);
-
         NodeData nodeData = InternalPCJ.getNodeData();
         PCJ.getNodeData()
                 .getGlobalGroup()

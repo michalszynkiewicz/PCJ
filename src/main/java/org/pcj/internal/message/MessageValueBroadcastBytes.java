@@ -59,13 +59,12 @@ final public class MessageValueBroadcastBytes extends BroadcastedMessage {
     }
 
     @Override
-    public void write(MessageDataOutputStream out) throws IOException {
+    public void doWrite(MessageDataOutputStream out) throws IOException {
         out.writeInt(groupId);
         out.writeInt(requestNum);
         out.writeInt(requesterThreadId);
         out.writeString(sharedEnumClassName);
         out.writeString(name);
-        writeFTData(out);
         out.writeIntArray(indices);
 
         clonedData.writeInto(out);
@@ -135,7 +134,6 @@ final public class MessageValueBroadcastBytes extends BroadcastedMessage {
 
         sharedEnumClassName = in.readString();
         name = in.readString();
-        readFTData(in);
         indices = in.readIntArray();
 
         clonedData = CloneInputStream.readFrom(in);

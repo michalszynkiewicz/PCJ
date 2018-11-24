@@ -48,9 +48,6 @@ public class Emitter {
      * @param message message to send
      */
     public void send(SocketChannel socket, Message message) {
-        if (message instanceof ReliableMessage) {
-            ReliableMessageCache.get().add((ReliableMessage) message);
-        }
         doSend(socket, message);
     }
 

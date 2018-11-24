@@ -51,8 +51,7 @@ public class MessageGroupJoinInform extends BroadcastedMessage {
     }
 
     @Override
-    public void write(MessageDataOutputStream out) throws IOException {
-        writeFTData(out);
+    public void doWrite(MessageDataOutputStream out) throws IOException {
         out.writeInt(requestNum);
         out.writeInt(groupId);
         out.writeInt(globalThreadId);
@@ -61,7 +60,6 @@ public class MessageGroupJoinInform extends BroadcastedMessage {
 
     @Override
     protected void doExecute(SocketChannel sender, MessageDataInputStream in) throws IOException {
-        readFTData(in);
         requestNum = in.readInt();
         groupId = in.readInt();
         globalThreadId = in.readInt();

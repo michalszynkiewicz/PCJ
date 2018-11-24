@@ -56,15 +56,13 @@ public class MessageNodeRemoved extends ReliableMessage {
 
 
     @Override
-    public void write(MessageDataOutputStream out) throws IOException {
-        writeFTData(out);
+    public void doWrite(MessageDataOutputStream out) throws IOException {
         out.writeInt(failedNodePhysicalId);
         out.writeObject(communicationUpdates);
     }
 
     @Override
     protected void doExecute(SocketChannel sender, MessageDataInputStream in) throws IOException {
-        readFTData(in);
         try {
             failedNodePhysicalId = in.readInt();
             communicationUpdates = (List<SetChild>) in.readObject();

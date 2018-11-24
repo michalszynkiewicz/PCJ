@@ -44,15 +44,13 @@ final public class MessageGroupBarrierGo extends ReliableMessage {
     }
 
     @Override
-    public void write(MessageDataOutputStream out) throws IOException {
-        writeFTData(out);
+    public void doWrite(MessageDataOutputStream out) throws IOException {
         out.writeInt(groupId);
         out.writeInt(barrierRound);
     }
 
     @Override
     protected void doExecute(SocketChannel sender, MessageDataInputStream in) throws IOException {
-        readFTData(in);
         groupId = in.readInt();
         barrierRound = in.readInt();
         handle();

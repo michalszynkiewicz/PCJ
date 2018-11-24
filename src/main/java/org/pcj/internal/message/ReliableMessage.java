@@ -35,6 +35,7 @@ public abstract class ReliableMessage extends Message {
 
     // TODO: messageId generation is a bit overcomplicated, consider simplifying
     public Integer getMessageId() {
+        // if not set, set to next value
         messageId.compareAndSet(-1, idGenerator.getAndIncrement());
         return messageId.get();
     }
@@ -44,18 +45,25 @@ public abstract class ReliableMessage extends Message {
     }
 
 
-    protected void writeFTData(MessageDataOutputStream out) throws IOException {
+    private void writeFTData(MessageDataOutputStream out) throws IOException {
         out.writeInt(getMessageId());
         out.writeInt(originator);
     }
 
-    protected void readFTData(MessageDataInputStream in) throws IOException {
+    private void readFTData(MessageDataInputStream in) throws IOException {
         messageId.set(in.readInt());
         originator = in.readInt();
     }
 
     @Override
+    public final void write(MessageDataOutputStream out) throws IOException {
+        writeFTData(out);
+        doWrite(out);
+    }
+
+    @Override
     public final void execute(SocketChannel sender, MessageDataInputStream in) throws IOException {
+        readFTData(in);
         System.out.println(PCJ.getNodeId() + "] looking at message " + this); // mstodo remove all souts
         if (!ReliableMessageCache.get().isProcessed(this)) {
             doExecute(sender, in);
@@ -64,6 +72,8 @@ public abstract class ReliableMessage extends Message {
             System.out.println(PCJ.getNodeId() + "] skipping processed message " + this);
         }
     }
+
+    public abstract void doWrite(MessageDataOutputStream out) throws IOException;
 
     protected abstract void doExecute(SocketChannel sender, MessageDataInputStream in) throws IOException;
 }
